@@ -4,15 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.kubhubsystem_gp13_dam.ui.theme.HomeScreen
+import com.example.kubhubsystem_gp13_dam.ui.theme.screens.HomeScreen
 import com.example.kubhubsystem_gp13_dam.ui.theme.KubHubSystem_gp13_DAMTheme
+import com.example.kubhubsystem_gp13_dam.ui.theme.screens.MainScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -20,7 +18,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             KubHubSystem_gp13_DAMTheme {
-                HomeScreen()
+                MainScreen()
             }
         }
     }
