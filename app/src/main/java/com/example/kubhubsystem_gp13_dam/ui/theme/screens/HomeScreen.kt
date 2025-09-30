@@ -1,4 +1,4 @@
-package com.example.kubhubsystem_gp13_dam.ui.theme
+package com.example.kubhubsystem_gp13_dam.ui.theme.screens
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -23,58 +23,46 @@ import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen() {
+fun HomeScreen(onNavigateToLogin: () -> Unit) {
 
-    // Estado para mostrar los componentes después de la animación
     var showContent by remember { mutableStateOf(false) }
-    var showMenu by remember { mutableStateOf(false) }
 
-    // Animación del tamaño de la bolita
     val circleSize = remember { Animatable(50f) }
 
-    // Lanzamos la animación al iniciar
     LaunchedEffect(true) {
         // Animación inicial de la bolita
         circleSize.animateTo(
             targetValue = 300f,
             animationSpec = tween(durationMillis = 1000)
         )
-        delay(500) // espera antes de mostrar "¡Bienvenido!"
+        delay(500)
         showContent = true
-
-        delay(1000) // espera extra antes de abrir el menú
-        showMenu = true
+        delay(1000)
+        onNavigateToLogin() // callback para mostrar LoginScreen
     }
 
-    // Fondo de toda la pantalla con color Primary
+    // Caja principal centrada
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.primary),
         contentAlignment = Alignment.Center
     ) {
-        when {
-            !showContent -> {
-                // Bolita animada
-                Box(
-                    modifier = Modifier
-                        .size(circleSize.value.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.onPrimary)
-                )
-            }
-            showMenu -> {
-                // Mostrar el menú
-                MenuScreen()
-            }
-            else -> {
-                // Mostrar mensaje de bienvenida
-                Text(
-                    text = "¡Bienvenido a KubHub!",
-                    color = MaterialTheme.colorScheme.onPrimary,
-                    style = MaterialTheme.typography.headlineMedium
-                )
-            }
+        if (!showContent) {
+            // Bolita animada
+            Box(
+                modifier = Modifier
+                    .size(circleSize.value.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.onPrimary)
+            )
+        } else {
+            // Texto de bienvenida centrado
+            Text(
+                text = "¡Bienvenido a KubHub!",
+                color = MaterialTheme.colorScheme.onPrimary,
+                style = MaterialTheme.typography.headlineMedium
+            )
         }
     }
 }
