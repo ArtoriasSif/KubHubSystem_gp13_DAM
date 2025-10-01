@@ -30,25 +30,16 @@ import com.example.kubhubsystem_gp13_dam.R
 import com.example.kubhubsystem_gp13_dam.ui.theme.ErrorTextStyle
 import com.example.kubhubsystem_gp13_dam.viewmodel.LoginViewModel
 import kotlinx.coroutines.delay
-import kotlin.reflect.typeOf
+import com.example.kubhubsystem_gp13_dam.model.ErrorType
 
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel = viewModel(),
-    onLoginSuccess: () -> Unit = {} // callback cuando el login es correcto
+    onLoginSuccess: () -> Unit = {}
 ) {
-    // Lista de imágenes de fondo
-    val images = listOf(
-        R.drawable.plato1,
-        R.drawable.plato2,
-        R.drawable.plato3,
-        R.drawable.plato4
-    )
-
-    // Estado de la imagen actual
+    val images = listOf(R.drawable.plato1, R.drawable.plato2, R.drawable.plato3, R.drawable.plato4)
     var currentImageIndex by remember { mutableStateOf(0) }
 
-    // Cambiar imagen automáticamente cada 5 segundos
     LaunchedEffect(Unit) {
         while (true) {
             delay(7000)
@@ -56,7 +47,6 @@ fun LoginScreen(
         }
     }
 
-    // Fondo con la imagen que cambia
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -69,14 +59,12 @@ fun LoginScreen(
             contentScale = ContentScale.Crop
         )
 
-        // Capa semi-transparente para contraste
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.4f))
         )
 
-        // Contenido del login
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -97,7 +85,8 @@ fun LoginScreen(
                 value = viewModel.username,
                 onValueChange = { viewModel.username = it },
                 label = { Text("Usuario") },
-                singleLine = true
+                singleLine = true,
+                isError = viewModel.userError?.type == ErrorType.USERNAME || viewModel.userError?.type == ErrorType.BOTH
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -108,7 +97,8 @@ fun LoginScreen(
                 onValueChange = { viewModel.password = it },
                 label = { Text("Contraseña") },
                 visualTransformation = PasswordVisualTransformation(),
-                singleLine = true
+                singleLine = true,
+                isError = viewModel.userError?.type == ErrorType.PASSWORD || viewModel.userError?.type == ErrorType.BOTH
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -117,7 +107,7 @@ fun LoginScreen(
                 viewModel.login()
                 if (viewModel.userError == null) {
                     onLoginSuccess()
-                    viewModel.clearFields() //  limpiar campos
+                    viewModel.clearFields()
                 }
             }) {
                 Text("Ingresar")
@@ -128,7 +118,7 @@ fun LoginScreen(
                 Text(
                     text = error.message,
                     style = ErrorTextStyle,
-                    color = MaterialTheme.colorScheme.onError
+                    color = MaterialTheme.colorScheme.inverseOnSurface
                 )
             }
         }
