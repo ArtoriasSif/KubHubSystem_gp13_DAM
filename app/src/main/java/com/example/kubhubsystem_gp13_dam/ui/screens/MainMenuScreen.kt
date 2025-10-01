@@ -1,4 +1,4 @@
-package com.example.kubhubsystem_gp13_dam.ui.theme.screens
+package com.example.kubhubsystem_gp13_dam.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

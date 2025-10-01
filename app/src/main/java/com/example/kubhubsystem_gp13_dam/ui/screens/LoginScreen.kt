@@ -1,4 +1,4 @@
-package com.example.kubhubsystem_gp13_dam.ui.theme.screens
+package com.example.kubhubsystem_gp13_dam.ui.screens
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -27,8 +27,10 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.kubhubsystem_gp13_dam.R
-import com.example.kubhubsystem_gp13_dam.ui.theme.viewmodel.LoginViewModel
+import com.example.kubhubsystem_gp13_dam.ui.theme.ErrorTextStyle
+import com.example.kubhubsystem_gp13_dam.viewmodel.LoginViewModel
 import kotlinx.coroutines.delay
+import kotlin.reflect.typeOf
 
 @Composable
 fun LoginScreen(
@@ -49,7 +51,7 @@ fun LoginScreen(
     // Cambiar imagen automáticamente cada 5 segundos
     LaunchedEffect(Unit) {
         while (true) {
-            delay(5000)
+            delay(7000)
             currentImageIndex = (currentImageIndex + 1) % images.size
         }
     }
@@ -111,23 +113,22 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Botón Login
             Button(onClick = {
                 viewModel.login()
-                // Si login correcto, llamamos al callback para navegar
-                if (viewModel.errorMessage == null) {
+                if (viewModel.userError == null) {
                     onLoginSuccess()
+                    viewModel.clearFields() //  limpiar campos
                 }
             }) {
                 Text("Ingresar")
             }
 
-            // Mensaje de error
-            viewModel.errorMessage?.let {
-                Spacer(modifier = Modifier.height(12.dp))
+            viewModel.userError?.let { error ->
+                Spacer(modifier = Modifier.height(14.dp))
                 Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.error
+                    text = error.message,
+                    style = ErrorTextStyle,
+                    color = MaterialTheme.colorScheme.onError
                 )
             }
         }
