@@ -4,13 +4,25 @@ import com.example.kubhubsystem_gp13_dam.model.User
 
 class LoginRepository {
 
-    // Simulamos una base de datos o lista de usuarios registrados
+    // Tu misma lista de usuarios
     private val users = listOf(
         User(username = "admin", password = "1234"),
         User(username = "chef", password = "cocina123")
     )
 
-    fun login(username: String, password: String): Boolean {
-        return users.any { it.username == username && it.password == password }
+    /**
+     * Retorna:
+     *  - null → login correcto
+     *  - "username" → usuario no existe
+     *  - "password" → contraseña incorrecta
+     */
+    fun login(username: String, password: String): String? {
+        val user = users.find { it.username == username }
+
+        return when {
+            user == null -> "username"
+            user.password != password -> "password"
+            else -> null
+        }
     }
 }
