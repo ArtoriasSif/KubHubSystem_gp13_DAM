@@ -1,6 +1,6 @@
-package com.example.kubhubsystem_gp13_dam.ui.theme.repository
+package com.example.kubhubsystem_gp13_dam.repository
 
-import com.example.kubhubsystem_gp13_dam.ui.theme.model.User
+import com.example.kubhubsystem_gp13_dam.model.User
 
 class LoginRepository {
 

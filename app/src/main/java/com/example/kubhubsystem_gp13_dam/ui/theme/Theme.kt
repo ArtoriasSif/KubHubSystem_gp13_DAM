@@ -11,44 +11,62 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
-// === COLOR SCHEME OSCURO ===
+// ===================== DARK COLOR SCHEME =====================
 private val DarkColorScheme = darkColorScheme(
-    primary = Primary,                  // Color principal
-    onPrimary = OnPrimary,              // Texto sobre primary
-    primaryContainer = PrimaryContainer,
-    secondary = Secondary,              // Color secundario
-    onSecondary = OnSecondary,
-    secondaryContainer = SecondaryContainer,
-    error = Error,
-    onError = OnError,
-    errorContainer = ErrorContainer,
-    background = Surface,
-    onBackground = OnSurface,
-    surface = Surface,
-    onSurface = OnSurface,
-    surfaceVariant = SurfaceDim,
-    inverseSurface = InverseSurface,
-    outline = Outline
+    primary = darkPrimary,                  // Color principal
+    onPrimary = darkOnPrimary,              // Texto sobre primary
+    primaryContainer = darkPrimaryContainer,
+    onPrimaryContainer = darkOnPrimaryContainer,
+    secondary = darkSecondary,              // Color secundario
+    onSecondary = darkOnSecondary,
+    secondaryContainer = darkSecondaryContainer,
+    onSecondaryContainer = darkOnSecondaryContainer,
+    tertiary = darkTertiary,
+    onTertiary = darkOnTertiary,
+    tertiaryContainer = darkTertiaryContainer,
+    onTertiaryContainer = darkOnTertiaryContainer,
+    error = darkError,
+    onError = darkOnError,
+    errorContainer = darkErrorContainer,
+    onErrorContainer = darkOnErrorContainer,
+    background = darkBackground,
+    onBackground = darkOnBackground,
+    surface = darkSurface,
+    onSurface = darkOnSurface,
+    surfaceVariant = darkSurfaceVariant,
+    onSurfaceVariant = darkOnSurfaceVariant,
+    inverseSurface = darkInverseSurface,
+    inverseOnSurface = darkInverseOnSurface,
+    outline = darkOutline
 )
 
-// === COLOR SCHEME CLARO ===
+// ===================== LIGHT COLOR SCHEME =====================
 private val LightColorScheme = lightColorScheme(
-    primary = Primary,
-    onPrimary = OnPrimary,
-    primaryContainer = PrimaryContainer,
-    secondary = Secondary,
-    onSecondary = OnSecondary,
-    secondaryContainer = SecondaryContainer,
-    error = Error,
-    onError = OnError,
-    errorContainer = ErrorContainer,
-    background = Surface,
-    onBackground = OnSurface,
-    surface = Surface,
-    onSurface = OnSurface,
-    surfaceVariant = SurfaceDim,
-    inverseSurface = InverseSurface,
-    outline = Outline
+    primary = primary,
+    onPrimary = onPrimary,
+    primaryContainer = primaryContainer,
+    onPrimaryContainer = onPrimaryContainer,
+    secondary = secondary,
+    onSecondary = onSecondary,
+    secondaryContainer = secondaryContainer,
+    onSecondaryContainer = onSecondaryContainer,
+    tertiary = tertiary,
+    onTertiary = onTertiary,
+    tertiaryContainer = tertiaryContainer,
+    onTertiaryContainer = onTertiaryContainer,
+    error = error,
+    onError = onError,
+    errorContainer = errorContainer,
+    onErrorContainer = onErrorContainer,
+    background = background,
+    onBackground = onBackground,
+    surface = surface,
+    onSurface = onSurface,
+    surfaceVariant = surfaceVariant,
+    onSurfaceVariant = onSurfaceVariant,
+    inverseSurface = inverseSurface,
+    inverseOnSurface = inverseOnSurface,
+    outline = outline
 )
 
 // === THEME COMPOSABLE ===
@@ -59,7 +77,6 @@ fun KubHubSystem_gp13_DAMTheme(
 ) {
     val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
-    // MaterialTheme aplica colores, tipografía y formas a todos los composables
     MaterialTheme(
         colorScheme = colorScheme,
         typography = Typography,
