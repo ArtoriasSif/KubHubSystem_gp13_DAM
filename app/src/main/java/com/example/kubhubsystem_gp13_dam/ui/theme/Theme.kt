@@ -10,6 +10,7 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import com.example.kubhubsystem_gp13_dam.ui.theme.outlineVariantDark
 
 // ===================== DARK COLOR SCHEME =====================
 private val DarkColorScheme = darkColorScheme(
@@ -32,12 +33,16 @@ private val DarkColorScheme = darkColorScheme(
     background = backgroundDark,
     onBackground = onBackgroundDark,
     surface = surfaceDark,
+    surfaceBright= outlineVariantDarkMediumContrast,
     onSurface = onSurfaceDark,
     surfaceVariant = surfaceVariantDark,
     onSurfaceVariant = onSurfaceVariantDark,
     inverseSurface = inverseSurfaceDark,
     inverseOnSurface = inverseOnSurfaceDark,
-    outline = outlineDark
+    outline = outlineDark,
+    outlineVariant = outlineVariantDark,
+    scrim = scrimDark
+
 )
 
 // ===================== LIGHT COLOR SCHEME =====================
@@ -61,12 +66,15 @@ private val LightColorScheme = lightColorScheme(
     background = backgroundLight,
     onBackground = onBackgroundLight,
     surface = onPrimaryLight,
+    surfaceBright= outlineVariantDarkMediumContrast,
     onSurface = onSurfaceLight,
     surfaceVariant = surfaceVariantLight,
     onSurfaceVariant = onSurfaceVariantLight,
     inverseSurface = inverseSurfaceLight,
     inverseOnSurface = inverseOnSurfaceLight,
-    outline = outlineLight
+    outline = outlineLight,
+    outlineVariant = outlineVariantLight,
+    scrim = scrimLight
 )
 
 // === THEME COMPOSABLE ===
