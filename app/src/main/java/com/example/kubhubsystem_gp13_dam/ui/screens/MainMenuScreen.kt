@@ -56,11 +56,21 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                 )
 
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Description, contentDescription = null) },
+                        icon = { Icon(Icons.Default.Description, contentDescription = null) },
                     label = { Text("Solicitudes") },
                     selected = currentRoute == "solicitud",
                     onClick = {
                         navController.navigate("solicitud")
+                        scope.launch { drawerState.close() }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Inventory, contentDescription = null) },
+                    label = { Text("Inventario") },
+                    selected = currentRoute == "inventario",
+                    onClick = {
+                        navController.navigate("inventario")
                         scope.launch { drawerState.close() }
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
@@ -126,6 +136,9 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                 }
                 composable("dashboard") {
                     DashboardScreen()
+                }
+                composable("inventario") {
+                    InventarioScreen()
                 }
                 composable("solicitud") {
                     SolicitudScreen()

@@ -5,6 +5,7 @@ sealed class MenuRoutes(val route: String) {
     object Login : MenuRoutes("login")
     object MainMenu : MenuRoutes("main_menu")
     object Dashboard : MenuRoutes("dashboard")
+
     object Solicitud : MenuRoutes("solicitud")
     object Usuarios : MenuRoutes("usuarios")
 }
