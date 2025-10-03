@@ -4,71 +4,42 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height 
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight 
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
-import androidx.compose.material3.Divider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow 
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.kubhubsystem_gp13_dam.model.UserRole
 import com.example.kubhubsystem_gp13_dam.ui.theme.loginTextFieldColors
 import com.example.kubhubsystem_gp13_dam.viewmodel.LoginViewModel
+
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel = viewModel(),
     onLoginSuccess: () -> Unit = {}
 ) {
-
-    var email by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var rememberSession by remember { mutableStateOf(false) }
+    val uiState by viewModel.uiState.collectAsState()
     var forgotPressed by remember { mutableStateOf(false) }
-    
-    // Box principal que ocupa toda la pantalla
+
     Box(
         modifier = Modifier
-            .fillMaxSize() // Ocupa todoo el espacio disponible
-            .background(MaterialTheme.colorScheme.surface )
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
     ) {
-        // Box central donde estará el formulario de login
+        // Box central del formulario
         Box(
             modifier = Modifier
-                .fillMaxWidth(0.80f) // 85% del ancho de la pantalla
-                .wrapContentHeight() // Ajusta su altura al contenido
-                .align(Alignment.Center) // Lo centra en el Box principal
-                .background(MaterialTheme.colorScheme.secondaryContainer , shape = RoundedCornerShape(16.dp)) //esquinas redondeadas
+                .fillMaxWidth(0.80f)
+                .wrapContentHeight()
+                .align(Alignment.Center)
                 .shadow(
                     elevation = 10.dp,
                     shape = RoundedCornerShape(16.dp),
@@ -78,13 +49,12 @@ fun LoginScreen(
                     color = MaterialTheme.colorScheme.secondaryContainer,
                     shape = RoundedCornerShape(16.dp)
                 )
-                .padding(horizontal = 30.dp , vertical = 10.dp) // <-- Aquí agregas más separación del borde
+                .padding(horizontal = 30.dp, vertical = 10.dp)
         ) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-
                 // Título principal
                 Text(
                     text = "Iniciar sesión",
@@ -101,46 +71,42 @@ fun LoginScreen(
                     fontSize = MaterialTheme.typography.bodyMedium.fontSize
                 )
 
-
-                // Aquí van los elementos del login
-                // OutlinedTextField para correo
+                // Campo de correo
                 OutlinedTextField(
-                    value = email,
-                    onValueChange = { email = it },
-                    label = { Text("Correo Electrónico*", color = MaterialTheme.colorScheme.onSurface ) },
+                    value = uiState.email,
+                    onValueChange = { viewModel.updateEmail(it) },
+                    label = { Text("Correo Electrónico*", color = MaterialTheme.colorScheme.onSurface) },
                     placeholder = { Text("correo@ejemplo.com", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)) },
-                    //leadingIcon = {
-                    //Icon(
-                    //imageVector = Icons.Default.Email,
-                    //contentDescription = "Icono de correo",
-                    //tint = Color.Gray
-                    //)
-                    //},
                     singleLine = true,
-                    shape = RoundedCornerShape(2.dp),
+                    shape = RoundedCornerShape(8.dp),
                     colors = loginTextFieldColors(),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = uiState.errorMessage != null
                 )
 
-                // OutlinedTextField para contraseña
+                // Campo de contraseña
                 OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Contraseña*", color = MaterialTheme.colorScheme.onSurface ) },
+                    value = uiState.password,
+                    onValueChange = { viewModel.updatePassword(it) },
+                    label = { Text("Contraseña*", color = MaterialTheme.colorScheme.onSurface) },
                     placeholder = { Text("********", color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)) },
-                    //leadingIcon = {
-                    //Icon(
-                    // imageVector = Icons.Default.Lock,
-                    // contentDescription = "Icono de contraseña",
-                    // tint = Color.Gray
-                    //)
-                    //},
                     singleLine = true,
                     visualTransformation = PasswordVisualTransformation(),
                     shape = RoundedCornerShape(8.dp),
                     colors = loginTextFieldColors(),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = uiState.errorMessage != null
                 )
+
+                // Mensaje de error
+                if (uiState.errorMessage != null) {
+                    Text(
+                        text = uiState.errorMessage!!,
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = MaterialTheme.typography.bodySmall.fontSize,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
 
                 // Fila: Recordar sesión y ¿Olvidó su contraseña?
                 Row(
@@ -150,11 +116,11 @@ fun LoginScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // Checkbox cuadrado/redondeado con label
+                    // Checkbox de recordar sesión
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Checkbox(
-                            checked = rememberSession,
-                            onCheckedChange = { rememberSession = it },
+                            checked = uiState.rememberSession,
+                            onCheckedChange = { viewModel.updateRememberSession(it) },
                             colors = CheckboxDefaults.colors(
                                 checkedColor = MaterialTheme.colorScheme.primaryContainer,
                                 uncheckedColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -162,8 +128,7 @@ fun LoginScreen(
                             ),
                             interactionSource = remember { MutableInteractionSource() },
                             enabled = true,
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp)) // aplica la forma aquí
+                            modifier = Modifier.clip(RoundedCornerShape(4.dp))
                         )
 
                         Spacer(modifier = Modifier.width(8.dp))
@@ -174,7 +139,7 @@ fun LoginScreen(
                         )
                     }
 
-                    // Texto “¿Olvidó su contraseña?” con efecto clic
+                    // Texto "¿Olvidó su contraseña?"
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
@@ -190,74 +155,79 @@ fun LoginScreen(
                             color = MaterialTheme.colorScheme.primaryContainer
                         )
                     }
-
-
                 }
 
-
+                // Botón de iniciar sesión
                 Button(
-                    onClick = { /* Acción de login */ },
+                    onClick = { viewModel.login(onLoginSuccess) },
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primaryContainer,
                         contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                     ),
-                    shape = RoundedCornerShape(16.dp) // <-- Aquí defines el radio de las esquinas
+                    shape = RoundedCornerShape(16.dp),
+                    enabled = !uiState.isLoading
                 ) {
-                    Text(text = "Iniciar sesión",
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            color = MaterialTheme.colorScheme.scrim
+                        )
+                    } else {
+                        Text(
+                            text = "Iniciar sesión",
                             color = MaterialTheme.colorScheme.scrim,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = MaterialTheme.typography.bodyLarge.fontSize
-                    )
-
+                            fontWeight = FontWeight.Bold,
+                            fontSize = MaterialTheme.typography.bodyLarge.fontSize
+                        )
+                    }
                 }
 
-                // Línea separadora horizontal
-                Divider(
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), // color de la línea
-                    thickness = 1.dp, // grosor de la línea
+                // Línea separadora
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    thickness = 1.dp,
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                // Box para textos de acceso rápido
+                // Textos de acceso rápido
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 12.dp, bottom = 12.dp), // poco espacio arriba y abajo
+                        .padding(top = 12.dp, bottom = 12.dp),
                     contentAlignment = Alignment.CenterStart
                 ) {
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(4.dp) // poco espacio entre textos
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        // Texto principal
                         Text(
                             text = "Acceso Rápido - Cuentas Demo",
                             color = MaterialTheme.colorScheme.onSurface,
                             fontSize = MaterialTheme.typography.bodyMedium.fontSize,
                             fontWeight = FontWeight.Medium,
                             modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center // centrado horizontalmente
+                            textAlign = TextAlign.Center
                         )
 
-                        // Texto secundario
                         Text(
                             text = "Haz clic en cualquier rol para autocompletar las credenciales",
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                             fontSize = MaterialTheme.typography.bodySmall.fontSize,
                             modifier = Modifier.fillMaxWidth(),
-                            textAlign = TextAlign.Center // centrado horizontalmente
+                            textAlign = TextAlign.Center
                         )
                     }
                 }
 
-                RolesGrid()
-
-            }//end Column box login
-
-
+                // Grid de roles
+                RolesGrid(
+                    selectedRole = uiState.selectedRole,
+                    onRoleSelected = { role -> viewModel.selectDemoRole(role) }
+                )
+            }
         }
 
-        // Otros elementos debajo del Box central
+        // Footer
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -272,21 +242,20 @@ fun LoginScreen(
     }
 }
 
-
 @Composable
-fun RolesGrid() {
-    // Lista con los 6 roles
+fun RolesGrid(
+    selectedRole: UserRole?,
+    onRoleSelected: (UserRole) -> Unit
+) {
+    // Lista de roles disponibles
     val roles = listOf(
-        "Admin" to "Acceso total al sistema",
-        "Co-Admin" to "Casi todos los permisos",
-        "Gestor de pedidos" to "Gestión de pedidos",
-        "Profesor" to "Solicitudes y consultas",
-        "Bodega" to "Control de inventario",
-        "Asistente" to "Bodega en tránsito"
+        UserRole.ADMIN,
+        UserRole.CO_ADMIN,
+        UserRole.GESTOR_PEDIDOS,
+        UserRole.PROFESOR,
+        UserRole.BODEGA,
+        UserRole.ASISTENTE
     )
-
-    // Estado: cuál está seleccionado (-1 = ninguno)
-    var selectedIndex by remember { mutableStateOf(-1) }
 
     Column(
         modifier = Modifier
@@ -294,19 +263,18 @@ fun RolesGrid() {
             .padding(horizontal = 12.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Dividimos la lista en filas de 3
-        roles.chunked(3).forEachIndexed { rowIndex, rowItems ->
+        // Dividimos en filas de 3
+        roles.chunked(3).forEach { rowItems ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                rowItems.forEachIndexed { colIndex, (title, subtitle) ->
-                    val index = rowIndex * 3 + colIndex
+                rowItems.forEach { role ->
                     RoleButton(
-                        title = title,
-                        subtitle = subtitle,
-                        selected = selectedIndex == index,
-                        onClick = { selectedIndex = index },
+                        title = role.displayName,
+                        subtitle = role.description,
+                        selected = selectedRole == role,
+                        onClick = { onRoleSelected(role) },
                         modifier = Modifier.weight(1f)
                     )
                 }
@@ -365,11 +333,8 @@ fun RoleButton(
                     MaterialTheme.colorScheme.scrim.copy(alpha = 0.7f)
                 else
                     MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Normal
             )
         }
     }
-
-
-
 }

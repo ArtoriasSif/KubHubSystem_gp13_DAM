@@ -1,69 +1,94 @@
 package com.example.kubhubsystem_gp13_dam.viewmodel
 
-import android.R
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
-import com.example.kubhubsystem_gp13_dam.model.ErrorType
-import com.example.kubhubsystem_gp13_dam.model.UserError
-import com.example.kubhubsystem_gp13_dam.repository.LoginRepository
+import androidx.lifecycle.viewModelScope
+import com.example.kubhubsystem_gp13_dam.data.repository.LoginRepository
+import com.example.kubhubsystem_gp13_dam.model.UserRole
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
+
+data class LoginUiState(
+    val email: String = "",
+    val password: String = "",
+    val rememberSession: Boolean = false,
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val selectedRole: UserRole? = null
+)
 
 class LoginViewModel(
-    private val repository: LoginRepository = LoginRepository()
+    private val repository: LoginRepository = LoginRepository.getInstance()
 ) : ViewModel() {
 
-    var username by mutableStateOf("")
-    var password by mutableStateOf("")
-    // AHORA SE USA UserError EN VEZ DE errorMessage
-    var userError by mutableStateOf<UserError?>(null)
-        private set
+    private val _uiState = MutableStateFlow(LoginUiState())
+    val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
-    fun login() {
-        // Si algún campo está vacío
-        if (username.isBlank() && password.isBlank()) {
-            userError = UserError(
-                type = ErrorType.BOTH,
-                message = "Por favor, completa ambos campos"
-            )
-            return
-        } else if (username.isBlank()) {
-            userError = UserError(
-                type = ErrorType.USERNAME,
-                message = "Por favor, ingresa el usuario"
-            )
-            return
-        } else if (password.isBlank()) {
-            userError = UserError(
-                type = ErrorType.PASSWORD,
-                message = "Por favor, ingresa la contraseña"
-            )
-            return
-        }
+    // Actualizar email
+    fun updateEmail(email: String) {
+        _uiState.value = _uiState.value.copy(email = email, errorMessage = null)
+    }
 
-        // Llamada al repositorio
-        val errorType = repository.login(username, password)
+    // Actualizar password
+    fun updatePassword(password: String) {
+        _uiState.value = _uiState.value.copy(password = password, errorMessage = null)
+    }
 
-        // Asignar UserError según lo que retorne el repositorio
-        userError = when (errorType) {
-            null -> null // login correcto
-            "username" -> UserError(
-                type = ErrorType.USERNAME,
-                message = "El usuario no existe"
-            )
-            "password" -> UserError(
-                type = ErrorType.PASSWORD,
-                message = "Contraseña incorrecta"
-            )
-            else -> UserError(
-                type = ErrorType.BOTH,
-                message = "Usuario o contraseña incorrectos"
+    // Actualizar checkbox de recordar sesión
+    fun updateRememberSession(remember: Boolean) {
+        _uiState.value = _uiState.value.copy(rememberSession = remember)
+    }
+
+    // Seleccionar rol demo
+    fun selectDemoRole(role: UserRole) {
+        val credentials = repository.getDemoCredentials(role)
+        if (credentials != null) {
+            _uiState.value = _uiState.value.copy(
+                email = credentials.first,
+                password = credentials.second,
+                selectedRole = role,
+                errorMessage = null
             )
         }
     }
 
-    fun clearFields() {
-        username = ""
-        password = ""
+    // Realizar login
+    fun login(onSuccess: () -> Unit) {
+        val currentState = _uiState.value
+
+        // Validaciones básicas
+        if (currentState.email.isEmpty() || currentState.password.isEmpty()) {
+            _uiState.value = currentState.copy(
+                errorMessage = "Por favor complete todos los campos"
+            )
+            return
+        }
+
+        _uiState.value = currentState.copy(isLoading = true, errorMessage = null)
+
+        viewModelScope.launch {
+            val result = repository.login(currentState.email, currentState.password)
+
+            when (result) {
+                null -> {
+                    // Login exitoso
+                    _uiState.value = currentState.copy(isLoading = false)
+                    onSuccess()
+                }
+                "username" -> {
+                    _uiState.value = currentState.copy(
+                        isLoading = false,
+                        errorMessage = "El usuario no existe"
+                    )
+                }
+                "password" -> {
+                    _uiState.value = currentState.copy(
+                        isLoading = false,
+                        errorMessage = "Contraseña incorrecta"
+                    )
+                }
+            }
+        }
     }
 }
