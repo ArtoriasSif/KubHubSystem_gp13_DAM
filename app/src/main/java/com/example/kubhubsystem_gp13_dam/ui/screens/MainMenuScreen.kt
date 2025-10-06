@@ -76,6 +76,18 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
 
+                // 📚 Asignaturas (Ramos-Admin)
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Class, contentDescription = null) },
+                    label = { Text("Ramos-Admin") },
+                    selected = currentRoute == "asignaturas",
+                    onClick = {
+                        navController.navigate("asignaturas")
+                        scope.launch { drawerState.close() }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.People, contentDescription = null) },
                     label = { Text("Usuarios") },
@@ -110,6 +122,8 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                         Text(
                             when(currentRoute) {
                                 "dashboard" -> "Dashboard"
+                                "inventario" -> "Inventario"
+                                "asignaturas" -> "Gestión de Asignaturas"
                                 "solicitud" -> "Solicitudes"
                                 "usuarios" -> "Usuarios"
                                 else -> "Kubhub System"
@@ -139,6 +153,9 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                 }
                 composable("inventario") {
                     InventarioScreen()
+                }
+                composable("asignaturas") {
+                    AsignaturasScreen()
                 }
                 composable("solicitud") {
                     SolicitudScreen()
