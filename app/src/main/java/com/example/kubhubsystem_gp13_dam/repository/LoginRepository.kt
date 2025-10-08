@@ -2,6 +2,7 @@ package com.example.kubhubsystem_gp13_dam.data.repository
 
 import com.example.kubhubsystem_gp13_dam.model.User
 import com.example.kubhubsystem_gp13_dam.model.UserRole
+import kotlinx.coroutines.delay
 
 class LoginRepository {
 
@@ -50,8 +51,33 @@ class LoginRepository {
      *  - null → login correcto
      *  - "username" → usuario no existe
      *  - "password" → contraseña incorrecta
+     *  devuelve información sobre el error si algo falla, y null si todoo salió bien.
+
+     * Función de login con suspend para simular operación asíncrona
+     *
+     * ✅ IMPORTANTE: Esta función DEBE ser suspend porque:
+     * 1. Simula una llamada a API con delay()
+     * 2. Es llamada desde viewModelScope.launch en el ViewModel
+     * 3. No bloquea el hilo principal de la UI
+     *
+     * ❌ Si no fuera suspend y usáramos Thread.sleep() causaría:
+     * - Bloqueo del hilo principal
+     * - Error "System UI isn't responding"
+     * - ANR (Application Not Responding)
+     *
+     * Retorna:
+     *  - null → login correcto
+     *  - "username" → usuario no existe
+     *  - "password" → contraseña incorrecta
+     *  devuelve información sobre el error si algo falla, y null si todo salió bien.
      */
-    fun login(username: String, password: String): String? {
+    suspend fun login(username: String, password: String): String? {
+        // ✅ delay() suspende la coroutine SIN BLOQUEAR el hilo principal
+        // Simula el tiempo que tomaría una llamada real a una API
+        delay(1500) // 1.5 segundos de simulación de red
+
+        // ❌ NUNCA usar Thread.sleep() aquí:
+        // Thread.sleep(1500) // Esto BLOQUEARÍA la UI y causaría ANR
         val user = users.find { it.username == username }
 
         return when {
@@ -65,6 +91,7 @@ class LoginRepository {
      * Obtiene las credenciales demo por rol
      */
     fun getDemoCredentials(role: UserRole): Pair<String, String>? {
+
         val user = users.find { it.role == role }
         return user?.let { it.username to it.password }
     }
