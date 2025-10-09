@@ -1,4 +1,4 @@
-package com.example.kubhubsystem_gp13_dam.ui.screens
+package com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.VectorConverter

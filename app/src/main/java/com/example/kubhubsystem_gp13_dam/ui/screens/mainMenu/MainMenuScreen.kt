@@ -1,4 +1,4 @@
-package com.example.kubhubsystem_gp13_dam.ui.screens
+package com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -11,6 +11,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.dashboard.DashboardScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome.HomeInternalScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.inventario.InventarioScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.solicitud.SolicitudScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.usuarios.UsuariosScreen
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)

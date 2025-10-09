@@ -3,14 +3,27 @@ package com.example.kubhubsystem_gp13_dam.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.kubhubsystem_gp13_dam.data.repository.LoginRepository
-import com.example.kubhubsystem_gp13_dam.model.UserRole
+import com.example.kubhubsystem_gp13_dam.model.loginUsers.UserRole
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
 
+// =====================================================================
+// DATA CLASS: ESTADO DE LA INTERFAZ DE LOGIN
+// =====================================================================
+/**
+ * Representa el estado de la UI de login.
+ *
+ * Contiene todos los valores que afectan la interfaz:
+ * - email, password
+ * - rememberSession: checkbox
+ * - isLoading: indicador de carga
+ * - errorMessage: mensajes de error a mostrar
+ * - selectedRole: rol demo seleccionado
+ * - forgotPasswordRequested: estado de solicitud de recuperación de contraseña
+ */
 data class LoginUiState(
     // Representan el estado actual de la interfaz de login
     val email: String = "",
@@ -22,13 +35,27 @@ data class LoginUiState(
     val forgotPasswordRequested: Boolean = false
 )
 
-// ViewModel se encarga de manejar la lógica y actualizar el estado de la interfaz de login
+
+// =====================================================================
+// VIEWMODEL: LOGIN
+// =====================================================================
+/**
+ * Maneja toda la lógica de login, controlando:
+ * - Actualización de campos (email, password, checkbox)
+ * - Selección de roles demo
+ * - Login real a través del [LoginRepository]
+ * - Recuperación de contraseña
+ *
+ * Expone un estado [uiState] inmutable que la UI puede observar.
+ */
 class LoginViewModel(
     // Repositorio para interactuar con la fuente de datos de login, se utiliza el patrón Singleton para que solo haya una instancia de LoginRepository
     private val repository: LoginRepository = LoginRepository.getInstance()
 ) : ViewModel() {
 
-    // ✅ Limpiar recursos cuando el ViewModel se destruye
+    // =================================================================
+    // CICLO DE VIDA DEL VIEWMODEL
+    // =================================================================
     override fun onCleared() {
         super.onCleared()
         // Cancelar todas las coroutines pendientes automáticamente con viewModelScope
@@ -47,10 +74,17 @@ class LoginViewModel(
      */
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow() //_uiState declarado de esta forma para indicar que es privado
 
+    // =================================================================
+    // MÉTODOS DE ACTUALIZACIÓN DE ESTADO
+    // =================================================================
+
     // ✅ Actualizar email - OPTIMIZADO: Solo actualiza si realmente cambió
     fun updateEmail(email: String) {
-        // Para actualizar se realiza una copia del estado actual y se actualiza el campo correspondiente
-        // ✅ Verificamos primero si el valor es diferente para evitar recomposiciones innecesarias
+        /**
+         * Para actualizar se realiza una copia del estado actual y se actualiza el campo correspondiente
+         * Verificamos primero si el valor es diferente para evitar recomposiciones innecesarias
+         * Actualiza el email si cambió, limpia errores previos
+         * */
         if (_uiState.value.email != email) {
             _uiState.update { currentState ->
                 currentState.copy(email = email, errorMessage = null)
@@ -58,7 +92,7 @@ class LoginViewModel(
         }
     }
 
-    // ✅ Actualizar password - OPTIMIZADO: Solo actualiza si realmente cambió
+    /** Actualiza la contraseña si cambió, limpia errores previos */
     fun updatePassword(password: String) {
         if (_uiState.value.password != password) {
             _uiState.update { currentState ->
@@ -67,7 +101,7 @@ class LoginViewModel(
         }
     }
 
-    // ✅ Actualizar checkbox de recordar sesión - OPTIMIZADO
+    /** Actualiza el estado del checkbox de recordar sesión */
     fun updateRememberSession(remember: Boolean) {
         if (_uiState.value.rememberSession != remember) {
             _uiState.update { currentState ->
@@ -76,7 +110,7 @@ class LoginViewModel(
         }
     }
 
-    // ✅ Actualizar estado de solicitud de recuperación de contraseña - OPTIMIZADO
+    /** Actualiza el estado de solicitud de recuperación de contraseña */
     fun updateForgotPasswordRequest(requested: Boolean) {
         if (_uiState.value.forgotPasswordRequested != requested) {
             _uiState.update { currentState ->
@@ -85,7 +119,13 @@ class LoginViewModel(
         }
     }
 
-    // ✅ Seleccionar rol demo - OPTIMIZADO
+    // =================================================================
+    // SELECCIÓN DE ROLES DEMO
+    // =================================================================
+    /**
+     * Selecciona un rol demo y llena automáticamente email y password.
+     * Evita recomposiciones innecesarias verificando cambios.
+     */
     fun selectDemoRole(role: UserRole) {
         val credentials = repository.getDemoCredentials(role)
         if (credentials != null) {
@@ -107,7 +147,7 @@ class LoginViewModel(
         }
     }
 
-    // ✅ Limpiar selección de rol demo y campos de credenciales - OPTIMIZADO
+    /** Limpia la selección de rol demo y los campos de credenciales */
     fun clearDemoSelection() {
         val currentState = _uiState.value
         // Solo limpia si hay algo que limpiar
@@ -126,8 +166,22 @@ class LoginViewModel(
         }
     }
 
-    // Realizar login
-    // onSuccess es una lambda que se ejecutará si el login es exitoso
+    // =================================================================
+    // LOGIN
+    // =================================================================
+    /**
+     * Ejecuta el login real usando [LoginRepository].
+     *
+     * Pasos:
+     * 1. Valida que email y password no estén vacíos.
+     * 2. Muestra indicador de carga.
+     * 3. Llama al repositorio para verificar credenciales.
+     * 4. Actualiza el estado según el resultado:
+     *    - Login exitoso -> llama a `onSuccess()` es una lambda que se ejecutará si el login es exitoso
+     *    - Usuario no existe -> mensaje de error
+     *    - Contraseña incorrecta -> mensaje de error
+     * 5. Manejo de errores inesperados con try-catch.
+     */
     fun login(onSuccess: () -> Unit) {
         // Obtener una copia del estado actual del ViewModel
         val currentState = _uiState.value
@@ -200,11 +254,5 @@ class LoginViewModel(
      *
      * En pocas palabras: controla la lógica del login, protege el estado interno y notifica a la UI
      * de cualquier cambio de forma segura y reactiva.
-     *
-     * ✅ OPTIMIZACIONES APLICADAS:
-     * - Uso de .update {} en lugar de .value = para actualizaciones thread-safe
-     * - Verificación de cambios antes de actualizar el estado (evita recomposiciones innecesarias)
-     * - Try-catch para manejar errores inesperados
-     * - Menos asignaciones de memoria al reutilizar el estado actual
      */
 }

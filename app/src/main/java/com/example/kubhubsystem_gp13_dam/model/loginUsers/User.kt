@@ -1,4 +1,4 @@
-package com.example.kubhubsystem_gp13_dam.model
+package com.example.kubhubsystem_gp13_dam.model.loginUsers
 
 data class User(
     val username: String,

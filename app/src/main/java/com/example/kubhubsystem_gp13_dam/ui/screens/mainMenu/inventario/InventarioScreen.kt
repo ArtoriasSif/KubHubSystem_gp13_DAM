@@ -1,4 +1,4 @@
-package com.example.kubhubsystem_gp13_dam.ui.screens
+package com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.inventario
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
