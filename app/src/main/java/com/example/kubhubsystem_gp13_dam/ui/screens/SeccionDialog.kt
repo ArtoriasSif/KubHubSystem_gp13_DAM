@@ -1,29 +1,37 @@
 package com.example.kubhubsystem_gp13_dam.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
+
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import kotlinx.coroutines.delay
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AddCircleOutline
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 import com.example.kubhubsystem_gp13_dam.model.DiaSemana
@@ -32,6 +40,7 @@ import com.example.kubhubsystem_gp13_dam.model.HorarioConSala
 import com.example.kubhubsystem_gp13_dam.model.HorarioUtils
 import com.example.kubhubsystem_gp13_dam.model.Sala
 import com.example.kubhubsystem_gp13_dam.model.Seccion
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,13 +49,17 @@ fun SeccionDialog(
     onDismiss: () -> Unit,
     onSave: (Seccion) -> Unit,
     getSalasDisponibles: (DiaSemana, Int) -> List<Sala>,
-    todasLasSalas: List<Sala> // ✅ CAMBIAR parámetro
+    todasLasSalas: List<Sala>
 ) {
     var numeroSeccion by remember { mutableStateOf(seccion?.numeroSeccion ?: "") }
     var docente by remember { mutableStateOf(seccion?.docente ?: "") }
     var horariosSeleccionados by remember { mutableStateOf(seccion?.horarios ?: emptyList()) }
     var showHorariosPicker by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val scrollState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current  // ✅ Para manejar foco
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -56,6 +69,7 @@ fun SeccionDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(max = 500.dp),
+                state = scrollState,
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 item {
@@ -67,6 +81,16 @@ fun SeccionDialog(
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Next
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onNext = {
+                                // ✅ Solo hacer scroll cuando se presiona "Next"
+                                if (numeroSeccion.isNotEmpty()) {
+                                    coroutineScope.launch {
+                                        scrollState.animateScrollToItem(1)
+                                    }
+                                }
+                            }
                         )
                     )
                 }
@@ -80,6 +104,18 @@ fun SeccionDialog(
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(
                             imeAction = ImeAction.Done
+                        ),
+                        keyboardActions = KeyboardActions(
+                            onDone = {
+                                // ✅ Cerrar teclado y hacer scroll cuando se presiona "Done"
+                                focusManager.clearFocus()
+                                if (numeroSeccion.isNotEmpty() && docente.isNotEmpty()) {
+                                    coroutineScope.launch {
+                                        delay(200) // Esperar a que se cierre el teclado
+                                        scrollState.animateScrollToItem(2)
+                                    }
+                                }
+                            }
                         )
                     )
                 }
@@ -121,8 +157,13 @@ fun SeccionDialog(
                                         fontWeight = FontWeight.Bold
                                     )
                                     Text(
-                                        text = "Sala: ${horario.sala.codigoSala} - ${HorarioUtils.getBloqueHorario(horario.bloqueHorario)}",
+                                        text = "Sala: ${horario.sala.codigoSala}",
                                         style = MaterialTheme.typography.bodySmall
+                                    )
+                                    Text(
+                                        text = HorarioUtils.getBloqueHorario(horario.bloqueHorario),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
                                 IconButton(
@@ -144,7 +185,10 @@ fun SeccionDialog(
 
                 item {
                     Button(
-                        onClick = { showHorariosPicker = true },
+                        onClick = {
+                            focusManager.clearFocus()  // ✅ Cerrar teclado antes de abrir picker
+                            showHorariosPicker = true
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Agregar Horarios")
@@ -200,9 +244,17 @@ fun SeccionDialog(
                 horariosSeleccionados = horariosSeleccionados + nuevosHorarios
                 showHorariosPicker = false
                 errorMessage = null
+
+                // Auto-scroll para ver los horarios agregados
+                coroutineScope.launch {
+                    delay(150)
+                    scrollState.animateScrollToItem(
+                        index = minOf(3 + nuevosHorarios.size, scrollState.layoutInfo.totalItemsCount - 1)
+                    )
+                }
             },
             salasDisponibles = getSalasDisponibles,
-            todasLasSalas = todasLasSalas  // ✅ Pasar el parámetro
+            todasLasSalas = todasLasSalas
         )
     }
 }
@@ -211,231 +263,152 @@ fun HorarioPickerDialog(
     onDismiss: () -> Unit,
     onConfirm: (List<HorarioConSala>) -> Unit,
     salasDisponibles: (DiaSemana, Int) -> List<Sala>,
-    todasLasSalas: List<Sala>  // Lista completa de salas
+    todasLasSalas: List<Sala>
 ) {
     var selectedSala by remember { mutableStateOf<Sala?>(null) }
     var selectedDia by remember { mutableStateOf<DiaSemana?>(null) }
     var selectedBloques by remember { mutableStateOf<Set<Int>>(emptySet()) }
     var horariosSeleccionados by remember { mutableStateOf<List<HorarioConSala>>(emptyList()) }
 
-    AlertDialog(
+    Dialog(
         onDismissRequest = onDismiss,
-        title = { Text("Seleccionar Horarios y Salas") },
-        text = {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 550.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.95f)
+                .fillMaxHeight(0.9f),
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
             ) {
-                // Horarios ya agregados
-                if (horariosSeleccionados.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = "Horarios agregados (${horariosSeleccionados.size}):",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    items(horariosSeleccionados.size) { index ->
-                        val horario = horariosSeleccionados[index]
-                        Surface(
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(8.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "${horario.sala.codigoSala} - ${horario.diaSemana.displayName}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Text(
-                                        text = "Bloque ${horario.bloqueHorario}: ${HorarioUtils.getBloqueHorarioCorto(horario.bloqueHorario)}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                IconButton(
-                                    onClick = {
-                                        horariosSeleccionados = horariosSeleccionados.filterIndexed { i, _ -> i != index }
-                                    },
-                                    modifier = Modifier.size(24.dp)
-                                ) {
-                                    Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = "Eliminar",
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    item {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        Text(
-                            text = "Agregar más horarios:",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                // PASO 1: Seleccionar sala
-                item {
+                // Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Text(
-                        text = "1. Seleccione la sala:",
-                        style = MaterialTheme.typography.labelMedium,
+                        "Seleccionar Horarios y Salas",
+                        style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold
                     )
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Cerrar")
+                    }
                 }
 
-                items(todasLasSalas.size) { index ->
-                    val sala = todasLasSalas[index]
-                    val isSelected = selectedSala?.idSala == sala.idSala
+                HorizontalDivider()
 
-                    OutlinedCard(
-                        onClick = {
-                            selectedSala = sala
-                            selectedDia = null
-                            selectedBloques = emptySet()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.outlinedCardColors(
-                            containerColor = if (isSelected)
-                                MaterialTheme.colorScheme.primaryContainer
-                            else
-                                MaterialTheme.colorScheme.surface
-                        ),
-                        border = BorderStroke(
-                            width = if (isSelected) 2.dp else 1.dp,
-                            color = if (isSelected)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.outline
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column {
-                                Text(
-                                    text = sala.codigoSala,
-                                    fontWeight = FontWeight.Bold,
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Text(
-                                    text = sala.tipoSala.displayName,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                Text(
-                                    text = "Capacidad: ${sala.capacidad}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            if (isSelected) {
-                                Icon(
-                                    Icons.Default.CheckCircle,
-                                    contentDescription = "Seleccionado",
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
+                // Contenido scrolleable
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Horarios ya agregados
+                    if (horariosSeleccionados.isNotEmpty()) {
+                        item {
+                            Text(
+                                text = "Horarios agregados (${horariosSeleccionados.size}):",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-                    }
-                }
 
-                // PASO 2: Seleccionar día (solo si hay sala seleccionada)
-                if (selectedSala != null) {
-                    item {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        Text(
-                            text = "2. Seleccione el día:",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            DiaSemana.values().take(6).forEach { dia ->
-                                FilterChip(
-                                    selected = selectedDia == dia,
-                                    onClick = {
-                                        selectedDia = dia
-                                        selectedBloques = emptySet()
-                                    },
-                                    label = { Text(dia.displayName.take(3)) }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // PASO 3: Seleccionar bloques (solo si hay sala y día)
-                if (selectedSala != null && selectedDia != null) {
-                    item {
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-                        Text(
-                            text = "3. Seleccione bloques (${selectedBloques.size} seleccionados):",
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    items(20) { index ->
-                        val bloque = index + 1
-                        val isSelected = selectedBloques.contains(bloque)
-
-                        // Verificar si la sala está disponible en este horario
-                        val estaDisponible = salasDisponibles(selectedDia!!, bloque)
-                            .any { it.idSala == selectedSala!!.idSala }
-
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = estaDisponible) {
-                                    if (estaDisponible) {
-                                        selectedBloques = if (isSelected) {
-                                            selectedBloques - bloque
-                                        } else {
-                                            selectedBloques + bloque
-                                        }
+                        items(horariosSeleccionados.size) { index ->
+                            val horario = horariosSeleccionados[index]
+                            Surface(
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(8.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = "${horario.sala.codigoSala} - ${horario.diaSemana.displayName}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "Bloque ${horario.bloqueHorario}: ${HorarioUtils.getBloqueHorarioCorto(horario.bloqueHorario)}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            horariosSeleccionados = horariosSeleccionados.filterIndexed { i, _ -> i != index }
+                                        },
+                                        modifier = Modifier.size(24.dp)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Close,
+                                            contentDescription = "Eliminar",
+                                            modifier = Modifier.size(16.dp)
+                                        )
                                     }
                                 }
-                                .border(
-                                    width = if (isSelected) 2.dp else 1.dp,
-                                    color = when {
-                                        !estaDisponible -> Color.Red
-                                        isSelected -> MaterialTheme.colorScheme.primary
-                                        else -> MaterialTheme.colorScheme.outline
-                                    },
-                                    shape = RoundedCornerShape(8.dp)
-                                ),
-                            color = when {
-                                !estaDisponible -> Color.Red.copy(alpha = 0.1f)
-                                isSelected -> MaterialTheme.colorScheme.primaryContainer
-                                else -> MaterialTheme.colorScheme.surface
+                            }
+                        }
+
+                        item {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                            Text(
+                                text = "Agregar más horarios:",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+
+                    // PASO 1: Seleccionar sala
+                    item {
+                        Text(
+                            text = "1. Seleccione la sala:",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    items(todasLasSalas.size) { index ->
+                        val sala = todasLasSalas[index]
+                        val isSelected = selectedSala?.idSala == sala.idSala
+
+                        OutlinedCard(
+                            onClick = {
+                                selectedSala = sala
+                                selectedDia = null
+                                selectedBloques = emptySet()
                             },
-                            shape = RoundedCornerShape(8.dp)
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.outlinedCardColors(
+                                containerColor = if (isSelected)
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else
+                                    MaterialTheme.colorScheme.surface
+                            ),
+                            border = BorderStroke(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.outline
+                            )
                         ) {
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(12.dp),
+                                modifier = Modifier.padding(8.dp),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -443,72 +416,294 @@ fun HorarioPickerDialog(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.weight(1f)
                                 ) {
-                                    Surface(
-                                        color = when {
-                                            !estaDisponible -> Color.Red
-                                            isSelected -> MaterialTheme.colorScheme.primary
-                                            else -> MaterialTheme.colorScheme.surfaceVariant
-                                        },
-                                        shape = RoundedCornerShape(4.dp)
-                                    ) {
-                                        Text(
-                                            text = bloque.toString(),
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (!estaDisponible || isSelected)
-                                                Color.White
-                                            else
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-
-                                    Spacer(modifier = Modifier.width(12.dp))
-
-                                    Column {
-                                        Text(
-                                            text = "Módulo $bloque",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (!estaDisponible)
-                                                Color.Red
-                                            else
-                                                MaterialTheme.colorScheme.onSurface
-                                        )
-                                        Text(
-                                            text = HorarioUtils.getBloqueHorario(bloque),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = if (!estaDisponible)
-                                                Color.Red.copy(alpha = 0.7f)
-                                            else
-                                                MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-
-                                when {
-                                    !estaDisponible -> Icon(
-                                        Icons.Default.Close,
-                                        contentDescription = "No disponible",
-                                        tint = Color.Red,
-                                        modifier = Modifier.size(24.dp)
+                                    Text(
+                                        text = sala.codigoSala,
+                                        fontWeight = FontWeight.Bold,
+                                        style = MaterialTheme.typography.titleMedium
                                     )
-                                    isSelected -> Icon(
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = sala.tipoSala.displayName,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "• ${sala.capacidad}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                if (isSelected) {
+                                    Icon(
                                         Icons.Default.CheckCircle,
                                         contentDescription = "Seleccionado",
                                         tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(24.dp)
+                                        modifier = Modifier.size(20.dp)
                                     )
                                 }
                             }
                         }
                     }
 
-                    // Botón para agregar bloques seleccionados
-                    if (selectedBloques.isNotEmpty()) {
+                    // PASO 2: Seleccionar día
+                    if (selectedSala != null) {
                         item {
-                            Button(
-                                onClick = {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                            Text(
+                                text = "2. Seleccione el día:",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                DiaSemana.values().take(6).forEach { dia ->
+                                    FilterChip(
+                                        selected = selectedDia == dia,
+                                        onClick = {
+                                            selectedDia = dia
+                                            selectedBloques = emptySet()
+                                        },
+                                        label = { Text(dia.displayName.take(3)) }
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    // ✅ PASO 3: Seleccionar bloques (MODIFICADO)
+                    if (selectedSala != null && selectedDia != null) {
+                        item {
+                            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+                            Text(
+                                text = "3. Seleccione bloques:",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+
+                        // ✅ Filtrar bloques: mostrar solo los disponibles
+                        val bloquesDisponibles = (1..20).filter { bloque ->
+                            val estaDisponibleEnSistema = salasDisponibles(selectedDia!!, bloque)
+                                .any { it.idSala == selectedSala!!.idSala }
+
+                            val noEstaEnListaTemporal = !horariosSeleccionados.any { horario ->
+                                horario.sala.idSala == selectedSala!!.idSala &&
+                                        horario.diaSemana == selectedDia &&
+                                        horario.bloqueHorario == bloque
+                            }
+
+                            estaDisponibleEnSistema && noEstaEnListaTemporal
+                        }
+
+                        if (bloquesDisponibles.isEmpty()) {
+                            item {
+                                Card(
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer
+                                    )
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Info,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.onErrorContainer,
+                                            modifier = Modifier.size(24.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+                                        Text(
+                                            text = "No hay bloques disponibles para ${selectedSala!!.codigoSala} el día ${selectedDia!!.displayName}.",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onErrorContainer
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "${bloquesDisponibles.size} bloques disponibles",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    if (selectedBloques.isNotEmpty()) {
+                                        Surface(
+                                            color = MaterialTheme.colorScheme.primaryContainer,
+                                            shape = RoundedCornerShape(12.dp)
+                                        ) {
+                                            Text(
+                                                text = "${selectedBloques.size} seleccionados",
+                                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            items(bloquesDisponibles.size) { index ->
+                                val bloque = bloquesDisponibles[index]
+                                val isSelected = selectedBloques.contains(bloque)
+
+                                Surface(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            selectedBloques = if (isSelected) {
+                                                selectedBloques - bloque
+                                            } else {
+                                                selectedBloques + bloque
+                                            }
+                                        }
+                                        .border(
+                                            width = if (isSelected) 2.dp else 1.dp,
+                                            color = if (isSelected)
+                                                MaterialTheme.colorScheme.primary
+                                            else
+                                                MaterialTheme.colorScheme.outline,
+                                            shape = RoundedCornerShape(8.dp)
+                                        ),
+                                    color = if (isSelected)
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    else
+                                        MaterialTheme.colorScheme.surface,
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(12.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Surface(
+                                                color = if (isSelected)
+                                                    MaterialTheme.colorScheme.primary
+                                                else
+                                                    MaterialTheme.colorScheme.surfaceVariant,
+                                                shape = RoundedCornerShape(4.dp)
+                                            ) {
+                                                Text(
+                                                    text = bloque.toString(),
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = if (isSelected)
+                                                        MaterialTheme.colorScheme.onPrimary
+                                                    else
+                                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+
+                                            Spacer(modifier = Modifier.width(12.dp))
+
+                                            Column {
+                                                Text(
+                                                    text = "Módulo $bloque",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                                Text(
+                                                    text = HorarioUtils.getBloqueHorario(bloque),
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
+
+                                        if (isSelected) {
+                                            Icon(
+                                                Icons.Default.CheckCircle,
+                                                contentDescription = "Seleccionado",
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        } else {
+                                            Icon(
+                                                Icons.Default.AddCircleOutline,
+                                                contentDescription = "Agregar",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            item {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            selectedBloques = bloquesDisponibles.toSet()
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(
+                                            Icons.Default.SelectAll,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Seleccionar todos")
+                                    }
+
+                                    if (selectedBloques.isNotEmpty()) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                selectedBloques = emptySet()
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Clear,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("Limpiar")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                HorizontalDivider()
+
+                // ✅ Footer con botones (MODIFICADO - botón agregar siempre visible)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (selectedSala != null && selectedDia != null) {
+                        Button(
+                            onClick = {
+                                if (selectedBloques.isNotEmpty()) {
                                     val nuevosHorarios = selectedBloques.map { bloque ->
                                         HorarioConSala(
                                             diaSemana = selectedDia!!,
@@ -517,36 +712,39 @@ fun HorarioPickerDialog(
                                         )
                                     }
                                     horariosSeleccionados = horariosSeleccionados + nuevosHorarios
-
-                                    // Reset para agregar más
                                     selectedDia = null
                                     selectedBloques = emptySet()
-                                },
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Icon(Icons.Default.Add, contentDescription = null)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Agregar ${selectedBloques.size} bloque(s) a la lista")
-                            }
+                                }
+                            },
+                            enabled = selectedBloques.isNotEmpty(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF8B6914)
+                            )
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Agregar ${selectedBloques.size} bloque(s)")
+                        }
+                    } else {
+                        Spacer(modifier = Modifier.weight(1f))
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = onDismiss) {
+                            Text("Cancelar")
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Button(
+                            onClick = { onConfirm(horariosSeleccionados) },
+                            enabled = horariosSeleccionados.isNotEmpty()
+                        ) {
+                            Text("Confirmar (${horariosSeleccionados.size})")
                         }
                     }
                 }
             }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    onConfirm(horariosSeleccionados)
-                },
-                enabled = horariosSeleccionados.isNotEmpty()
-            ) {
-                Text("Confirmar (${horariosSeleccionados.size})")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
         }
-    )
+    }
 }

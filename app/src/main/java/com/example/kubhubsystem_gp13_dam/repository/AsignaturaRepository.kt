@@ -24,9 +24,9 @@ class AsignaturaRepository {
                         numeroSeccion = "001",
                         docente = "María López",
                         horarios = listOf(
-                            HorarioConSala(DiaSemana.LUNES, 1, sala = salaRepository.getSalaById(1)!!),
-                            HorarioConSala(DiaSemana.LUNES, 2,sala = salaRepository.getSalaById(1)!!),
-                            HorarioConSala(DiaSemana.MIERCOLES, 3,sala = salaRepository.getSalaById(1)!!)
+                            HorarioConSala(DiaSemana.LUNES, 1, Sala(1, "C301", 30)),
+                            HorarioConSala(DiaSemana.LUNES, 2, Sala(1, "C301", 30)),
+                            HorarioConSala(DiaSemana.MIERCOLES, 3, Sala(1, "C301", 30))
                         ),
                         estaActiva = true
                     ),
@@ -35,8 +35,8 @@ class AsignaturaRepository {
                         numeroSeccion = "002",
                         docente = "Carlos Ruiz",
                         horarios = listOf(
-                            HorarioConSala(DiaSemana.MARTES, 1, sala = salaRepository.getSalaById(2)!!),
-                            HorarioConSala(DiaSemana.JUEVES, 2, sala = salaRepository.getSalaById(2)!!),
+                            HorarioConSala(DiaSemana.MARTES, 5, Sala(2, "C302", 30)),
+                            HorarioConSala(DiaSemana.JUEVES, 5, Sala(2, "C302", 30))
                         ),
                         estaActiva = true
                     ),
@@ -45,7 +45,7 @@ class AsignaturaRepository {
                         numeroSeccion = "003",
                         docente = "Ana Silva",
                         horarios = listOf(
-                            HorarioConSala(DiaSemana.MIERCOLES, 1, sala = salaRepository.getSalaById(3)!!),
+                            HorarioConSala(DiaSemana.VIERNES, 10, Sala(3, "C303", 25))
                         ),
                         estaActiva = true
                     )
@@ -64,8 +64,8 @@ class AsignaturaRepository {
                         numeroSeccion = "001",
                         docente = "Roberto Pérez",
                         horarios = listOf(
-                            HorarioConSala(DiaSemana.MARTES, 14, sala = salaRepository.getSalaById(3)!!),
-                            HorarioConSala(DiaSemana.MARTES, 10, sala = salaRepository.getSalaById(3)!!),
+                            HorarioConSala(DiaSemana.LUNES, 7, Sala(1, "C301", 30)),
+                            HorarioConSala(DiaSemana.MIERCOLES, 7, Sala(1, "C301", 30))
                         ),
                         estaActiva = true
                     ),
@@ -74,7 +74,7 @@ class AsignaturaRepository {
                         numeroSeccion = "002",
                         docente = "Laura Martínez",
                         horarios = listOf(
-                            HorarioConSala(DiaSemana.LUNES, 1, sala = salaRepository.getSalaById(4)!!),
+                            HorarioConSala(DiaSemana.MARTES, 12, Sala(4, "C304", 35))
                         ),
                         estaActiva = true
                     )
@@ -93,8 +93,8 @@ class AsignaturaRepository {
                         numeroSeccion = "001",
                         docente = "Carmen Torres",
                         horarios = listOf(
-                            HorarioConSala(DiaSemana.LUNES, 6, sala = salaRepository.getSalaById(4)!!),
-                            HorarioConSala(DiaSemana.LUNES, 7, sala = salaRepository.getSalaById(4)!!),
+                            HorarioConSala(DiaSemana.LUNES, 15, Sala(5, "C305", 40)),
+                            HorarioConSala(DiaSemana.MIERCOLES, 15, Sala(5, "C305", 40))
                         ),
                         estaActiva = true
                     ),
@@ -103,7 +103,7 @@ class AsignaturaRepository {
                         numeroSeccion = "002",
                         docente = "Diego Morales",
                         horarios = listOf(
-                            HorarioConSala(DiaSemana.VIERNES, 8, sala = salaRepository.getSalaById(4)!!),
+                            HorarioConSala(DiaSemana.JUEVES, 18, Sala(3, "C303", 25))
                         ),
                         estaActiva = true
                     )
@@ -122,7 +122,7 @@ class AsignaturaRepository {
                         numeroSeccion = "001",
                         docente = "Fernando Díaz",
                         horarios = listOf(
-                            HorarioConSala(DiaSemana.MIERCOLES, 16, sala = salaRepository.getSalaById(2)!!),
+                            HorarioConSala(DiaSemana.MARTES, 9, Sala(2, "C302", 30))
                         ),
                         estaActiva = true
                     ),
@@ -131,7 +131,7 @@ class AsignaturaRepository {
                         numeroSeccion = "002",
                         docente = "Patricia Vega",
                         horarios = listOf(
-                            HorarioConSala(DiaSemana.MIERCOLES, 17, sala = salaRepository.getSalaById(2)!!),
+                            HorarioConSala(DiaSemana.VIERNES, 14, Sala(4, "C304", 35))
                         ),
                         estaActiva = true
                     )
@@ -139,6 +139,24 @@ class AsignaturaRepository {
             )
         )
     )
+
+    // ✅ Bloque init para registrar las reservas iniciales
+    init {
+        println("🔍 Inicializando AsignaturaRepository...")
+        _asignaturas.value.forEach { asignatura ->
+            asignatura.secciones.forEach { seccion ->
+                salaRepository.registrarReservas(
+                    seccionId = seccion.idSeccion,
+                    asignaturaId = asignatura.idRamo,
+                    nombreAsignatura = asignatura.nombreRamo,
+                    numeroSeccion = seccion.numeroSeccion,
+                    horarios = seccion.horarios
+                )
+                println("✅ Registradas ${seccion.horarios.size} reservas para ${asignatura.nombreRamo} - Sección ${seccion.numeroSeccion}")
+            }
+        }
+        println("✅ Inicialización completa. Total reservas: ${salaRepository.reservas.value.size}")
+    }
 
     val asignaturas: StateFlow<List<Asignatura>> = _asignaturas.asStateFlow()
 
