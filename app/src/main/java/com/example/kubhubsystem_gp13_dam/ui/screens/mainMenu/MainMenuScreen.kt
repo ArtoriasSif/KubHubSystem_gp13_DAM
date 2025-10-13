@@ -14,10 +14,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.kubhubsystem_gp13_dam.ui.screens.AsignaturasScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.RecetasScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.SolicitudScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.dashboard.DashboardScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome.HomeInternalScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.inventario.InventarioScreen
-import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.solicitud.SolicitudScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.solicitud.GestionPedidosScreen
+
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.usuarios.UsuariosScreen
 import kotlinx.coroutines.launch
 
