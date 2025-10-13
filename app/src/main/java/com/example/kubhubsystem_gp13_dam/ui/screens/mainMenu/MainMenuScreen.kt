@@ -13,6 +13,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.kubhubsystem_gp13_dam.ui.screens.AsignaturasScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.RecetasScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.dashboard.DashboardScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome.HomeInternalScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.inventario.InventarioScreen
