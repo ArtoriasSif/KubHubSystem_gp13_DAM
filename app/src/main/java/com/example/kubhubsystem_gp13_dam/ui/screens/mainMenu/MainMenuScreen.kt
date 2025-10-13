@@ -116,6 +116,27 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Assignment, contentDescription = null) },
+                    label = { Text("Solicitud") },
+                    selected = currentRoute == "solicitud",
+                    onClick = {
+                        navController.navigate("solicitud")
+                        scope.launch { drawerState.close() }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.ShoppingCart, contentDescription = null) },
+                    label = { Text("Gestión de Pedidos") },
+                    selected = currentRoute == "gestion_pedidos",
+                    onClick = {
+                        navController.navigate("gestion_pedidos")
+                        scope.launch { drawerState.close() }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -141,9 +162,10 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                             when(currentRoute) {
                                 "dashboard" -> "Dashboard"
                                 "inventario" -> "Inventario"
+                                "solicitud" -> "Solicitud de Insumos"
+                                "gestion_pedidos" -> "Gestión de Pedidos"
                                 "asignaturas" -> "Gestión de Asignaturas"
                                 "recetas" -> "Gestión de Recetas"
-                                "solicitud" -> "Solicitudes"
                                 "usuarios" -> "Usuarios"
                                 else -> "Kubhub System"
                             }
@@ -181,6 +203,9 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                 }
                 composable("solicitud") {
                     SolicitudScreen()
+                }
+                composable("gestion_pedidos") {
+                    GestionPedidosScreen()
                 }
                 composable("usuarios") {
                     UsuariosScreen()
