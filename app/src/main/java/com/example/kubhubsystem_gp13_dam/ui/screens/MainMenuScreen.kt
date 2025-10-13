@@ -2,6 +2,7 @@ package com.example.kubhubsystem_gp13_dam.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -87,6 +88,16 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null) },
+                    label = { Text("Gestión de Recetas") },
+                    selected = currentRoute == "recetas",
+                    onClick = {
+                        navController.navigate("recetas")
+                        scope.launch { drawerState.close() }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
 
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.People, contentDescription = null) },
@@ -124,6 +135,7 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                                 "dashboard" -> "Dashboard"
                                 "inventario" -> "Inventario"
                                 "asignaturas" -> "Gestión de Asignaturas"
+                                "recetas" -> "Gestión de Recetas"
                                 "solicitud" -> "Solicitudes"
                                 "usuarios" -> "Usuarios"
                                 else -> "Kubhub System"
@@ -156,6 +168,9 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                 }
                 composable("asignaturas") {
                     AsignaturasScreen()
+                }
+                composable("recetas") {
+                    RecetasScreen()
                 }
                 composable("solicitud") {
                     SolicitudScreen()
