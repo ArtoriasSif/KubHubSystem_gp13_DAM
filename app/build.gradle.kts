@@ -46,6 +46,9 @@ dependencies {
         implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
         implementation("androidx.activity:activity-compose:1.9.3")
 
+        // Coroutines - versiones actualizadas
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
+        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
         // Compose BOM (gestiona las versiones de Compose automáticamente)
         implementation(platform("androidx.compose:compose-bom:2024.12.01"))
         implementation("androidx.compose.ui:ui")
@@ -89,6 +92,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.ui.text)
     implementation(libs.androidx.ui)
+    implementation(libs.androidx.foundation)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
