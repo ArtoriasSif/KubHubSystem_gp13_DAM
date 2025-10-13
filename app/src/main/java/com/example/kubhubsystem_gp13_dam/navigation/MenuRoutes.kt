@@ -7,6 +7,7 @@ sealed class MenuRoutes(val route: String) {
     object Dashboard : MenuRoutes("dashboard")
     object Inventario : MenuRoutes("inventario")
     object Asignaturas : MenuRoutes("asignaturas")
+    object Recetas : MenuRoutes("recetas")
     object Solicitud : MenuRoutes("solicitud")
     object Usuarios : MenuRoutes("usuarios")
 }
