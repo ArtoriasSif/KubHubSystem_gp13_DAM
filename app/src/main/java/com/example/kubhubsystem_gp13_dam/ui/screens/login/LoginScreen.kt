@@ -25,7 +25,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.kubhubsystem_gp13_dam.model.loginUsers.UserRole
+import com.example.kubhubsystem_gp13_dam.model.UserRole
 import com.example.kubhubsystem_gp13_dam.ui.theme.loginTextFieldColors
 import com.example.kubhubsystem_gp13_dam.viewmodel.LoginViewModel
 import kotlinx.coroutines.delay

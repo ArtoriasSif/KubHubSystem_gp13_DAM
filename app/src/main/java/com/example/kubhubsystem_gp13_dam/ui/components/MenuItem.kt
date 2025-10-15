@@ -1,4 +1,4 @@
-package com.example.kubhubsystem_gp13_dam.components
+package com.example.kubhubsystem_gp13_dam.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

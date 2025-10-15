@@ -1,7 +1,7 @@
 package com.example.kubhubsystem_gp13_dam.data.repository
 
-import com.example.kubhubsystem_gp13_dam.model.loginUsers.User
-import com.example.kubhubsystem_gp13_dam.model.loginUsers.UserRole
+import com.example.kubhubsystem_gp13_dam.model.User
+import com.example.kubhubsystem_gp13_dam.model.UserRole
 import kotlinx.coroutines.delay
 
 /**

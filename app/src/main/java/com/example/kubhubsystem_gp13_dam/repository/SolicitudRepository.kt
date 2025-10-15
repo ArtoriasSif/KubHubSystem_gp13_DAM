@@ -1,11 +1,12 @@
 package com.example.kubhubsystem_gp13_dam.data.repository
 
 import com.example.kubhubsystem_gp13_dam.model.*
+import com.example.kubhubsystem_gp13_dam.repository.ProductoRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.time.LocalDateTime
-
+/*
 class SolicitudRepository {
 
     private val _solicitudes = MutableStateFlow<List<Solicitud>>(emptyList())
@@ -139,3 +140,8 @@ class SolicitudRepository {
         }
     }
 }
+
+fun ProductoRepository.Companion.getInstance() {
+    TODO("Not yet implemented")
+}
+*/

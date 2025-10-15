@@ -1,5 +1,5 @@
 package com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.solicitud
-
+/*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -356,7 +356,7 @@ fun DetallePedidoDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text(producto.producto.nombre)
+                                Text(producto.producto.nombreProducto)
                                 Text("${producto.cantidadSolicitada} ${producto.unidad}")
                             }
                         }
@@ -371,3 +371,6 @@ fun DetallePedidoDialog(
         }
     )
 }
+
+
+ */

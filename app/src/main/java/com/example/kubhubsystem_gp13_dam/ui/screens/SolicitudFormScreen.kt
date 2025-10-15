@@ -1,5 +1,5 @@
 package com.example.kubhubsystem_gp13_dam.ui.screens
-
+/*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -280,7 +280,7 @@ fun SolicitudScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = producto.producto.nombre,
+                                    text = producto.producto.nombreProducto,
                                     modifier = Modifier.weight(2f)
                                 )
                                 Text(
@@ -448,7 +448,7 @@ fun AgregarProductoSolicitudDialog(
                     onExpandedChange = { showProductoMenu = it }
                 ) {
                     OutlinedTextField(
-                        value = productoSeleccionado?.nombre ?: "Seleccione producto",
+                        value = productoSeleccionado?.nombreProducto ?: "Seleccione producto",
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Producto") },
@@ -463,10 +463,10 @@ fun AgregarProductoSolicitudDialog(
                     ) {
                         productos.forEach { producto ->
                             DropdownMenuItem(
-                                text = { Text(producto.nombre) },
+                                text = { Text(producto.nombreProducto) },
                                 onClick = {
                                     productoSeleccionado = producto
-                                    unidad = producto.unidad
+                                    unidad = producto.unidadMedida
                                     showProductoMenu = false
                                 }
                             )
@@ -537,3 +537,6 @@ fun AgregarProductoSolicitudDialog(
         }
     )
 }
+
+
+ */

@@ -17,17 +17,27 @@ class RecetaRepository {
                 nombre = "Pan Francés",
                 descripcion = "Pan clásico francés de corteza crujiente",
                 categoria = CategoriaReceta.PANADERIA,
-                asignaturaRelacionada = null, // Se poblará con datos reales
+                asignaturaRelacionada = null,
                 ingredientes = listOf(
                     IngredienteReceta(
                         idIngrediente = 1,
-                        producto = Producto(1, "Harina", "Secos", 0, "kg", EstadoProducto.DISPONIBLE),
+                        producto = Producto(
+                            idProducto = 1,
+                            nombreProducto = "Harina",
+                            categoria = "Secos",
+                            unidadMedida = "kg"
+                        ),
                         cantidad = 1.0,
                         unidad = "kg"
                     ),
                     IngredienteReceta(
                         idIngrediente = 2,
-                        producto = Producto(3, "Azúcar", "Secos", 0, "kg", EstadoProducto.DISPONIBLE),
+                        producto = Producto(
+                            idProducto = 3,
+                            nombreProducto = "Azúcar",
+                            categoria = "Secos",
+                            unidadMedida = "kg"
+                        ),
                         cantidad = 0.05,
                         unidad = "kg"
                     )
@@ -47,12 +57,10 @@ class RecetaRepository {
                     IngredienteReceta(
                         idIngrediente = 3,
                         producto = Producto(
-                            1,
-                            "Harina",
-                            "Secos",
-                            0,
-                            "kg",
-                            EstadoProducto.DISPONIBLE
+                            idProducto = 1,
+                            nombreProducto = "Harina",
+                            categoria = "Secos",
+                            unidadMedida = "kg"
                         ),
                         cantidad = 0.5,
                         unidad = "kg"

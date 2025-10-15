@@ -1,99 +1,85 @@
-package com.example.kubhubsystem_gp13_dam.data.repository
+package com.example.kubhubsystem_gp13_dam.repository
 
-import com.example.kubhubsystem_gp13_dam.model.EstadoProducto
+import com.example.kubhubsystem_gp13_dam.local.dao.ProductoDAO
+import com.example.kubhubsystem_gp13_dam.local.entities.ProductoEntity
 import com.example.kubhubsystem_gp13_dam.model.Producto
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.Flow
 
-class ProductoRepository {
+class ProductoRepository(private val dao: ProductoDAO) {
 
-    // Lista mutable privada de productos
-    private val _productos = MutableStateFlow<List<Producto>>(
-        listOf(
-            Producto(1, "Harina", "Secos", 50, "kg", EstadoProducto.DISPONIBLE),
-            Producto(2, "Aceite de Oliva", "Líquidos", 25, "l", EstadoProducto.DISPONIBLE),
-            Producto(3, "Azúcar", "Secos", 30, "kg", EstadoProducto.DISPONIBLE),
-            Producto(4, "Leche", "Lácteos", 40, "l", EstadoProducto.DISPONIBLE),
-            Producto(5, "Huevos", "Frescos", 120, "unidad", EstadoProducto.DISPONIBLE),
-            Producto(6, "Sal", "Secos", 15, "kg", EstadoProducto.BAJO_STOCK),
-            Producto(7, "Mantequilla", "Lácteos", 8, "kg", EstadoProducto.BAJO_STOCK),
-            Producto(8, "Tomates", "Frescos", 0, "kg", EstadoProducto.AGOTADO)
+    suspend fun inicializarProductos() {
+        val listaInicial = listOf(
+            Producto(1, "Harina", "Secos", "kg"),
+            Producto(2, "Aceite de Oliva", "Líquidos", "l"),
+            Producto(3, "Azúcar", "Secos", "kg"),
+            Producto(4, "Leche", "Lácteos", "l"),
+            Producto(5, "Huevos", "Frescos", "unidad"),
+            Producto(6, "Sal", "Secos", "kg"),
+            Producto(7, "Mantequilla", "Lácteos", "kg"),
+            Producto(8, "Tomates", "Frescos", "kg")
         )
-    )
 
-    // Exposición pública como StateFlow inmutable
-    val productos: StateFlow<List<Producto>> = _productos.asStateFlow()
-
-    // Obtener producto por ID
-    fun getProductoById(id: Int): Producto? {
-        return _productos.value.find { it.id == id }
-    }
-
-    // Agregar nuevo producto
-    fun agregarProducto(producto: Producto) {
-        val nuevoId = (_productos.value.maxOfOrNull { it.id } ?: 0) + 1
-        val nuevoProducto = producto.copy(id = nuevoId)
-        _productos.value = _productos.value + nuevoProducto
-    }
-
-    // Actualizar producto existente
-    fun actualizarProducto(producto: Producto) {
-        _productos.value = _productos.value.map {
-            if (it.id == producto.id) producto else it
-        }
-    }
-
-    // Eliminar producto
-    fun eliminarProducto(id: Int) {
-        _productos.value = _productos.value.filter { it.id != id }
-    }
-
-    // Actualizar solo el stock de un producto
-    fun actualizarStock(id: Int, nuevoStock: Int) {
-        _productos.value = _productos.value.map { producto ->
-            if (producto.id == id) {
-                val nuevoEstado = calcularEstado(nuevoStock)
-                producto.copy(stock = nuevoStock, estado = nuevoEstado)
-            } else {
-                producto
+        listaInicial.forEach { producto ->
+            val existe = dao.existeProducto(producto.idProducto)
+            if (existe == 0) {
+                dao.insertar(
+                    ProductoEntity(
+                        idProducto = producto.idProducto,
+                        nombreProducto = producto.nombreProducto,
+                        categoria = producto.categoria,
+                        unidad = producto.unidadMedida.uppercase()
+                    )
+                )
             }
         }
     }
 
-    // Buscar productos por nombre
-    fun buscarProductos(query: String): List<Producto> {
-        return _productos.value.filter {
-            it.nombre.contains(query, ignoreCase = true)
+    fun observarProductos(): Flow<List<ProductoEntity>> = dao.observarTodos()
+
+    suspend fun obtenerProducto(idProducto: Int) = dao.obtenerPorId(idProducto)
+
+    suspend fun guardarProducto(
+        idProducto: Int?,
+        nombreProducto: String,
+        categoria: String,
+        unidadMedida: String
+    ){
+        if (idProducto  == null || idProducto == 0) {
+            dao.insertar(
+                ProductoEntity(
+                    nombreProducto = nombreProducto.trim(),
+                    categoria = categoria.trim(),
+                    unidad = unidadMedida.trim().uppercase()
+                )
+            )
+        }else{
+            dao.actualizar(
+                ProductoEntity(
+                    nombreProducto = nombreProducto.trim(),
+                    categoria = categoria.trim(),
+                    unidad = unidadMedida.trim().uppercase()
+                )
+            )
         }
     }
+    suspend fun actualizarProducto (producto: ProductoEntity) = dao.actualizar(producto)
 
-    // Filtrar por categoría
-    fun filtrarPorCategoria(categoria: String): List<Producto> {
+
+
+    fun filtrarPorCategoria(categoria: String): Flow<List<ProductoEntity>> {
         return if (categoria == "Todos") {
-            _productos.value
+            dao.observarTodos()
         } else {
-            _productos.value.filter { it.categoria == categoria }
+            dao.obtenerPorCategoria(categoria)
         }
     }
 
-    // Calcular estado según el stock
-    private fun calcularEstado(stock: Int): EstadoProducto {
-        return when {
-            stock == 0 -> EstadoProducto.AGOTADO
-            stock < 20 -> EstadoProducto.BAJO_STOCK
-            else -> EstadoProducto.DISPONIBLE
-        }
-    }
+    fun categorias(): Flow<List<String>> = dao.obtenerCategorias()
 
-    companion object {
-        @Volatile
-        private var instance: ProductoRepository? = null
+    suspend fun eliminarProducto(producto: ProductoEntity) = dao.eliminar(producto)
+    suspend fun eliminarTodosProductos() = dao.eliminarTodos()
 
-        fun getInstance(): ProductoRepository {
-            return instance ?: synchronized(this) {
-                instance ?: ProductoRepository().also { instance = it }
-            }
-        }
-    }
+    companion object
+
+
 }

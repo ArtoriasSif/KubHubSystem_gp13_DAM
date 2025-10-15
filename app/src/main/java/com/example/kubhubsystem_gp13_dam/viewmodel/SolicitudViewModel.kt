@@ -1,10 +1,9 @@
 package com.example.kubhubsystem_gp13_dam.ui.viewmodel
-
+/*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.kubhubsystem_gp13_dam.data.repository.AsignaturaRepository
 import com.example.kubhubsystem_gp13_dam.data.repository.PeriodoRepository
-import com.example.kubhubsystem_gp13_dam.data.repository.ProductoRepository
 import com.example.kubhubsystem_gp13_dam.data.repository.RecetaRepository
 import com.example.kubhubsystem_gp13_dam.data.repository.SolicitudRepository
 import com.example.kubhubsystem_gp13_dam.model.*
@@ -91,3 +90,5 @@ class SolicitudViewModel(
         return asignaturas.value.find { it.idRamo == idAsignatura }?.secciones ?: emptyList()
     }
 }
+
+ */

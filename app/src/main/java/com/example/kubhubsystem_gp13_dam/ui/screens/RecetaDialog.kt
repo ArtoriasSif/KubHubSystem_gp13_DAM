@@ -2,9 +2,7 @@ package com.example.kubhubsystem_gp13_dam.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -244,7 +242,7 @@ fun RecetaDialog(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = ingrediente.producto.nombre,
+                                            text = ingrediente.producto.nombreProducto,
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
@@ -396,7 +394,7 @@ fun AgregarIngredienteDialog(
                     onExpandedChange = { showProductoMenu = it }
                 ) {
                     OutlinedTextField(
-                        value = productoSeleccionado?.nombre ?: "Seleccione producto",
+                        value = productoSeleccionado?.nombreProducto ?: "Seleccione producto",
                         onValueChange = {},
                         readOnly = true,
                         label = { Text("Producto") },
@@ -411,10 +409,10 @@ fun AgregarIngredienteDialog(
                     ) {
                         productos.forEach { producto ->
                             DropdownMenuItem(
-                                text = { Text(producto.nombre) },
+                                text = { Text(producto.nombreProducto) },
                                 onClick = {
                                     productoSeleccionado = producto
-                                    unidad = producto.unidad
+                                    unidad = producto.unidadMedida
                                     showProductoMenu = false
                                 }
                             )

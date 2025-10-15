@@ -3,7 +3,7 @@ package com.example.kubhubsystem_gp13_dam.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.kubhubsystem_gp13_dam.data.repository.LoginRepository
-import com.example.kubhubsystem_gp13_dam.model.loginUsers.UserRole
+import com.example.kubhubsystem_gp13_dam.model.UserRole
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

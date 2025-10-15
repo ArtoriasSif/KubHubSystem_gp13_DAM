@@ -1,4 +1,4 @@
-package com.example.kubhubsystem_gp13_dam.model.loginUsers
+package com.example.kubhubsystem_gp13_dam.model
 
 enum class ErrorType {
     USERNAME,

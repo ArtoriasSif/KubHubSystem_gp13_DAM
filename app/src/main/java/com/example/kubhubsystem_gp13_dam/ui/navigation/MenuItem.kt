@@ -1,4 +1,4 @@
-package com.example.kubhubsystem_gp13_dam.navigation
+package com.example.kubhubsystem_gp13_dam.ui.navigation
 
 sealed class MenuItem(val title: String) {
     object Dashboard : MenuItem("Dashboard")

@@ -4,7 +4,7 @@ import androidx.compose.runtime.*
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import com.example.kubhubsystem_gp13_dam.navigation.MenuRoutes
+import com.example.kubhubsystem_gp13_dam.ui.navigation.MenuRoutes
 import com.example.kubhubsystem_gp13_dam.ui.screens.login.LoginScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.MainMenuScreen
 

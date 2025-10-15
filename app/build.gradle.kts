@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    id("kotlin-kapt")
 }
 
 android {
@@ -39,12 +40,19 @@ android {
     }
 }
 
-dependencies {
-    dependencies {
+dependencies { 
+
+        val roomVersion = "2.6.1"
+
         // Core Android
         implementation("androidx.core:core-ktx:1.15.0")
         implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.9.4")
         implementation("androidx.activity:activity-compose:1.9.3")
+
+        // Room (SQLite)
+        implementation("androidx.room:room-runtime:$roomVersion")
+        implementation("androidx.room:room-ktx:$roomVersion")
+        kapt("androidx.room:room-compiler:$roomVersion")
 
         // Coroutines - versiones actualizadas
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.0")
@@ -76,7 +84,7 @@ dependencies {
         // Debug
         debugImplementation("androidx.compose.ui:ui-tooling")
         debugImplementation("androidx.compose.ui:ui-test-manifest")
-    }
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
