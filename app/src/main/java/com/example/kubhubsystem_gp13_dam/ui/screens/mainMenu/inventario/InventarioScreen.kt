@@ -30,7 +30,7 @@ import com.example.kubhubsystem_gp13_dam.ui.viewmodel.InventarioViewModel
 @Composable
 fun InventarioScreen() {
     val context = LocalContext.current
-    val database = remember { AppDatabase.get(context.applicationContext) }
+    val database = remember { AppDatabase.obtener(context.applicationContext) }
 
     val productoRepository = remember { ProductoRepository(database.productoDao()) }
     val inventarioRepository = remember {

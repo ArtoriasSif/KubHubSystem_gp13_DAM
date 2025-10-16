@@ -13,6 +13,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.kubhubsystem_gp13_dam.ui.screens.AsignaturasScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.GestionUsuariosScreen
 //import com.example.kubhubsystem_gp13_dam.ui.screens.SolicitudScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.dashboard.DashboardScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome.HomeInternalScreen
@@ -168,7 +169,7 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                                 "gestion_pedidos" -> "Gestión de Pedidos"
                                 "asignaturas" -> "Gestión de Asignaturas"
                                 "recetas" -> "Gestión de Recetas"
-                                "usuarios" -> "Usuarios"
+                                "usuarios" -> "Gestión Usuarios"
                                 else -> "Kubhub System"
                             }
                         )
@@ -210,7 +211,7 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                     //GestionPedidosScreen()
                 }
                 composable("usuarios") {
-                    //UsuariosScreen()
+                    GestionUsuariosScreen()
                 }
             }
         }

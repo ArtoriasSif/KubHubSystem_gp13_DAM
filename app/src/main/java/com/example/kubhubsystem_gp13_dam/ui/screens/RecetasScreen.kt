@@ -30,7 +30,7 @@ fun RecetasScreen() {
     val context = LocalContext.current
 
     // Inicializar repositorio y ViewModel con Room Database
-    val database = remember { AppDatabase.get(context) }
+    val database = remember { AppDatabase.obtener(context) }
     val repository = remember {
         RecetaRepository(
             recetaDAO = database.recetaDao(),

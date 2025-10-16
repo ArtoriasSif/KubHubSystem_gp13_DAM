@@ -10,7 +10,7 @@ import com.example.kubhubsystem_gp13_dam.local.entities.InventarioEntity
 import com.example.kubhubsystem_gp13_dam.local.Converters
 import com.example.kubhubsystem_gp13_dam.local.dao.AsignaturaDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.DetalleRecetaDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.DocenteDAO
+import com.example.kubhubsystem_gp13_dam.local.dao.DocenteDao
 import com.example.kubhubsystem_gp13_dam.local.dao.EstadoPedidoDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.MovimientoDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.PedidoDAO
@@ -19,24 +19,34 @@ import com.example.kubhubsystem_gp13_dam.local.dao.PedidoSolicitudDAO
 import com.example.kubhubsystem_gp13_dam.local.entities.MovimientoEntity
 import com.example.kubhubsystem_gp13_dam.local.dao.ProductoDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.RecetaDAO
+import com.example.kubhubsystem_gp13_dam.local.dao.RolDao
 import com.example.kubhubsystem_gp13_dam.local.dao.SalaSeccionDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.SeccionDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.SolicitudDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.SolicitudProcesadaDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.UsuarioDAO
+import com.example.kubhubsystem_gp13_dam.local.dao.UsuarioDao
 import com.example.kubhubsystem_gp13_dam.local.entities.DetalleRecetaEntity
+import com.example.kubhubsystem_gp13_dam.local.entities.DocenteEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.ProductoEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.RecetaEntity
+import com.example.kubhubsystem_gp13_dam.local.entities.RolEntity
+import com.example.kubhubsystem_gp13_dam.local.entities.UsuarioEntity
 
 @Database(
     entities = [
+        //SCREEN INVENTARIO
         InventarioEntity::class,
         ProductoEntity::class,
         MovimientoEntity::class,
+        //SCREEN RECETA
         RecetaEntity::class,
-        DetalleRecetaEntity::class
+        DetalleRecetaEntity::class,
+        //SCREEN USUARIO
+        UsuarioEntity::class,
+        RolEntity::class,
+        DocenteEntity::class
     ],
-    version = 2,
+    version = 3, // Incrementé la versión por las nuevas entidades
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -45,55 +55,37 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun productoDao(): ProductoDAO
     abstract fun inventarioDao(): InventarioDAO
     abstract fun movimientoDao(): MovimientoDAO
-
     abstract fun detalleRecetaDao(): DetalleRecetaDAO
-
     abstract fun recetaDao(): RecetaDAO
-
     abstract fun solicitudDao(): SolicitudDAO
-
     abstract fun pedidoSolicitudDao(): PedidoSolicitudDAO
-
     abstract fun pedidoDao(): PedidoDAO
-
     abstract fun estadoPedidoDao(): EstadoPedidoDAO
-
     abstract fun pedidoProcesadoDao(): PedidoProcesadoDAO
-
     abstract fun solicitudProcesadaDao(): SolicitudProcesadaDAO
-
-    abstract fun usuarioDao(): UsuarioDAO
-
-    abstract fun docenteDao(): DocenteDAO
-
+    abstract fun usuarioDao(): UsuarioDao
+    abstract fun docenteDao(): DocenteDao
     abstract fun seccionDao(): SeccionDAO
-
     abstract fun asignaturaDao(): AsignaturaDAO
-
     abstract fun salaSeccionDao(): SalaSeccionDAO
-
+    abstract fun rolDao(): RolDao
 
     companion object {
         @Volatile
-        private var INSTANCE: AppDatabase? = null
+        private var INSTANCIA: AppDatabase? = null
 
-        fun get(context: Context): AppDatabase =
-            INSTANCE ?: synchronized(this) {
-                INSTANCE ?: buildDatabase(context).also { INSTANCE = it }
+        fun obtener(context: Context): AppDatabase =
+            INSTANCIA ?: synchronized(this) {
+                INSTANCIA ?: construirBaseDatos(context).also { INSTANCIA = it }
             }
 
-        private fun buildDatabase(context: Context): AppDatabase {
+        private fun construirBaseDatos(context: Context): AppDatabase {
             return Room.databaseBuilder(
                 context.applicationContext,
                 AppDatabase::class.java,
                 "Hub.db"
             )
-                // ⚠️ SOLO PARA DESARROLLO - Eliminar en producción
-                // .allowMainThreadQueries()
-
-                // ✅ MEJOR: Usar fallbackToDestructiveMigration para desarrollo
                 .fallbackToDestructiveMigration()
-
                 .build()
         }
     }
