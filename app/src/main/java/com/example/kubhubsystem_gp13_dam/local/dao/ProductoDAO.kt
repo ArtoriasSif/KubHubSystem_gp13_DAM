@@ -21,6 +21,9 @@ interface ProductoDAO {
     @Query("SELECT DISTINCT categoria FROM producto ORDER BY categoria ASC")
     fun obtenerCategorias(): Flow<List<String>>
 
+    @Query("UPDATE producto SET nombreProducto = :nuevoNombre WHERE idProducto=:id  ")
+    fun actualizarNombreProducto(id: Int,nuevoNombre: String, )
+
     @Query("SELECT * FROM producto WHERE idProducto IN (:ids)")
     suspend fun obtenerPorIds(ids: List<Int>): List<ProductoEntity>
 

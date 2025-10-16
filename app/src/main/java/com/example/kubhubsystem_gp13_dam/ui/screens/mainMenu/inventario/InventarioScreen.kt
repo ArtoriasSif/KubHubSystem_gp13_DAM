@@ -4,7 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -165,11 +167,17 @@ fun InventarioScreen() {
                 showDialog = false
                 productoEditando = null
             },
-            onSave = { producto ->
+            onSave = { producto, stockInicial, ubicacion ->
                 if (productoEditando != null) {
+                    // Modo EDICIÓN: solo actualizar producto
                     viewModel.actualizarProducto(producto)
                 } else {
-                    viewModel.agregarProducto(producto)
+                    // Modo CREACIÓN: crear producto + inventario
+                    viewModel.agregarProductoConInventario(
+                        producto = producto,
+                        stockInicial = stockInicial,
+                        ubicacion = ubicacion
+                    )
                 }
                 showDialog = false
                 productoEditando = null
@@ -1007,42 +1015,73 @@ private fun DeleteConfirmDialog(
     )
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ProductoDialog(
     producto: Producto?,
     onDismiss: () -> Unit,
-    onSave: (Producto) -> Unit
+    onSave: (Producto, stockInicial: Double, ubicacion: String) -> Unit
 ) {
+    // Datos del Producto
     var nombre by remember { mutableStateOf(producto?.nombreProducto ?: "") }
     var categoria by remember { mutableStateOf(producto?.categoria ?: "Secos") }
     var unidad by remember { mutableStateOf(producto?.unidadMedida ?: "kg") }
+
+    // Datos del Inventario (solo para productos nuevos)
+    var stockInicial by remember { mutableStateOf("") }
+    var ubicacion by remember { mutableStateOf("Bodega Principal") }
+
     var showCategoryMenu by remember { mutableStateOf(false) }
     var showUnidadMenu by remember { mutableStateOf(false) }
+    var showUbicacionMenu by remember { mutableStateOf(false) }
 
     val categorias = listOf("Secos", "Líquidos", "Lácteos", "Frescos", "Congelados", "Enlatados")
     val unidades = listOf("kg", "l", "unidad", "g", "ml", "caja")
+    val ubicaciones = listOf("Bodega Principal", "Bodega Secundaria", "Refrigerador A", "Refrigerador B", "Congelador")
+
+    val isEditMode = producto != null
 
     val isFormValid by remember {
         derivedStateOf {
-            nombre.isNotEmpty()
+            if (isEditMode) {
+                nombre.isNotEmpty()
+            } else {
+                nombre.isNotEmpty() &&
+                        stockInicial.isNotEmpty() &&
+                        (stockInicial.toDoubleOrNull() ?: -1.0) >= 0
+            }
         }
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (producto != null) "Editar Producto" else "Nuevo Producto") },
+        title = {
+            Text(if (isEditMode) "Editar Producto" else "Nuevo Producto")
+        },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // SECCIÓN: Información del Producto
+                Text(
+                    text = "Información del Producto",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
                 OutlinedTextField(
                     value = nombre,
                     onValueChange = { nombre = it },
-                    label = { Text("Nombre del producto") },
+                    label = { Text("Nombre del producto *") },
+                    placeholder = { Text("Ej: Harina 0000") },
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                    singleLine = true,
+                    isError = nombre.isEmpty()
                 )
 
                 ExposedDropdownMenuBox(
@@ -1053,8 +1092,10 @@ private fun ProductoDialog(
                         value = categoria,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Categoría") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showCategoryMenu) },
+                        label = { Text("Categoría *") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = showCategoryMenu)
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor()
@@ -1083,8 +1124,10 @@ private fun ProductoDialog(
                         value = unidad,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Unidad de medida") },
-                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showUnidadMenu) },
+                        label = { Text("Unidad de medida *") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = showUnidadMenu)
+                        },
                         modifier = Modifier
                             .fillMaxWidth()
                             .menuAnchor()
@@ -1104,25 +1147,159 @@ private fun ProductoDialog(
                         }
                     }
                 }
+
+                // SECCIÓN: Inventario Inicial (solo para productos nuevos)
+                if (!isEditMode) {
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    HorizontalDivider()
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "Inventario Inicial",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Text(
+                        text = "Configure el stock inicial del producto en el inventario",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    OutlinedTextField(
+                        value = stockInicial,
+                        onValueChange = {
+                            if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                stockInicial = it
+                            }
+                        },
+                        label = { Text("Stock inicial *") },
+                        placeholder = { Text("Ej: 100") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true,
+                        isError = stockInicial.isEmpty() || (stockInicial.toDoubleOrNull() ?: -1.0) < 0,
+                        supportingText = {
+                            if (stockInicial.isNotEmpty()) {
+                                val stock = stockInicial.toDoubleOrNull() ?: 0.0
+                                Text(
+                                    text = if (stock >= 0) {
+                                        "Stock: ${if (stock % 1 != 0.0) stock else stock.toInt()} $unidad"
+                                    } else {
+                                        "Stock inválido"
+                                    },
+                                    color = if (stock >= 0)
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    else
+                                        MaterialTheme.colorScheme.error
+                                )
+                            }
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Inventory,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    )
+
+                    ExposedDropdownMenuBox(
+                        expanded = showUbicacionMenu,
+                        onExpandedChange = { showUbicacionMenu = it }
+                    ) {
+                        OutlinedTextField(
+                            value = ubicacion,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Ubicación *") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = showUbicacionMenu)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Place,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        )
+                        ExposedDropdownMenu(
+                            expanded = showUbicacionMenu,
+                            onDismissRequest = { showUbicacionMenu = false }
+                        ) {
+                            ubicaciones.forEach { ubi ->
+                                DropdownMenuItem(
+                                    text = { Text(ubi) },
+                                    onClick = {
+                                        ubicacion = ubi
+                                        showUbicacionMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // Información adicional
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Text(
+                                text = "El estado del inventario se calculará automáticamente según el stock inicial.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
             }
         },
         confirmButton = {
             Button(
                 onClick = {
                     if (isFormValid) {
-                        onSave(
-                            Producto(
-                                idProducto = producto?.idProducto ?: 0,
-                                nombreProducto = nombre,
-                                categoria = categoria,
-                                unidadMedida = unidad
-                            )
+                        val productoToSave = Producto(
+                            idProducto = producto?.idProducto ?: 0,
+                            nombreProducto = nombre.trim(),
+                            categoria = categoria,
+                            unidadMedida = unidad
                         )
+
+                        val stock = if (isEditMode) 0.0 else (stockInicial.toDoubleOrNull() ?: 0.0)
+                        val ubi = if (isEditMode) "" else ubicacion
+
+                        onSave(productoToSave, stock, ubi)
                     }
                 },
                 enabled = isFormValid
             ) {
-                Text("Guardar")
+                Icon(
+                    if (isEditMode) Icons.Default.Save else Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(if (isEditMode) "Actualizar" else "Crear Producto")
             }
         },
         dismissButton = {

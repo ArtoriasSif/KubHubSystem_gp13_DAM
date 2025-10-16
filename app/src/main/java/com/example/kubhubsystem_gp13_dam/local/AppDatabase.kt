@@ -22,6 +22,7 @@ import com.example.kubhubsystem_gp13_dam.local.dao.RecetaDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.SalaSeccionDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.SeccionDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.SolicitudDAO
+import com.example.kubhubsystem_gp13_dam.local.dao.SolicitudProcesadaDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.UsuarioDAO
 import com.example.kubhubsystem_gp13_dam.local.entities.ProductoEntity
 
@@ -55,7 +56,7 @@ abstract class AppDatabase : RoomDatabase() {
 
     abstract fun pedidoProcesadoDao(): PedidoProcesadoDAO
 
-    abstract fun solicitudProcesadaDao(): SolicitudDAO
+    abstract fun solicitudProcesadaDao(): SolicitudProcesadaDAO
 
     abstract fun usuarioDao(): UsuarioDAO
 

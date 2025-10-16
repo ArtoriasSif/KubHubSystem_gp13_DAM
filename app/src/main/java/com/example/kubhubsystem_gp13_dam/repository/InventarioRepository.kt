@@ -127,4 +127,22 @@ class InventarioRepository(
             else -> EstadoInventario.DISPONIBLE
         }
     }
+    suspend fun actualizarNombreProducto(idProducto: Int, nuevoNombre: String) {
+        proDao.actualizarNombreProducto(idProducto, nuevoNombre)
+    }
+
+    /* Inserta un nuevo inventario desde el modelo Inventario
+* Convierte de Inventario (modelo) a InventarioEntity (BD)
+*/
+    suspend fun insertInventario(inventario: Inventario): Long {
+        val entity = InventarioEntity(
+            idInventario = 0, // Se autogenera
+            idProducto = inventario.idProducto,
+            ubicacion = inventario.ubicacion,
+            stock = inventario.stock
+            // nombreProducto NO va aquí porque no existe en InventarioEntity
+        )
+        return invDao.insertar(entity)
+    }
+
 }

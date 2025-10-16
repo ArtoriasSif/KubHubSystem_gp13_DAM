@@ -3,7 +3,9 @@ package com.example.kubhubsystem_gp13_dam.repository
 import com.example.kubhubsystem_gp13_dam.local.dao.ProductoDAO
 import com.example.kubhubsystem_gp13_dam.local.entities.ProductoEntity
 import com.example.kubhubsystem_gp13_dam.model.Producto
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 
 class ProductoRepository(private val dao: ProductoDAO) {
 
@@ -43,27 +45,35 @@ class ProductoRepository(private val dao: ProductoDAO) {
         nombreProducto: String,
         categoria: String,
         unidadMedida: String
-    ){
-        if (idProducto  == null || idProducto == 0) {
-            dao.insertar(
-                ProductoEntity(
-                    nombreProducto = nombreProducto.trim(),
-                    categoria = categoria.trim(),
-                    unidad = unidadMedida.trim().uppercase()
+    ): Long { // Cambiar el tipo de retorno a Long (ID generado)
+        return withContext(Dispatchers.IO) {
+            if (idProducto == null) {
+                // Insertar nuevo producto y retornar el ID generado
+                dao.insertar(
+                    ProductoEntity(
+                        idProducto = 0,
+                        nombreProducto = nombreProducto,
+                        categoria = categoria,
+                        unidad = unidadMedida
+                    )
                 )
-            )
-        }else{
-            dao.actualizar(
-                ProductoEntity(
-                    nombreProducto = nombreProducto.trim(),
-                    categoria = categoria.trim(),
-                    unidad = unidadMedida.trim().uppercase()
+            } else {
+                // Actualizar producto existente
+                dao.actualizar(
+                    ProductoEntity(
+                        idProducto = idProducto,
+                        nombreProducto = nombreProducto,
+                        categoria = categoria,
+                        unidad = unidadMedida
+                    )
                 )
-            )
+                idProducto.toLong() // Retornar el ID existente
+            }
         }
     }
     suspend fun actualizarProducto (producto: ProductoEntity) = dao.actualizar(producto)
 
+    suspend fun actualizarNombreProducto(nuevoNombre: String,id: Int) = dao.actualizarNombreProducto(id, nuevoNombre)
 
 
     fun filtrarPorCategoria(categoria: String): Flow<List<ProductoEntity>> {

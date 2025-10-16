@@ -7,6 +7,7 @@ import com.example.kubhubsystem_gp13_dam.model.Inventario
 import com.example.kubhubsystem_gp13_dam.repository.InventarioRepository
 import com.example.kubhubsystem_gp13_dam.repository.MovimientoRepository
 import com.example.kubhubsystem_gp13_dam.local.entities.ProductoEntity
+import com.example.kubhubsystem_gp13_dam.model.EstadoInventario
 import com.example.kubhubsystem_gp13_dam.repository.ProductoRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -123,7 +124,68 @@ class InventarioViewModel(
             }
         }
     }
+    fun agregarProductoConInventario(
+        producto: Producto,
+        stockInicial: Double,
+        ubicacion: String
+    ) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                _errorMessage.value = null
 
+                // 1. Insertar el producto en la BD
+                val idProductoGenerado = productoRepository.guardarProducto(
+                    idProducto = null, // null = crear nuevo
+                    nombreProducto = producto.nombreProducto,
+                    categoria = producto.categoria,
+                    unidadMedida = producto.unidadMedida
+                )
+
+                // 2. Crear el inventario para ese producto
+                val nuevoInventario = Inventario(
+                    idInventario = 0, // Se autogenera
+                    idProducto = idProductoGenerado.toInt(),
+                    nombreProducto = producto.nombreProducto, // Se usa en el modelo
+                    ubicacion = ubicacion,
+                    stock = stockInicial,
+                    estado = calcularEstadoInventario(stockInicial)
+                )
+
+                // 3. Insertar el inventario
+                inventarioRepository.insertInventario(nuevoInventario)
+
+                _successMessage.value = "Producto '${producto.nombreProducto}' agregado con stock inicial de ${
+                    if (stockInicial % 1 != 0.0) stockInicial
+                    else stockInicial.toInt()
+                } ${producto.unidadMedida}"
+
+            } catch (e: Exception) {
+                _errorMessage.value = "Error al agregar producto: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+    /**
+     * Calcula el estado según el stock
+     * Puedes ajustar los umbrales según tus necesidades
+     */
+    private fun calcularEstadoInventario(stock: Double): EstadoInventario {
+        return when {
+            stock <= 0 -> EstadoInventario.AGOTADO
+            stock < 20.0 -> EstadoInventario.BAJO_STOCK  // Mismo umbral que en el Repository
+            else -> EstadoInventario.DISPONIBLE
+        }
+    }
+    // ============================================
+    // ✅ REEMPLAZAR LA FUNCIÓN actualizarProducto EXISTENTE
+    // ============================================
+
+    /**
+     * Actualizar solo el producto (sin tocar inventario)
+     * Actualiza también el nombre en inventario para mantener consistencia
+     */
     fun actualizarProducto(producto: Producto) {
         viewModelScope.launch {
             try {
@@ -135,7 +197,15 @@ class InventarioViewModel(
                     unidad = producto.unidadMedida
                 )
                 productoRepository.actualizarProducto(entity)
-                _successMessage.value = "Producto actualizado exitosamente"
+
+                // También actualizar el nombre en inventario (aunque en tu diseño
+                // el nombre se obtiene dinámicamente, esto es por si acaso)
+                inventarioRepository.actualizarNombreProducto(
+                    idProducto = producto.idProducto,
+                    nuevoNombre = producto.nombreProducto
+                )
+
+                _successMessage.value = "Producto actualizado correctamente"
                 _errorMessage.value = null
             } catch (e: Exception) {
                 _errorMessage.value = "Error al actualizar producto: ${e.message}"
@@ -144,6 +214,8 @@ class InventarioViewModel(
             }
         }
     }
+
+
 
     /**
      * Actualiza el stock directamente (sin registrar movimiento)
