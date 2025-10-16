@@ -2,6 +2,7 @@ package com.example.kubhubsystem_gp13_dam.local.entities
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
+import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
@@ -19,6 +20,10 @@ import androidx.room.PrimaryKey
             childColumns = ["idProducto"],
             onDelete = ForeignKey.CASCADE
         )
+    ],
+    indices = [
+        Index(value = ["idReceta"]),
+        Index(value = ["idProducto"])
     ]
 )
 data class DetalleRecetaEntity(

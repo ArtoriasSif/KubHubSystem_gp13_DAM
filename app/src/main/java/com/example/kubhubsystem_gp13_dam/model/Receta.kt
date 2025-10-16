@@ -8,30 +8,16 @@ data class Receta(
     val idReceta: Int = 0,
     val nombre: String,
     val descripcion: String,
-    val categoria: CategoriaReceta,
-    val asignaturaRelacionada: Asignatura?,
-    val ingredientes: List<IngredienteReceta> = emptyList(),
+    val categoria: String,
     val instrucciones: String,
-    val tiempoPreparacion: Int = 0, // en minutos
-    val porciones: Int = 1,
-    val estaActiva: Boolean = true
+    val observaciones: String? = null,
+    val ingredientes: List<IngredienteReceta> = emptyList() // ✅ Se construye desde DetalleRecetaEntity
 )
 
+// ✅ Modelo de DOMINIO para representar un ingrediente
+// Se construye desde DetalleRecetaEntity + ProductoEntity
 data class IngredienteReceta(
-    val idIngrediente: Int = 0,
-    val producto: Producto,  // Referencia al producto del inventario
-    val cantidad: Double,
-    val unidad: String  // kg, l, unidades, etc.
+    val idDetalle: Int = 0,        // ✅ Mapea desde: idDetalleReceta
+    val producto: Producto,         // ✅ Objeto completo del producto
+    val cantidad: Double            // ✅ Mapea desde: cantidaUnidadMedida
 )
-
-enum class CategoriaReceta(val displayName: String) {
-    PANADERIA("Panadería"),
-    PASTELERIA("Pastelería"),
-    COCINA_CALIENTE("Cocina Caliente"),
-    COCINA_FRIA("Cocina Fría"),
-    REPOSTERIA("Repostería"),
-    POSTRES("Postres"),
-    BEBIDAS("Bebidas"),
-    SALSAS("Salsas y Bases"),
-    OTROS("Otros")
-}

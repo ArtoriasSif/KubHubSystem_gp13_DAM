@@ -24,15 +24,19 @@ import com.example.kubhubsystem_gp13_dam.local.dao.SeccionDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.SolicitudDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.SolicitudProcesadaDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.UsuarioDAO
+import com.example.kubhubsystem_gp13_dam.local.entities.DetalleRecetaEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.ProductoEntity
+import com.example.kubhubsystem_gp13_dam.local.entities.RecetaEntity
 
 @Database(
     entities = [
         InventarioEntity::class,
         ProductoEntity::class,
-        MovimientoEntity::class
+        MovimientoEntity::class,
+        RecetaEntity::class,
+        DetalleRecetaEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)

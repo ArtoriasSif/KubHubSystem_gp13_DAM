@@ -201,7 +201,7 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                     //AsignaturasScreen()
                 }
                 composable("recetas") {
-                    //RecetasScreen()
+                    RecetasScreen()
                 }
                 composable("solicitud") {
                     //SolicitudScreen()
