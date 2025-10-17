@@ -1,4 +1,4 @@
-package com.example.kubhubsystem_gp13_dam.model
+/*package com.example.kubhubsystem_gp13_dam.model
 
 data class Asignatura(
     val idRamo: Int = 0,
@@ -89,3 +89,4 @@ object HorarioUtils {
         return horarios[bloque] ?: "N/A"
     }
 }
+/*

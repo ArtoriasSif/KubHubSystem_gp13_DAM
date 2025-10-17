@@ -36,8 +36,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 import com.example.kubhubsystem_gp13_dam.model.DiaSemana
 
-import com.example.kubhubsystem_gp13_dam.model.HorarioConSala
-import com.example.kubhubsystem_gp13_dam.model.HorarioUtils
 import com.example.kubhubsystem_gp13_dam.model.Sala
 import com.example.kubhubsystem_gp13_dam.model.Seccion
 import kotlinx.coroutines.launch

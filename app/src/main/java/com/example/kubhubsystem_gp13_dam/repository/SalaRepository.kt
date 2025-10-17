@@ -1,134 +1,79 @@
 package com.example.kubhubsystem_gp13_dam.data.repository
 
+import com.example.kubhubsystem_gp13_dam.local.dao.SalaDAO
+import com.example.kubhubsystem_gp13_dam.local.entities.SalaEntity
 import com.example.kubhubsystem_gp13_dam.model.*
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
-class SalaRepository {
+class SalaRepository (
+    private val salaDAO: SalaDAO
+) {
 
-    private val _salas = MutableStateFlow<List<Sala>>(
-        listOf(
-            Sala(idSala = 1, codigoSala = "C301", capacidad = 30, tipoSala = TipoSala.AULA_NORMAL),
-            Sala(idSala = 2, codigoSala = "C302", capacidad = 30, tipoSala = TipoSala.AULA_NORMAL),
-            Sala(idSala = 3, codigoSala = "C303", capacidad = 25, tipoSala = TipoSala.LABORATORIO),
-            Sala(idSala = 4, codigoSala = "C304", capacidad = 35, tipoSala = TipoSala.TALLER),
-            Sala(idSala = 5, codigoSala = "C305", capacidad = 40, tipoSala = TipoSala.AULA_NORMAL)
+    suspend fun inicializarSalas() {
+        val salasIniciales = listOf(
+            SalaEntity(idSala = 1, codigoSala = "C301"),
+            SalaEntity(idSala = 2, codigoSala = "C302"),
+            SalaEntity(idSala = 3, codigoSala = "C303"),
+            SalaEntity(idSala = 4, codigoSala = "C304"),
+            SalaEntity(idSala = 5, codigoSala = "C305"),
+            SalaEntity(idSala = 6, codigoSala = "LAB-101"),
+            SalaEntity(idSala = 7, codigoSala = "LAB-102"),
+            SalaEntity(idSala = 8, codigoSala = "TALLER-201"),
+            SalaEntity(idSala = 9, codigoSala = "TALLER-202"),
+            SalaEntity(idSala = 10, codigoSala = "AUDITORIO")
         )
-    )
 
-    val salas: StateFlow<List<Sala>> = _salas.asStateFlow()
-
-    // Almacena todas las reservas de salas
-    private val _reservas = MutableStateFlow<List<ReservaSala>>(emptyList())
-    val reservas: StateFlow<List<ReservaSala>> = _reservas.asStateFlow()
-
-    fun getSalaById(idSala: Int): Sala? {
-        return _salas.value.find { it.idSala == idSala }
-    }
-
-    /**
-     * Verifica si una sala está disponible en un horario específico
-     */
-    fun verificarDisponibilidadSala(
-        salaId: Int,
-        diaSemana: DiaSemana,
-        bloqueHorario: Int,
-        excluirSeccionId: Int? = null
-    ): Boolean {
-        return _reservas.value.none { reserva ->
-            reserva.sala.idSala == salaId &&
-                    reserva.diaSemana == diaSemana &&
-                    reserva.bloqueHorario == bloqueHorario &&
-                    (excluirSeccionId == null || reserva.seccionId != excluirSeccionId)
-        }
-    }
-
-    /**
-     * Obtiene todas las salas disponibles para un horario específico
-     */
-    fun getSalasDisponibles(
-        diaSemana: DiaSemana,
-        bloqueHorario: Int,
-        excluirSeccionId: Int? = null
-    ): List<Sala> {
-        val salasOcupadas = _reservas.value
-            .filter { reserva ->
-                reserva.diaSemana == diaSemana &&
-                        reserva.bloqueHorario == bloqueHorario &&
-                        (excluirSeccionId == null || reserva.seccionId != excluirSeccionId)
-            }
-            .map { it.sala.idSala }
-            .toSet()
-
-        return _salas.value.filter { it.idSala !in salasOcupadas }
-    }
-
-    /**
-     * Registra las reservas de sala para una sección
-     */
-    fun registrarReservas(
-        seccionId: Int,
-        asignaturaId: Int,
-        nombreAsignatura: String,
-        numeroSeccion: String,
-        horarios: List<HorarioConSala>
-    ) {
-        // Eliminar reservas anteriores de esta sección
-        _reservas.value = _reservas.value.filter { it.seccionId != seccionId }
-
-        // Agregar nuevas reservas
-        val nuevasReservas = horarios.map { horario ->
-            ReservaSala(
-                sala = horario.sala,
-                diaSemana = horario.diaSemana,
-                bloqueHorario = horario.bloqueHorario,
-                seccionId = seccionId,
-                asignaturaId = asignaturaId,
-                nombreAsignatura = nombreAsignatura,
-                numeroSeccion = numeroSeccion
-            )
-        }
-
-        _reservas.value = _reservas.value + nuevasReservas
-    }
-
-    /**
-     * Elimina todas las reservas de una sección
-     */
-    fun eliminarReservasSeccion(seccionId: Int) {
-        _reservas.value = _reservas.value.filter { it.seccionId != seccionId }
-    }
-
-    /**
-     * Obtiene el horario completo de una sala (para mostrar su ocupación)
-     */
-    fun getHorarioSala(salaId: Int): Map<DiaSemana, Map<Int, ReservaSala?>> {
-        val horario = mutableMapOf<DiaSemana, MutableMap<Int, ReservaSala?>>()
-
-        DiaSemana.values().forEach { dia ->
-            horario[dia] = mutableMapOf()
-            (1..20).forEach { bloque ->
-                val reserva = _reservas.value.find {
-                    it.sala.idSala == salaId &&
-                            it.diaSemana == dia &&
-                            it.bloqueHorario == bloque
-                }
-                horario[dia]!![bloque] = reserva
+        salasIniciales.forEach { sala ->
+            val existe = salaDAO.obtenerSalaPorId(sala.idSala)
+            if (existe == null) {
+                salaDAO.insertarSala(sala)
             }
         }
-
-        return horario
     }
 
-    companion object {
-        @Volatile
-        private var instance: SalaRepository? = null
-
-        fun getInstance(): SalaRepository {
-            return instance ?: synchronized(this) {
-                instance ?: SalaRepository().also { instance = it }
-            }
+    fun obtenerTodasLasSalas(): Flow<List<Sala>> {
+        return salaDAO.obtenerTodasLasSalas().map { entities ->
+            entities.map { it.toSala() }
         }
+    }
+
+    suspend fun obtenerSalaPorId(idSala: Int): Sala? {
+        return salaDAO.obtenerSalaPorId(idSala)?.toSala()
+    }
+
+    suspend fun obtenerSalaPorCodigo(codigo: String): Sala? {
+        return salaDAO.obtenerSalaPorCodigo(codigo)?.toSala()
+    }
+
+    suspend fun insertarSala(sala: Sala) {
+        salaDAO.insertarSala(sala.toEntity())
+    }
+
+    suspend fun actualizarSala(sala: Sala) {
+        salaDAO.actualizarSala(sala.toEntity())
+    }
+
+    suspend fun eliminarSala(sala: Sala) {
+        salaDAO.eliminarSala(sala.toEntity())
+    }
+
+    suspend fun buscarSalasPorCodigo(codigo: String): List<Sala> {
+        return salaDAO.buscarSalasPorCodigo(codigo).map { it.toSala() }
+    }
+
+    // Extension functions para convertir entre Entity y Model
+    private fun SalaEntity.toSala(): Sala {
+        return Sala(
+            idSala = this.idSala,
+            codigoSala = this.codigoSala
+        )
+    }
+
+    private fun Sala.toEntity(): SalaEntity {
+        return SalaEntity(
+            idSala = this.idSala,
+            codigoSala = this.codigoSala
+        )
     }
 }

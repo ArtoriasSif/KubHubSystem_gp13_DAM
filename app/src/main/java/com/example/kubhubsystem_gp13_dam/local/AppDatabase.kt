@@ -19,18 +19,24 @@ import com.example.kubhubsystem_gp13_dam.local.dao.PedidoSolicitudDAO
 import com.example.kubhubsystem_gp13_dam.local.entities.MovimientoEntity
 import com.example.kubhubsystem_gp13_dam.local.dao.ProductoDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.RecetaDAO
+import com.example.kubhubsystem_gp13_dam.local.dao.ReservaSalaDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.RolDao
-import com.example.kubhubsystem_gp13_dam.local.dao.SalaSeccionDAO
+import com.example.kubhubsystem_gp13_dam.local.dao.SalaDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.SeccionDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.SolicitudDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.SolicitudProcesadaDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.UsuarioDao
+import com.example.kubhubsystem_gp13_dam.local.entities.AsignaturaEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.DetalleRecetaEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.DocenteEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.ProductoEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.RecetaEntity
+import com.example.kubhubsystem_gp13_dam.local.entities.ReservaSalaEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.RolEntity
+import com.example.kubhubsystem_gp13_dam.local.entities.SalaEntity
+import com.example.kubhubsystem_gp13_dam.local.entities.SeccionEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.UsuarioEntity
+import com.example.kubhubsystem_gp13_dam.model.Seccion
 
 @Database(
     entities = [
@@ -44,7 +50,13 @@ import com.example.kubhubsystem_gp13_dam.local.entities.UsuarioEntity
         //SCREEN USUARIO
         UsuarioEntity::class,
         RolEntity::class,
-        DocenteEntity::class
+        DocenteEntity::class,
+        //SCREEN ASIGNATURA
+        AsignaturaEntity::class,
+        SeccionEntity::class,
+        SalaEntity::class,
+        ReservaSalaEntity::class
+
     ],
     version = 3, // Incrementé la versión por las nuevas entidades
     exportSchema = false
@@ -67,7 +79,11 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun docenteDao(): DocenteDao
     abstract fun seccionDao(): SeccionDAO
     abstract fun asignaturaDao(): AsignaturaDAO
-    abstract fun salaSeccionDao(): SalaSeccionDAO
+
+    abstract fun salaDao(): SalaDAO
+
+    abstract fun reservaSalaDao(): ReservaSalaDAO
+
     abstract fun rolDao(): RolDao
 
     companion object {

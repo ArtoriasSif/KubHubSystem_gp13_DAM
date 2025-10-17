@@ -5,7 +5,7 @@ import androidx.room.ForeignKey
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "sala_seccion",
+    tableName = "reserva_sala",
     foreignKeys = [
         ForeignKey(
             entity = SeccionEntity::class,
@@ -16,10 +16,11 @@ import androidx.room.PrimaryKey
     ]
 )
 //no esta de todo claro los atributos
-data class SalaSeccionEntity(
-    @PrimaryKey(autoGenerate = true) val idSalaSeccion: Int = 0,
+data class ReservaSalaEntity(
+    @PrimaryKey(autoGenerate = true) val idReservaSala: Int = 0,
     val idSeccion : Int,
+    val idSala : Int,
     val codigoTaller: String,
     val bloque: Int,
-    val dia: String //formato fecha?
+    val diaSemana: String
 )

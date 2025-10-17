@@ -16,7 +16,9 @@ import androidx.room.PrimaryKey
     ]
 )
 data class SeccionEntity(
-    @PrimaryKey(autoGenerate = true) val idSeccion: Int = 0,
-    val idAsignatura : Int,
-    val nombreSeccion: String
+    @PrimaryKey(autoGenerate = true)
+    val idSeccion: Int = 0,
+    val idAsignatura: Int,
+    val nombreSeccion: String,
+    val idDocente: Int? = null
 )

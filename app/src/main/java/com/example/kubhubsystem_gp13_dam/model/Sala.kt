@@ -1,4 +1,4 @@
-package com.example.kubhubsystem_gp13_dam.model
+/*package com.example.kubhubsystem_gp13_dam.model
 
 data class Sala(
     val idSala: Int,
@@ -23,4 +23,4 @@ data class ReservaSala(
     val asignaturaId: Int,
     val nombreAsignatura: String,
     val numeroSeccion: String
-)
+)*/

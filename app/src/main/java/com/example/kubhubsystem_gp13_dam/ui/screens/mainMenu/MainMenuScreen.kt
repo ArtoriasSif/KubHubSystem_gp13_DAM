@@ -12,7 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.kubhubsystem_gp13_dam.ui.screens.AsignaturasScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.GestionAcademicaScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.GestionUsuariosScreen
 //import com.example.kubhubsystem_gp13_dam.ui.screens.SolicitudScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.dashboard.DashboardScreen
@@ -199,7 +199,7 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                     InventarioScreen()
                 }
                 composable("asignaturas") {
-                    //AsignaturasScreen()
+                    GestionAcademicaScreen()
                 }
                 composable("recetas") {
                     RecetasScreen()
