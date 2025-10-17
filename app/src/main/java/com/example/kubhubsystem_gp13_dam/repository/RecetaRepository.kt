@@ -1,9 +1,13 @@
 package com.example.kubhubsystem_gp13_dam.data.repository
 
+import android.util.Log
 import com.example.kubhubsystem_gp13_dam.local.dao.DetalleRecetaDAO
+import com.example.kubhubsystem_gp13_dam.local.dao.InventarioDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.ProductoDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.RecetaDAO
 import com.example.kubhubsystem_gp13_dam.local.entities.DetalleRecetaEntity
+import com.example.kubhubsystem_gp13_dam.local.entities.InventarioEntity
+import com.example.kubhubsystem_gp13_dam.local.entities.ProductoEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.RecetaEntity
 import com.example.kubhubsystem_gp13_dam.model.Producto
 import com.example.kubhubsystem_gp13_dam.ui.model.IngredienteReceta
@@ -14,7 +18,8 @@ import kotlinx.coroutines.flow.map
 class RecetaRepository(
     private val recetaDAO: RecetaDAO,
     private val detalleDAO: DetalleRecetaDAO,
-    private val productoDAO: ProductoDAO
+    private val productoDAO: ProductoDAO,
+    private val inventarioDAO: InventarioDAO
 ) {
 
     // ✅ Observar todas las recetas con sus ingredientes
@@ -144,35 +149,105 @@ class RecetaRepository(
 
     // ✅ Inicializar recetas de ejemplo (opcional)
     suspend fun inicializarRecetas() {
-        val existePanFrances = recetaDAO.existeReceta(1)
-        if (existePanFrances == 0) {
-            // Insertar receta de ejemplo
-            val idReceta = recetaDAO.insertar(
-                RecetaEntity(
-                    idReceta = 0,
-                    nombreReceta = "Pan Francés",
-                    descripcionReceta = "Pan clásico francés de corteza crujiente",
-                    categoriaReceta = "Panadería",
-                    instrucciones = "1. Mezclar ingredientes secos\n2. Agregar agua\n3. Amasar\n4. Fermentar\n5. Hornear",
-                    observaciones = null
-                )
-            )
+        try {
+            val existePanFrances = recetaDAO.existeReceta(1)
+            if (existePanFrances == 0) {
 
-            // Insertar detalles (ingredientes) - ajusta los IDs según tus productos
-            detalleDAO.insertarVarios(
-                listOf(
-                    DetalleRecetaEntity(
-                        idReceta = idReceta.toInt(),
-                        idProducto = 1, // Harina
-                        cantidaUnidadMedida = 1.0
-                    ),
-                    DetalleRecetaEntity(
-                        idReceta = idReceta.toInt(),
-                        idProducto = 3, // Azúcar
-                        cantidaUnidadMedida = 0.05
+                // ===== PASO 1: Crear Harina =====
+                var idHarina = productoDAO.buscarPorNombre("Harina")?.idProducto
+                if (idHarina == null) {
+                    idHarina = productoDAO.insertar(
+                        ProductoEntity(
+                            nombreProducto = "Harina",
+                            categoria = "Secos",
+                            unidad = "KG"
+                        )
+                    ).toInt()
+
+                    // Crear inventario para Harina
+                    inventarioDAO.insertar(
+                        InventarioEntity(
+                            idProducto = idHarina,
+                            ubicacion = "Almacén Principal",
+                            stock = 50.0 // Stock inicial
+                        )
+                    )
+                } else {
+                    // Verificar si tiene inventario
+                    if (inventarioDAO.obtenerPorProducto(idHarina) == null) {
+                        inventarioDAO.insertar(
+                            InventarioEntity(
+                                idProducto = idHarina,
+                                ubicacion = "Almacén Principal",
+                                stock = 50.0
+                            )
+                        )
+                    }
+                }
+
+                // ===== PASO 2: Crear Azúcar =====
+                var idAzucar = productoDAO.buscarPorNombre("Azúcar")?.idProducto
+                if (idAzucar == null) {
+                    idAzucar = productoDAO.insertar(
+                        ProductoEntity(
+                            nombreProducto = "Azúcar",
+                            categoria = "Secos",
+                            unidad = "KG"
+                        )
+                    ).toInt()
+
+                    // Crear inventario para Azúcar
+                    inventarioDAO.insertar(
+                        InventarioEntity(
+                            idProducto = idAzucar,
+                            ubicacion = "Almacén Principal",
+                            stock = 25.0 // Stock inicial
+                        )
+                    )
+                } else {
+                    // Verificar si tiene inventario
+                    if (inventarioDAO.obtenerPorProducto(idAzucar) == null) {
+                        inventarioDAO.insertar(
+                            InventarioEntity(
+                                idProducto = idAzucar,
+                                ubicacion = "Almacén Principal",
+                                stock = 25.0
+                            )
+                        )
+                    }
+                }
+
+                // ===== PASO 3: Crear la Receta =====
+                val idReceta = recetaDAO.insertar(
+                    RecetaEntity(
+                        nombreReceta = "Pan Francés",
+                        descripcionReceta = "Pan clásico francés de corteza crujiente",
+                        categoriaReceta = "Panaderia",
+                        instrucciones = "1. Mezclar ingredientes secos\n2. Agregar agua\n3. Amasar\n4. Fermentar\n5. Hornear",
+                        observaciones = null
+                    )
+                ).toInt()
+
+                // ===== PASO 4: Crear Detalles de la Receta =====
+                detalleDAO.insertarVarios(
+                    listOf(
+                        DetalleRecetaEntity(
+                            idReceta = idReceta,
+                            idProducto = idHarina,
+                            cantidaUnidadMedida = 1.0
+                        ),
+                        DetalleRecetaEntity(
+                            idReceta = idReceta,
+                            idProducto = idAzucar,
+                            cantidaUnidadMedida = 0.05
+                        )
                     )
                 )
-            )
+
+                Log.d("InicializarRecetas", "Receta 'Pan Francés' inicializada correctamente")
+            }
+        } catch (e: Exception) {
+            Log.e("InicializarRecetas", "Error al inicializar recetas: ${e.message}", e)
         }
     }
 }
