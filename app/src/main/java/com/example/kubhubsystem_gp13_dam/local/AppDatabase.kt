@@ -10,6 +10,7 @@ import com.example.kubhubsystem_gp13_dam.local.entities.InventarioEntity
 import com.example.kubhubsystem_gp13_dam.local.Converters
 import com.example.kubhubsystem_gp13_dam.local.dao.AsignaturaDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.DetalleRecetaDAO
+import com.example.kubhubsystem_gp13_dam.local.dao.DetalleSolicitudDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.DocenteDao
 import com.example.kubhubsystem_gp13_dam.local.dao.EstadoPedidoDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.MovimientoDAO
@@ -28,6 +29,7 @@ import com.example.kubhubsystem_gp13_dam.local.dao.SolicitudProcesadaDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.UsuarioDao
 import com.example.kubhubsystem_gp13_dam.local.entities.AsignaturaEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.DetalleRecetaEntity
+import com.example.kubhubsystem_gp13_dam.local.entities.DetalleSolicitudEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.DocenteEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.ProductoEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.RecetaEntity
@@ -35,6 +37,7 @@ import com.example.kubhubsystem_gp13_dam.local.entities.ReservaSalaEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.RolEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.SalaEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.SeccionEntity
+import com.example.kubhubsystem_gp13_dam.local.entities.SolicitudEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.UsuarioEntity
 import com.example.kubhubsystem_gp13_dam.model.Seccion
 
@@ -55,8 +58,10 @@ import com.example.kubhubsystem_gp13_dam.model.Seccion
         AsignaturaEntity::class,
         SeccionEntity::class,
         SalaEntity::class,
-        ReservaSalaEntity::class
-
+        ReservaSalaEntity::class,
+        //SCREEN SOLICITUD
+        SolicitudEntity::class,
+        DetalleSolicitudEntity::class
     ],
     version = 3, // Incrementé la versión por las nuevas entidades
     exportSchema = false
@@ -67,24 +72,33 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun productoDao(): ProductoDAO
     abstract fun inventarioDao(): InventarioDAO
     abstract fun movimientoDao(): MovimientoDAO
-    abstract fun detalleRecetaDao(): DetalleRecetaDAO
     abstract fun recetaDao(): RecetaDAO
+    abstract fun detalleRecetaDao(): DetalleRecetaDAO
+    abstract fun usuarioDao(): UsuarioDao
+    abstract fun rolDao(): RolDao
+    abstract fun docenteDao(): DocenteDao
+    abstract fun asignaturaDao(): AsignaturaDAO
+    abstract fun seccionDao(): SeccionDAO
+    abstract fun salaDao(): SalaDAO
+    abstract fun reservaSalaDao(): ReservaSalaDAO
     abstract fun solicitudDao(): SolicitudDAO
+    abstract fun detalleSolicitudDao(): DetalleSolicitudDAO
+
     abstract fun pedidoSolicitudDao(): PedidoSolicitudDAO
     abstract fun pedidoDao(): PedidoDAO
     abstract fun estadoPedidoDao(): EstadoPedidoDAO
     abstract fun pedidoProcesadoDao(): PedidoProcesadoDAO
     abstract fun solicitudProcesadaDao(): SolicitudProcesadaDAO
-    abstract fun usuarioDao(): UsuarioDao
-    abstract fun docenteDao(): DocenteDao
-    abstract fun seccionDao(): SeccionDAO
-    abstract fun asignaturaDao(): AsignaturaDAO
 
-    abstract fun salaDao(): SalaDAO
 
-    abstract fun reservaSalaDao(): ReservaSalaDAO
 
-    abstract fun rolDao(): RolDao
+
+
+
+
+
+
+
 
     companion object {
         @Volatile

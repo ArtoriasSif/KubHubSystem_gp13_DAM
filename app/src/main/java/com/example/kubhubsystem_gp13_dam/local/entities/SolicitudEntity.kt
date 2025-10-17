@@ -6,8 +6,10 @@ import java.time.LocalDateTime
 
 @Entity(tableName = "solicitud")
 data class SolicitudEntity(
-    @PrimaryKey(autoGenerate = true) val idSolicitud: Int = 0,
+    @PrimaryKey(autoGenerate = true)
+    val idSolicitud: Int = 0,
     val idUsuario: Int,
     val idSeccion: Int,
     val cantidaPersonas: Int
+    // Las fechas se asignata a tabla intermedia Pedido solicitud
 )

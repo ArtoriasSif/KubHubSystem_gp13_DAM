@@ -3,7 +3,7 @@ package com.example.kubhubsystem_gp13_dam.model
 import com.example.kubhubsystem_gp13_dam.ui.model.Receta
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-
+/*
 data class Solicitud(
     val idSolicitud: Int = 0,
     val asignatura: Asignatura,
@@ -16,7 +16,7 @@ data class Solicitud(
     val observaciones: String = "",
     val estado: EstadoSolicitud = EstadoSolicitud.PENDIENTE
 )
-
+*/
 data class ProductoSolicitado(
     val idProductoSolicitado: Int = 0,
     val producto: Producto,
