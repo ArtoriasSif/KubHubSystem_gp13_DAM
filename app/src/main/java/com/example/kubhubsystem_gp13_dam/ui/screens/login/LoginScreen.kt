@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.kubhubsystem_gp13_dam.model.UserRole
+import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 import com.example.kubhubsystem_gp13_dam.ui.theme.loginTextFieldColors
 import com.example.kubhubsystem_gp13_dam.viewmodel.LoginViewModel
 import kotlinx.coroutines.delay
@@ -46,9 +47,13 @@ import kotlinx.coroutines.launch
  */
 @Composable
 fun LoginScreen(
-    viewModel: LoginViewModel = viewModel(), // ViewModel que maneja la lógica del login
-    onLoginSuccess: () -> Unit = {}          // Callback que se ejecuta cuando el login es exitoso (navegar a otra pantalla)
+    usuarioRepository: UsuarioRepository, // ✅ Recibir el repositorio como parámetro
+    onLoginSuccess: () -> Unit = {}
 ) {
+    // ✅ Crear el ViewModel manualmente con las dependencias necesarias
+    val viewModel: LoginViewModel = remember {
+        LoginViewModel(usuarioRepository)
+    }
     /**📌 Obtenemos el estado completo de la UI desde el ViewModel
      *    uiState: trae toda la información actual de la pantalla desde el ViewModel (email, password, rol, errores, carga)
      *    que es observado mediante StateFlow, lo que garantiza recomposición automática ante cambios. En otras palabras GG

@@ -1,14 +1,16 @@
 package com.example.kubhubsystem_gp13_dam.data.repository
 
+import com.example.kubhubsystem_gp13_dam.local.entities.UsuarioEntity
 import com.example.kubhubsystem_gp13_dam.model.User
 import com.example.kubhubsystem_gp13_dam.model.UserRole
+import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 import kotlinx.coroutines.delay
 
 /**
  * Clase encargada de manejar la lógica de autenticación y datos de usuario.
  * Simula una fuente de datos local (sin conexión a una API real).
  */
-class LoginRepository {
+class LoginRepository(private val usuarioRepository: UsuarioRepository) {
 
     // =====================================================================
     // 🔹 LISTA DE USUARIOS SIMULADA
@@ -20,6 +22,9 @@ class LoginRepository {
      *  - password: contraseña asociada
      *  - role: rol del sistema (enum UserRole)
      *  - displayName: nombre mostrado en la UI
+     *
+     * Esta lista ahora es SOLO para el acceso rápido demo.
+     * Los usuarios reales se consultan desde la base de datos.
      ***/
     private val users = listOf(
         User(
@@ -61,7 +66,7 @@ class LoginRepository {
     )
 
     // =====================================================================
-    // 🔸 FUNCIÓN DE LOGIN (SIMULACIÓN DE AUTENTICACIÓN)
+    // 🔸 FUNCIÓN DE LOGIN (AHORA CONSULTA BASE DE DATOS)
     // =====================================================================
     /**
      * Simula el inicio de sesión con delay (como si fuera una llamada a servidor).
@@ -74,22 +79,27 @@ class LoginRepository {
      *  - `null` si la autenticación es exitosa
      */
     suspend fun login(username: String, password: String): String? {
-        /***
-         * ✅ delay() suspende la coroutine SIN BLOQUEAR el hilo principal.
-         * Esto simula el tiempo de espera de una petición HTTP real.
-         ***/
-        delay(1500) // 1.5 segundos de simulación de red
+        /*** Consulta el usuario en la base de datos ***/
+        val usuarioEntity = usuarioRepository.iniciarSesion(username, password)
 
-        /*** Busca el usuario en la lista según el username ingresado ***/
-        val user = users.find { it.username == username }
+        /*** Delay para tiempo de sincronizarcion ***/
+        delay(1500)
 
-        /*** Valida el resultado y retorna el tipo de error o null si es correcto ***/
+        /*** Valida el resultado ***/
         return when {
-            user == null -> "username"              // Usuario no encontrado
-            user.password != password -> "password" // Contraseña incorrecta
-            else -> null                            // Inicio de sesión exitoso
+            usuarioEntity == null -> {
+                // Verifica si al menos el usuario existe (solo username)
+                val usuarioPorCorreo = usuarioRepository.obtenerPorCorreo(username)
+                if (usuarioPorCorreo == null) {
+                    "username" // Usuario no existe
+                } else {
+                    "password" // Usuario existe pero contraseña incorrecta
+                }
+            }
+            else -> null // Login exitoso
         }
     }
+
 
     // =====================================================================
     // 🔹 FUNCIÓN: OBTENER CREDENCIALES DEMO
@@ -121,7 +131,30 @@ class LoginRepository {
     }
 
     // =====================================================================
-    // 🔸 SINGLETON: INSTANCIA ÚNICA DE REPOSITORIO
+    // 🔹 EXTENSIÓN: CONVERSIÓN DE UsuarioEntity A User
+    // =====================================================================
+    /**
+     * Convierte un UsuarioEntity (BD) a User (Modelo de dominio)
+     */
+    private fun UsuarioEntity.toUser(): User {
+        return User(
+            username = this.email, // Usamos email como username
+            password = this.password,
+            role = when (this.idRol) {
+                1 -> UserRole.ADMIN
+                2 -> UserRole.CO_ADMIN
+                3 -> UserRole.GESTOR_PEDIDOS
+                4 -> UserRole.PROFESOR
+                5 -> UserRole.BODEGA
+                6 -> UserRole.ASISTENTE
+                else -> UserRole.PROFESOR // Por defecto
+            },
+            displayName = "${this.primeroNombre} ${this.apellidoPaterno}".trim()
+        )
+    }
+
+    // =====================================================================
+    // 🔸 SINGLETON: (AHORA RECIBE DEPENDENCIA)
     // =====================================================================
     /**
      * Asegura que solo exista una única instancia de LoginRepository.
@@ -154,13 +187,20 @@ class LoginRepository {
         private var instance: LoginRepository? = null
 
         /***
-         * Retorna la instancia existente o crea una nueva si no existe.
-         * Usa 'synchronized' para asegurar acceso concurrente seguro.
+         * Retorna la instancia existente o crea una nueva con el repositorio necesario.
+         ***/
+        fun getInstance(usuarioRepository: UsuarioRepository): LoginRepository {
+            return instance ?: synchronized(this) {
+                instance ?: LoginRepository(usuarioRepository).also { instance = it }
+            }
+        }
+
+        /***
+         * Método adicional para obtener instancia sin parámetros (para compatibilidad)
+         * PERO RECOMIENDO USAR SIEMPRE EL QUE RECIBE EL REPOSITORIO
          ***/
         fun getInstance(): LoginRepository {
-            return instance ?: synchronized(this) {
-                instance ?: LoginRepository().also { instance = it }
-            }
+            return instance ?: throw IllegalStateException("LoginRepository no ha sido inicializado. Use getInstance(usuarioRepository) primero.")
         }
     }
 }
