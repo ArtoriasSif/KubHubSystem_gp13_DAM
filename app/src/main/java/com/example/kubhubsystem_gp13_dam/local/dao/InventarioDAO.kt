@@ -21,6 +21,9 @@ interface InventarioDAO {
     @Query("SELECT * FROM inventario WHERE idInventario = :id")
     suspend fun obtenerPorId(id: Int): InventarioEntity?
 
+    @Query("SELECT * FROM inventario WHERE idProducto = :idProducto LIMIT 1")
+    suspend fun obtenerPorProducto(idProducto: Int): InventarioEntity?
+
     @Insert(onConflict = OnConflictStrategy.Companion.REPLACE)
     suspend fun insertar(expense: InventarioEntity): Long
 

@@ -27,8 +27,8 @@ interface ProductoDAO {
     @Query("SELECT * FROM producto WHERE idProducto IN (:ids)")
     suspend fun obtenerPorIds(ids: List<Int>): List<ProductoEntity>
 
-    @Query("SELECT * FROM producto WHERE nombreProducto LIKE '%' || :query || '%'")
-    fun buscarPorNombre(query: String): Flow<List<ProductoEntity>>
+    @Query("SELECT * FROM producto WHERE nombreProducto = :nombre LIMIT 1")
+    suspend fun buscarPorNombre(nombre: String): ProductoEntity?
 
     // ✅ CORREGIDO: Ahora es suspend para no bloquear el hilo principal
     @Query("SELECT nombreProducto FROM producto WHERE idProducto = :id")

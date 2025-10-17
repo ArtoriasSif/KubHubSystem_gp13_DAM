@@ -35,7 +35,8 @@ fun RecetasScreen() {
         RecetaRepository(
             recetaDAO = database.recetaDao(),
             detalleDAO = database.detalleRecetaDao(),
-            productoDAO = database.productoDao()
+            productoDAO = database.productoDao(),
+            inventarioDAO = database.inventarioDao()
         )
     }
     val viewModel = remember {
