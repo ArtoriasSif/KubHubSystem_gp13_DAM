@@ -152,7 +152,7 @@ class RecetaRepository(
                     idReceta = 0,
                     nombreReceta = "Pan Francés",
                     descripcionReceta = "Pan clásico francés de corteza crujiente",
-                    categoriaReceta = "Panadería",
+                    categoriaReceta = "Panaderia",
                     instrucciones = "1. Mezclar ingredientes secos\n2. Agregar agua\n3. Amasar\n4. Fermentar\n5. Hornear",
                     observaciones = null
                 )
