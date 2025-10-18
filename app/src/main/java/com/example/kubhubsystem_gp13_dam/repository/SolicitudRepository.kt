@@ -1,147 +1,234 @@
-package com.example.kubhubsystem_gp13_dam.data.repository
+package com.example.kubhubsystem_gp13_dam.repository
 
+import com.example.kubhubsystem_gp13_dam.local.dao.*
+import com.example.kubhubsystem_gp13_dam.local.entities.DetalleSolicitudEntity
+import com.example.kubhubsystem_gp13_dam.local.entities.SolicitudEntity
 import com.example.kubhubsystem_gp13_dam.model.*
-import com.example.kubhubsystem_gp13_dam.repository.ProductoRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import java.time.LocalDateTime
-/*
-class SolicitudRepository {
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 
-    private val _solicitudes = MutableStateFlow<List<Solicitud>>(emptyList())
-    val solicitudes: StateFlow<List<Solicitud>> = _solicitudes.asStateFlow()
 
-    init {
-        // Cargar solicitudes de prueba
-        cargarSolicitudesPrueba()
-    }
+class SolicitudRepository(
+    private val solicitudDao: SolicitudDAO,
+    private val detalleSolicitudDao: DetalleSolicitudDAO,
+    private val usuarioDao: UsuarioDao,
+    private val seccionDao: SeccionDAO,
+    private val reservaSalaDao: ReservaSalaDAO,
+    private val productoDao: ProductoDAO,
+    private val asignaturaDao: AsignaturaDAO,
+    private val salaDao: SalaDAO
+) {
 
-    private fun cargarSolicitudesPrueba() {
-        val asignaturaRepo = AsignaturaRepository.getInstance()
-        val productoRepo = ProductoRepository.getInstance()
+    // ============================================
+    // MAPPERS: Entity -> Domain
+    // ============================================
 
-        val asignaturas = asignaturaRepo.asignaturas.value
+    private suspend fun SolicitudEntity.toDomain(): Solicitud {
+        // Obtener usuario gestor
+        val usuarioEntity = usuarioDao.obtenerPorId(idUsuario)
+        val gestorPedidos = usuarioEntity?.let {
+            val rolEntity = usuarioDao.obtenerPorId(it.idRol)
+            Usuario(
+                idUsuario = it.idUsuario,
+                rol = Rol.desdeId(rolEntity?.idRol ?: 1) ?: Rol.GESTOR_PEDIDOS,
+                primeroNombre = it.primeroNombre,
+                segundoNombre = it.segundoNombre,
+                apellidoMaterno = it.apellidoMaterno,
+                apellidoPaterno = it.apellidoPaterno,
+                email = it.email,
+                username = it.username,
+                password = it.password
+            )
+        } ?: Usuario(
+            idUsuario = 0,
+            rol = Rol.GESTOR_PEDIDOS,
+            primeroNombre = "Desconocido",
+            segundoNombre = "",
+            apellidoMaterno = "",
+            apellidoPaterno = "",
+            email = "",
+            username = "",
+            password = ""
+        )
 
-        if (asignaturas.isNotEmpty()) {
-            _solicitudes.value = listOf(
-                Solicitud(
-                    idSolicitud = 1,
-                    asignatura = asignaturas[0],
-                    seccion = asignaturas[0].secciones[0],
-                    profesor = asignaturas[0].secciones[0].docente,
-                    fechaSolicitud = LocalDateTime.now().minusDays(5),
-                    fechaClase = LocalDateTime.now().plusDays(10),
-                    productos = listOf(
-                        ProductoSolicitado(
-                            idProductoSolicitado = 1,
-                            producto = productoRepo.productos.value[0],
-                            cantidadSolicitada = 2.0,
-                            unidad = "kg"
-                        ),
-                        ProductoSolicitado(
-                            idProductoSolicitado = 2,
-                            producto = productoRepo.productos.value[1],
-                            cantidadSolicitada = 1.0,
-                            unidad = "l"
-                        )
-                    ),
-                    estado = EstadoSolicitud.PENDIENTE
-                ),
-                Solicitud(
-                    idSolicitud = 2,
-                    asignatura = asignaturas[1],
-                    seccion = asignaturas[1].secciones[0],
-                    profesor = asignaturas[1].secciones[0].docente,
-                    fechaSolicitud = LocalDateTime.now().minusDays(3),
-                    fechaClase = LocalDateTime.now().plusDays(8),
-                    productos = listOf(
-                        ProductoSolicitado(
-                            idProductoSolicitado = 3,
-                            producto = productoRepo.productos.value[2],
-                            cantidadSolicitada = 0.5,
-                            unidad = "kg"
-                        )
-                    ),
-                    estado = EstadoSolicitud.APROBADO
-                ),
-                Solicitud(
-                    idSolicitud = 3,
-                    asignatura = asignaturas[2],
-                    seccion = asignaturas[2].secciones[0],
-                    profesor = asignaturas[2].secciones[0].docente,
-                    fechaSolicitud = LocalDateTime.now().minusDays(2),
-                    fechaClase = LocalDateTime.now().plusDays(5),
-                    productos = emptyList(),
-                    estado = EstadoSolicitud.ENTREGADO
-                ),
-                Solicitud(
-                    idSolicitud = 4,
-                    asignatura = asignaturas[3],
-                    seccion = asignaturas[3].secciones[0],
-                    profesor = asignaturas[3].secciones[0].docente,
-                    fechaSolicitud = LocalDateTime.now().minusDays(1),
-                    fechaClase = LocalDateTime.now().plusDays(4),
-                    productos = emptyList(),
-                    estado = EstadoSolicitud.RECHAZADO
-                ),
-                Solicitud(
-                    idSolicitud = 5,
-                    asignatura = asignaturas[0],
-                    seccion = asignaturas[0].secciones[1],
-                    profesor = asignaturas[0].secciones[1].docente,
-                    fechaSolicitud = LocalDateTime.now(),
-                    fechaClase = LocalDateTime.now().plusDays(3),
-                    productos = emptyList(),
-                    estado = EstadoSolicitud.PENDIENTE
+        // Obtener sección
+        val seccionEntity = seccionDao.obtenerSeccionPorId(idSeccion)
+        val docenteEntity = seccionEntity?.idDocente?.let { usuarioDao.obtenerPorId(it) }
+        val seccion = seccionEntity?.let {
+            Seccion(
+                idSeccion = it.idSeccion,
+                nombreSeccion = it.nombreSeccion,
+                idDocente = it.idDocente,
+                nombreDocente = docenteEntity?.let { d -> "${d.primeroNombre} ${d.apellidoPaterno}" } ?: ""
+            )
+        } ?: Seccion(idSeccion = 0, nombreSeccion = "Sin sección")
+
+        // Obtener docente de la sección
+        val docenteSeccion = docenteEntity?.let {
+            val rolEntity = usuarioDao.obtenerPorId(it.idRol)
+            Usuario(
+                idUsuario = it.idUsuario,
+                rol = Rol.desdeId(rolEntity?.idRol ?: 4) ?: Rol.DOCENTE,
+                primeroNombre = it.primeroNombre,
+                segundoNombre = it.segundoNombre,
+                apellidoMaterno = it.apellidoMaterno,
+                apellidoPaterno = it.apellidoPaterno,
+                email = it.email,
+                username = it.username,
+                password = it.password
+            )
+        } ?: Usuario(
+            idUsuario = 0,
+            rol = Rol.DOCENTE,
+            primeroNombre = "Sin",
+            segundoNombre = "",
+            apellidoMaterno = "",
+            apellidoPaterno = "Docente",
+            email = "",
+            username = "",
+            password = ""
+        )
+
+        // Obtener reserva de sala
+        val reservaEntity = reservaSalaDao.obtenerPorId(idReservaSala)
+        val salaEntity = reservaEntity?.let { salaDao.obtenerSalaPorId(it.idSala) }
+        val asignaturaEntity = seccionEntity?.let { asignaturaDao.obtenerAsignaturaPorId(it.idAsignatura) }
+
+        val reservaSala = reservaEntity?.let {
+            ReservaSala(
+                idReservaSala = it.idReservaSala,
+                seccion = seccion,
+                asignatura = asignaturaEntity?.let { asig ->
+                    Asignatura(
+                        idAsignatura = asig.idAsignatura,
+                        nombreAsignatura = asig.nombreAsignatura,
+                        codigoAsignatura = asig.codigoAsignatura,
+                        periodo = "" // Si necesitas el periodo, agrégalo a AsignaturaEntity
+                    )
+                } ?: Asignatura(0, "", "", ""),
+                sala = salaEntity?.let { s -> Sala(s.idSala, s.codigoSala) } ?: Sala(0, ""),
+                diaSemana = DiaSemana.valueOf(it.diaSemana),
+                bloqueHorario = it.bloque
+            )
+        } ?: ReservaSala(
+            idReservaSala = 0,
+            seccion = seccion,
+            asignatura = Asignatura(0, "", "", ""),
+            sala = Sala(0, ""),
+            diaSemana = DiaSemana.LUNES,
+            bloqueHorario = 1
+        )
+
+        // Obtener detalles de la solicitud
+        val detallesEntity = detalleSolicitudDao.obtenerPorSolicitud(idSolicitud)
+        val detalles = detallesEntity.map { detalle ->
+            val producto = productoDao.obtenerPorId(detalle.idProducto)?.let { p ->
+                Producto(
+                    idProducto = p.idProducto,
+                    nombreProducto = p.nombreProducto,
+                    categoria = p.categoria,
+                    unidadMedida = p.unidad
                 )
+            } ?: Producto(0, "Desconocido", "", "")
+
+            DetalleSolicitud(
+                idDetalleSolicitud = detalle.idDetalleSolicitud,
+                idSolicitud = detalle.idSolicitud,
+                producto = producto,
+                cantidadUnidadMedida = detalle.cantidaUnidadMedida
             )
         }
+
+        return Solicitud(
+            idSolicitud = idSolicitud,
+            detalleSolicitud = detalles,
+            gestorPedidos = gestorPedidos,
+            seccion = seccion,
+            docenteSeccion = docenteSeccion,
+            reservaSala = reservaSala,
+            cantidadPersonas = cantidadPersonas,
+            fechaSolicitud = fechaSolicitudPlanificada,
+            fechaCreacion = fechaCreacion
+        )
     }
 
-    fun agregarSolicitud(solicitud: Solicitud) {
-        val nuevoId = (_solicitudes.value.maxOfOrNull { it.idSolicitud } ?: 0) + 1
-        val nuevaSolicitud = solicitud.copy(idSolicitud = nuevoId)
-        _solicitudes.value = _solicitudes.value + nuevaSolicitud
+    private fun Solicitud.toEntity(): SolicitudEntity {
+        return SolicitudEntity(
+            idSolicitud = idSolicitud,
+            idUsuario = gestorPedidos.idUsuario,
+            idSeccion = seccion.idSeccion,
+            idReservaSala = reservaSala.idReservaSala,
+            cantidadPersonas = cantidadPersonas,
+            estadoSolicitud = "Pendiente", // Por defecto
+            fechaSolicitudPlanificada = fechaSolicitud,
+            fechaCreacion = fechaCreacion
+        )
     }
 
-    fun actualizarSolicitud(solicitud: Solicitud) {
-        _solicitudes.value = _solicitudes.value.map {
-            if (it.idSolicitud == solicitud.idSolicitud) solicitud else it
+    // ============================================
+    // OPERACIONES CRUD
+    // ============================================
+
+    suspend fun crearSolicitud(solicitud: Solicitud): Long {
+        val idSolicitud = solicitudDao.insertar(solicitud.toEntity())
+
+        // Insertar detalles
+        val detalles = solicitud.detalleSolicitud.map { detalle ->
+            DetalleSolicitudEntity(
+                idDetalleSolicitud = 0,
+                idSolicitud = idSolicitud.toInt(),
+                idProducto = detalle.producto.idProducto,
+                cantidaUnidadMedida = detalle.cantidadUnidadMedida
+            )
+        }
+        detalleSolicitudDao.insertarVarios(detalles)
+
+        return idSolicitud
+    }
+
+    suspend fun obtenerSolicitud(idSolicitud: Int): Solicitud? {
+        val entity = solicitudDao.obtenerPorId(idSolicitud) ?: return null
+        return entity.toDomain()
+    }
+
+    fun observarTodasSolicitudes(): Flow<List<Solicitud>> {
+        return solicitudDao.observarTodas().map { entities ->
+            entities.map { it.toDomain() }
         }
     }
 
-    fun eliminarSolicitud(idSolicitud: Int) {
-        _solicitudes.value = _solicitudes.value.filter { it.idSolicitud != idSolicitud }
-    }
-
-    fun cambiarEstado(idSolicitud: Int, nuevoEstado: EstadoSolicitud) {
-        _solicitudes.value = _solicitudes.value.map { solicitud ->
-            if (solicitud.idSolicitud == idSolicitud) {
-                solicitud.copy(estado = nuevoEstado)
-            } else {
-                solicitud
-            }
+    fun observarSolicitudesPorEstado(estado: String): Flow<List<Solicitud>> {
+        return solicitudDao.observarPorEstado(estado).map { entities ->
+            entities.map { it.toDomain() }
         }
     }
 
-    fun getSolicitudesPorEstado(estado: EstadoSolicitud): List<Solicitud> {
-        return _solicitudes.value.filter { it.estado == estado }
+    suspend fun actualizarEstadoSolicitud(idSolicitud: Int, nuevoEstado: String) {
+        solicitudDao.actualizarEstado(idSolicitud, nuevoEstado)
     }
 
-    companion object {
-        @Volatile
-        private var instance: SolicitudRepository? = null
+    suspend fun actualizarSolicitud(solicitud: Solicitud) {
+        solicitudDao.actualizar(solicitud.toEntity())
 
-        fun getInstance(): SolicitudRepository {
-            return instance ?: synchronized(this) {
-                instance ?: SolicitudRepository().also { instance = it }
-            }
+        // Actualizar detalles
+        detalleSolicitudDao.eliminarPorSolicitud(solicitud.idSolicitud)
+        val detalles = solicitud.detalleSolicitud.map { detalle ->
+            DetalleSolicitudEntity(
+                idDetalleSolicitud = 0,
+                idSolicitud = solicitud.idSolicitud,
+                idProducto = detalle.producto.idProducto,
+                cantidaUnidadMedida = detalle.cantidadUnidadMedida
+            )
         }
+        detalleSolicitudDao.insertarVarios(detalles)
+    }
+
+    suspend fun eliminarSolicitud(solicitud: Solicitud) {
+        detalleSolicitudDao.eliminarPorSolicitud(solicitud.idSolicitud)
+        solicitudDao.eliminar(solicitud.toEntity())
+    }
+
+    suspend fun contarSolicitudesPorEstado(estado: String): Int {
+        return solicitudDao.contarPorEstado(estado)
     }
 }
-
-fun ProductoRepository.Companion.getInstance() {
-    TODO("Not yet implemented")
-}
-*/

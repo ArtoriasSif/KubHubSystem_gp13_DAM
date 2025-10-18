@@ -1,75 +1,211 @@
-package com.example.kubhubsystem_gp13_dam.data.repository
+package com.example.kubhubsystem_gp13_dam.repository
 
-import com.example.kubhubsystem_gp13_dam.model.PeriodoRecoleccion
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import java.time.LocalDate
+import com.example.kubhubsystem_gp13_dam.local.dao.*
+import com.example.kubhubsystem_gp13_dam.local.entities.AglomeradoPedidoEntity
+import com.example.kubhubsystem_gp13_dam.local.entities.PedidoEntity
+import com.example.kubhubsystem_gp13_dam.model.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import java.time.LocalDateTime
 
-class PeriodoRepository {
+class PedidoRepository(
+    private val pedidoDao: PedidoDAO,
+    private val aglomeradoPedidoDao: AglomeradoPedidoDAO,
+    private val solicitudDao: SolicitudDAO,
+    private val detalleSolicitudDao: DetalleSolicitudDAO,
+    private val estadoPedidoDao: EstadoPedidoDAO,
+    private val productoDao: ProductoDAO,
+    private val asignaturaDao: AsignaturaDAO,
+    private val solicitudRepository: SolicitudRepository
+) {
 
-    private val _periodoActual = MutableStateFlow<PeriodoRecoleccion?>(null)
-    val periodoActual: StateFlow<PeriodoRecoleccion?> = _periodoActual.asStateFlow()
+    // ============================================
+    // MAPPERS: Entity -> Domain
+    // ============================================
 
-    private val _periodos = MutableStateFlow<List<PeriodoRecoleccion>>(emptyList())
-    val periodos: StateFlow<List<PeriodoRecoleccion>> = _periodos.asStateFlow()
+    private suspend fun PedidoEntity.toDomain(): Pedido {
+        // Obtener estado
+        val estadoEntity = estadoPedidoDao.obtenerPorId(idEstadoPedido)
+        val estadoPedido = estadoEntity?.let {
+            EstadoPedido.desdeNombre(it.tipoEstado) ?: EstadoPedido.EN_PROCESO
+        } ?: EstadoPedido.EN_PROCESO
 
-    fun iniciarPeriodo(fechaCierre: LocalDate) {
-        val nuevoId = (_periodos.value.maxOfOrNull { it.idPeriodo } ?: 0) + 1
-        val nuevoPeriodo = PeriodoRecoleccion(
-            idPeriodo = nuevoId,
-            fechaInicio = LocalDate.now(),
-            fechaCierre = fechaCierre,
+        // Obtener solicitudes del pedido
+        val solicitudesEntity = solicitudDao.obtenerPorId(idPedido) // Necesitarás ajustar esto
+        val solicitudes = emptyList<Solicitud>() // Por ahora vacío, luego implementarás la relación
+
+        // Obtener aglomerado
+        val aglomeradosEntity = aglomeradoPedidoDao.obtenerPorPedido(idPedido)
+        val aglomerado = aglomeradosEntity.map { it.toDomain() }
+
+        return Pedido(
+            idPedido = idPedido,
+            fechaInicioRango = fechaInicioRango,
+            fechaFinRango = fechaFinRango,
+            fechaCreacion = fechaCreacion,
+            estadoPedido = estadoPedido,
+            solicitudes = solicitudes,
+            aglomerado = aglomerado,
+            estaActivo = estaActivo
+        )
+    }
+
+    private suspend fun AglomeradoPedidoEntity.toDomain(): AglomeradoPedido {
+        val productoEntity = productoDao.obtenerPorId(idProducto)
+        val producto = productoEntity?.let {
+            Producto(
+                idProducto = it.idProducto,
+                nombreProducto = it.nombreProducto,
+                categoria = it.categoria,
+                unidadMedida = it.unidad
+            )
+        } ?: Producto(0, "Desconocido", "", "")
+
+        val asignatura = idAsignatura?.let { id ->
+            asignaturaDao.obtenerAsignaturaPorId(id)?.let { asig ->
+                Asignatura(
+                    idAsignatura = asig.idAsignatura,
+                    nombreAsignatura = asig.nombreAsignatura,
+                    codigoAsignatura = asig.codigoAsignatura,
+                    periodo = ""
+                )
+            }
+        }
+
+        return AglomeradoPedido(
+            idAglomerado = idAglomerado,
+            producto = producto,
+            cantidadTotal = cantidadTotal,
+            asignatura = asignatura
+        )
+    }
+
+    private fun Pedido.toEntity(): PedidoEntity {
+        return PedidoEntity(
+            idPedido = idPedido,
+            fechaInicioRango = fechaInicioRango,
+            fechaFinRango = fechaFinRango,
+            fechaCreacion = fechaCreacion,
+            idEstadoPedido = estadoPedido.orden,
+            estaActivo = estaActivo
+        )
+    }
+
+    // ============================================
+    // OPERACIONES CRUD
+    // ============================================
+
+    suspend fun inicializarEstadosPedido() {
+        // Verificar si ya existen los estados
+        val existentes = estadoPedidoDao.contarEstados()
+        if (existentes == 0) {
+            EstadoPedido.values().forEach { estado ->
+                estadoPedidoDao.insertar(
+                    com.example.kubhubsystem_gp13_dam.local.entities.EstadoPedidoEntity(
+                        idEstadoPedido = estado.orden,
+                        tipoEstado = estado.name
+                    )
+                )
+            }
+        }
+    }
+
+    suspend fun crearPedido(fechaInicio: LocalDateTime, fechaFin: LocalDateTime): Long {
+        // Desactivar pedido anterior si existe
+        val pedidoActivo = pedidoDao.obtenerPedidoActivo()
+        pedidoActivo?.let {
+            pedidoDao.desactivarPedido(it.idPedido)
+        }
+
+        // Crear nuevo pedido
+        val nuevoPedido = PedidoEntity(
+            idPedido = 0,
+            fechaInicioRango = fechaInicio,
+            fechaFinRango = fechaFin,
+            fechaCreacion = LocalDateTime.now(),
+            idEstadoPedido = EstadoPedido.EN_PROCESO.orden,
             estaActivo = true
         )
 
-        // Cerrar periodo anterior si existe
-        if (_periodoActual.value != null) {
-            cerrarPeriodo(_periodoActual.value!!.idPeriodo)
-        }
-
-        _periodoActual.value = nuevoPeriodo
-        _periodos.value = _periodos.value + nuevoPeriodo
+        return pedidoDao.insertar(nuevoPedido)
     }
 
-    fun cerrarPeriodo(idPeriodo: Int) {
-        _periodos.value = _periodos.value.map { periodo ->
-            if (periodo.idPeriodo == idPeriodo) {
-                periodo.copy(estaActivo = false)
-            } else {
-                periodo
-            }
-        }
+    suspend fun obtenerPedidoActivo(): Pedido? {
+        val entity = pedidoDao.obtenerPedidoActivo() ?: return null
+        return entity.toDomain()
+    }
 
-        if (_periodoActual.value?.idPeriodo == idPeriodo) {
-            _periodoActual.value = null
+    fun observarPedidoActivo(): Flow<Pedido?> {
+        return pedidoDao.observarPedidoActivo().map { entity ->
+            entity?.toDomain()
         }
     }
 
-    fun agregarSolicitudAPeriodo(idPeriodo: Int, idSolicitud: Int) {
-        _periodos.value = _periodos.value.map { periodo ->
-            if (periodo.idPeriodo == idPeriodo) {
-                periodo.copy(solicitudesIds = periodo.solicitudesIds + idSolicitud)
-            } else {
-                periodo
-            }
-        }
-
-        if (_periodoActual.value?.idPeriodo == idPeriodo) {
-            _periodoActual.value = _periodoActual.value?.copy(
-                solicitudesIds = _periodoActual.value!!.solicitudesIds + idSolicitud
-            )
+    fun observarPedidosAnteriores(): Flow<List<Pedido>> {
+        return pedidoDao.observarPedidosAnteriores().map { entities ->
+            entities.map { it.toDomain() }
         }
     }
 
-    companion object {
-        @Volatile
-        private var instance: PeriodoRepository? = null
+    suspend fun actualizarEstadoPedido(idPedido: Int, nuevoEstado: EstadoPedido) {
+        pedidoDao.actualizarEstado(idPedido, nuevoEstado.orden)
+    }
 
-        fun getInstance(): PeriodoRepository {
-            return instance ?: synchronized(this) {
-                instance ?: PeriodoRepository().also { instance = it }
-            }
+    suspend fun recalcularAglomerado(idPedido: Int) {
+        // Eliminar aglomerado anterior
+        aglomeradoPedidoDao.eliminarPorPedido(idPedido)
+
+        // Obtener todas las solicitudes aprobadas o pendientes
+        val todasSolicitudes = solicitudDao.obtenerPorId(idPedido) // Ajustar query
+        
+        // Agrupar por producto y sumar cantidades
+        val aglomeradoMap = mutableMapOf<Int, MutableMap<String, Any>>()
+
+        // Aquí necesitarás iterar sobre las solicitudes y sus detalles
+        // Por ahora lo dejo simplificado
+        
+        // Insertar nuevo aglomerado
+        // aglomeradoPedidoDao.insertarVarios(nuevosAglomerados)
+    }
+
+    fun observarAglomeradoPorPedido(idPedido: Int): Flow<List<AglomeradoPedido>> {
+        return aglomeradoPedidoDao.observarPorPedido(idPedido).map { entities ->
+            entities.map { it.toDomain() }
         }
+    }
+
+    fun observarAglomeradoPorAsignatura(idPedido: Int, idAsignatura: Int): Flow<List<AglomeradoPedido>> {
+        return aglomeradoPedidoDao.observarPorPedidoYAsignatura(idPedido, idAsignatura).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
+    suspend fun actualizarCantidadAglomerado(idAglomerado: Int, nuevaCantidad: Double) {
+        aglomeradoPedidoDao.actualizarCantidad(idAglomerado, nuevaCantidad)
+    }
+
+    suspend fun agregarProductoAglomerado(idPedido: Int, producto: Producto, cantidad: Double, idAsignatura: Int? = null) {
+        val nuevoAglomerado = AglomeradoPedidoEntity(
+            idAglomerado = 0,
+            idPedido = idPedido,
+            idProducto = producto.idProducto,
+            cantidadTotal = cantidad,
+            idAsignatura = idAsignatura
+        )
+        aglomeradoPedidoDao.insertar(nuevoAglomerado)
+    }
+
+    suspend fun calcularProgresoPedido(idPedido: Int): Float {
+        val totalSolicitudes = solicitudDao.contarPorEstado("Pendiente") +
+                solicitudDao.contarPorEstado("Aprobado") +
+                solicitudDao.contarPorEstado("Rechazado")
+        
+        if (totalSolicitudes == 0) return 0f
+
+        val aprobadas = solicitudDao.contarPorEstado("Aprobado")
+        val rechazadas = solicitudDao.contarPorEstado("Rechazado")
+        val procesadas = aprobadas + rechazadas
+
+        return procesadas.toFloat() / totalSolicitudes.toFloat()
     }
 }

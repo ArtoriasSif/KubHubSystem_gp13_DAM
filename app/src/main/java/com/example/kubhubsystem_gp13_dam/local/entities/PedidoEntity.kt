@@ -20,6 +20,7 @@ data class PedidoEntity(
     @PrimaryKey(autoGenerate = true) val idPedido: Int = 0,
     val fechaInicioRango: LocalDateTime,
     val fechaFinRango: LocalDateTime,
-    val fechaProceso: LocalDateTime,
-    val idEstado : Int
+    val fechaCreacion: LocalDateTime = LocalDateTime.now(),
+    val idEstadoPedido: Int, // FK a EstadoPedidoEntity
+    val estaActivo: Boolean = true // Para saber si es el pedido actual o histórico
 )

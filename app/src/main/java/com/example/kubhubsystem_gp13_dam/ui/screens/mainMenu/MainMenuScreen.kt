@@ -13,20 +13,30 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.kubhubsystem_gp13_dam.ui.screens.GestionAcademicaScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.GestionPedidosScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.GestionUsuariosScreen
-//import com.example.kubhubsystem_gp13_dam.ui.screens.SolicitudScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.SolicitudScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.dashboard.DashboardScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome.HomeInternalScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.inventario.InventarioScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.recetas.RecetasScreen
-//import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.solicitud.GestionPedidosScreen
-
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.usuarios.UsuariosScreen
+// ✅ NUEVOS IMPORTS
+
+
+import com.example.kubhubsystem_gp13_dam.ui.viewmodel.SolicitudViewModel
+import com.example.kubhubsystem_gp13_dam.viewmodel.PedidoViewModel
+
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainMenuScreen(onLogout: () -> Unit) {
+fun MainMenuScreen(
+    onLogout: () -> Unit,
+    // ✅ NUEVOS PARÁMETROS - ViewModels
+    solicitudViewModel: SolicitudViewModel,
+    pedidoViewModel: PedidoViewModel
+) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val navController = rememberNavController()
@@ -67,16 +77,6 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                 )
 
                 NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Description, contentDescription = null) },
-                    label = { Text("Solicitudes") },
-                    selected = currentRoute == "solicitud",
-                    onClick = {
-                        navController.navigate("solicitud")
-                        scope.launch { drawerState.close() }
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp)
-                )
-                NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Inventory, contentDescription = null) },
                     label = { Text("Inventario") },
                     selected = currentRoute == "inventario",
@@ -87,7 +87,6 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
 
-                // 📚 Asignaturas (Ramos-Admin)
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Class, contentDescription = null) },
                     label = { Text("Ramos-Admin") },
@@ -98,6 +97,7 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
+
                 NavigationDrawerItem(
                     icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null) },
                     label = { Text("Gestión de Recetas") },
@@ -109,19 +109,10 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
 
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.People, contentDescription = null) },
-                    label = { Text("Usuarios") },
-                    selected = currentRoute == "usuarios",
-                    onClick = {
-                        navController.navigate("usuarios")
-                        scope.launch { drawerState.close() }
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp)
-                )
+                // ✅ SOLICITUDES
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.Assignment, contentDescription = null) },
-                    label = { Text("Solicitud") },
+                    label = { Text("Solicitudes") },
                     selected = currentRoute == "solicitud",
                     onClick = {
                         navController.navigate("solicitud")
@@ -130,12 +121,24 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                     modifier = Modifier.padding(horizontal = 12.dp)
                 )
 
+                // ✅ GESTIÓN DE PEDIDOS
                 NavigationDrawerItem(
                     icon = { Icon(Icons.Default.ShoppingCart, contentDescription = null) },
                     label = { Text("Gestión de Pedidos") },
                     selected = currentRoute == "gestion_pedidos",
                     onClick = {
                         navController.navigate("gestion_pedidos")
+                        scope.launch { drawerState.close() }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.People, contentDescription = null) },
+                    label = { Text("Usuarios") },
+                    selected = currentRoute == "usuarios",
+                    onClick = {
+                        navController.navigate("usuarios")
                         scope.launch { drawerState.close() }
                     },
                     modifier = Modifier.padding(horizontal = 12.dp)
@@ -165,7 +168,7 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                             when(currentRoute) {
                                 "dashboard" -> "Dashboard"
                                 "inventario" -> "Inventario"
-                                "solicitud" -> "Solicitud de Insumos"
+                                "solicitud" -> "Solicitudes"
                                 "gestion_pedidos" -> "Gestión de Pedidos"
                                 "asignaturas" -> "Gestión de Asignaturas"
                                 "recetas" -> "Gestión de Recetas"
@@ -204,12 +207,31 @@ fun MainMenuScreen(onLogout: () -> Unit) {
                 composable("recetas") {
                     RecetasScreen()
                 }
+
+                // ✅ NUEVA RUTA - SOLICITUD
                 composable("solicitud") {
-                    //SolicitudScreen()
+                    SolicitudScreen(
+                        viewModel = solicitudViewModel,
+                        onNavigateBack = {
+                            navController.popBackStack()
+                        }
+                    )
                 }
+
+                // ✅ NUEVA RUTA - GESTIÓN DE PEDIDOS
                 composable("gestion_pedidos") {
-                    //GestionPedidosScreen()
+                    GestionPedidosScreen(
+                        viewModel = pedidoViewModel,
+                        onNavigateToSolicitud = { idSolicitud ->
+                            // Cargar solicitud para editar si existe
+                            if (idSolicitud != null) {
+                                solicitudViewModel.cargarSolicitudParaEditar(idSolicitud)
+                            }
+                            navController.navigate("solicitud")
+                        }
+                    )
                 }
+
                 composable("usuarios") {
                     GestionUsuariosScreen()
                 }

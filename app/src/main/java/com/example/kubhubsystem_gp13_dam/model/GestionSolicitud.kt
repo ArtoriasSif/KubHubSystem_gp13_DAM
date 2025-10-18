@@ -5,7 +5,7 @@ import java.time.LocalDateTime
 data class Solicitud(
     val idSolicitud: Int = 0,
     val detalleSolicitud: List<DetalleSolicitud> = emptyList(),
-    val gestorPedidos: Usuario,
+    val gestorPedidos: Usuario, //Usuario que tiene la sesion iniciada
     val seccion: Seccion,
     val docenteSeccion: Usuario,
     val reservaSala: ReservaSala,

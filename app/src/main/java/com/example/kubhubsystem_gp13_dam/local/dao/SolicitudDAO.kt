@@ -1,12 +1,8 @@
 package com.example.kubhubsystem_gp13_dam.local.dao
-import androidx.room.Dao
-import androidx.room.Delete
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import kotlinx.coroutines.flow.Flow
-import androidx.room.Query
-import androidx.room.Update
+
+import androidx.room.*
 import com.example.kubhubsystem_gp13_dam.local.entities.SolicitudEntity
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface SolicitudDAO {
@@ -15,32 +11,29 @@ interface SolicitudDAO {
     suspend fun insertar(solicitud: SolicitudEntity): Long
 
     @Update
-    suspend fun actualizar(solicitud: SolicitudEntity): Int
+    suspend fun actualizar(solicitud: SolicitudEntity)
 
     @Delete
-    suspend fun eliminar(solicitud: SolicitudEntity): Int
-
-    @Query("DELETE FROM solicitud WHERE idSolicitud = :id")
-    suspend fun eliminarPorId(id: Int): Int
+    suspend fun eliminar(solicitud: SolicitudEntity)
 
     @Query("SELECT * FROM solicitud WHERE idSolicitud = :id")
     suspend fun obtenerPorId(id: Int): SolicitudEntity?
 
-    @Query("SELECT * FROM solicitud WHERE idUsuario = :idUsuario")
-    suspend fun obtenerPorUsuario(idUsuario: Int): List<SolicitudEntity>
+    @Query("SELECT * FROM solicitud")
+    fun observarTodas(): Flow<List<SolicitudEntity>>
+
+    @Query("SELECT * FROM solicitud WHERE estadoSolicitud = :estado")
+    fun observarPorEstado(estado: String): Flow<List<SolicitudEntity>>
 
     @Query("SELECT * FROM solicitud WHERE idSeccion = :idSeccion")
-    suspend fun obtenerPorSeccion(idSeccion: Int): List<SolicitudEntity>
+    fun observarPorSeccion(idSeccion: Int): Flow<List<SolicitudEntity>>
 
-    @Query("SELECT * FROM solicitud")
-    suspend fun obtenerTodas(): List<SolicitudEntity>
+    @Query("UPDATE solicitud SET estadoSolicitud = :nuevoEstado WHERE idSolicitud = :id")
+    suspend fun actualizarEstado(id: Int, nuevoEstado: String)
 
-    @Query("SELECT COUNT(*) FROM solicitud WHERE idSolicitud = :id")
-    suspend fun existeSolicitud(id: Int): Int
+    @Query("SELECT COUNT(*) FROM solicitud WHERE estadoSolicitud = :estado")
+    suspend fun contarPorEstado(estado: String): Int
 
-    @Query("SELECT * FROM solicitud WHERE idUsuario = :idUsuario AND idSeccion = :idSeccion")
-    suspend fun obtenerPorUsuarioYSeccion(idUsuario: Int, idSeccion: Int): List<SolicitudEntity>
-
-    @Query("SELECT * FROM solicitud ORDER BY idSolicitud DESC LIMIT 1")
-    suspend fun obtenerUltimaSolicitud(): SolicitudEntity?
+    @Query("DELETE FROM solicitud")
+    suspend fun eliminarTodas()
 }

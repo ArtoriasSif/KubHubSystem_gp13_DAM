@@ -5,100 +5,68 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
-import com.example.kubhubsystem_gp13_dam.local.dao.InventarioDAO
-import com.example.kubhubsystem_gp13_dam.local.entities.InventarioEntity
-import com.example.kubhubsystem_gp13_dam.local.Converters
-import com.example.kubhubsystem_gp13_dam.local.dao.AsignaturaDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.DetalleRecetaDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.DetalleSolicitudDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.DocenteDao
-import com.example.kubhubsystem_gp13_dam.local.dao.EstadoPedidoDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.MovimientoDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.PedidoDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.PedidoProcesadoDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.PedidoSolicitudDAO
-import com.example.kubhubsystem_gp13_dam.local.entities.MovimientoEntity
-import com.example.kubhubsystem_gp13_dam.local.dao.ProductoDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.RecetaDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.ReservaSalaDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.RolDao
-import com.example.kubhubsystem_gp13_dam.local.dao.SalaDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.SeccionDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.SolicitudDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.SolicitudProcesadaDAO
-import com.example.kubhubsystem_gp13_dam.local.dao.UsuarioDao
-import com.example.kubhubsystem_gp13_dam.local.entities.AsignaturaEntity
-import com.example.kubhubsystem_gp13_dam.local.entities.DetalleRecetaEntity
-import com.example.kubhubsystem_gp13_dam.local.entities.DetalleSolicitudEntity
-import com.example.kubhubsystem_gp13_dam.local.entities.DocenteEntity
-import com.example.kubhubsystem_gp13_dam.local.entities.ProductoEntity
-import com.example.kubhubsystem_gp13_dam.local.entities.RecetaEntity
-import com.example.kubhubsystem_gp13_dam.local.entities.ReservaSalaEntity
-import com.example.kubhubsystem_gp13_dam.local.entities.RolEntity
-import com.example.kubhubsystem_gp13_dam.local.entities.SalaEntity
-import com.example.kubhubsystem_gp13_dam.local.entities.SeccionEntity
-import com.example.kubhubsystem_gp13_dam.local.entities.SolicitudEntity
-import com.example.kubhubsystem_gp13_dam.local.entities.UsuarioEntity
-import com.example.kubhubsystem_gp13_dam.model.Seccion
+import com.example.kubhubsystem_gp13_dam.local.dao.*
+import com.example.kubhubsystem_gp13_dam.local.entities.*
 
 @Database(
     entities = [
-        //SCREEN INVENTARIO
+        // SCREEN INVENTARIO
         InventarioEntity::class,
         ProductoEntity::class,
         MovimientoEntity::class,
-        //SCREEN RECETA
+        // SCREEN RECETA
         RecetaEntity::class,
         DetalleRecetaEntity::class,
-        //SCREEN USUARIO
+        // SCREEN USUARIO
         UsuarioEntity::class,
         RolEntity::class,
         DocenteEntity::class,
-        //SCREEN ASIGNATURA
+        // SCREEN ASIGNATURA
         AsignaturaEntity::class,
         SeccionEntity::class,
         SalaEntity::class,
         ReservaSalaEntity::class,
-        //SCREEN SOLICITUD
+        // SCREEN SOLICITUD Y PEDIDO
         SolicitudEntity::class,
-        DetalleSolicitudEntity::class
+        DetalleSolicitudEntity::class,
+        PedidoEntity::class,
+        PedidoSolicitudEntity::class,
+        EstadoPedidoEntity::class,
+        AglomeradoPedidoEntity::class
     ],
-    version = 3, // Incrementé la versión por las nuevas entidades
+    version = 4,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
+    // DAOs INVENTARIO
     abstract fun productoDao(): ProductoDAO
     abstract fun inventarioDao(): InventarioDAO
     abstract fun movimientoDao(): MovimientoDAO
+
+    // DAOs RECETA
     abstract fun recetaDao(): RecetaDAO
     abstract fun detalleRecetaDao(): DetalleRecetaDAO
+
+    // DAOs USUARIO
     abstract fun usuarioDao(): UsuarioDao
     abstract fun rolDao(): RolDao
     abstract fun docenteDao(): DocenteDao
+
+    // DAOs ASIGNATURA
     abstract fun asignaturaDao(): AsignaturaDAO
     abstract fun seccionDao(): SeccionDAO
     abstract fun salaDao(): SalaDAO
     abstract fun reservaSalaDao(): ReservaSalaDAO
+
+    // DAOs SOLICITUD Y PEDIDO
     abstract fun solicitudDao(): SolicitudDAO
     abstract fun detalleSolicitudDao(): DetalleSolicitudDAO
-
-    abstract fun pedidoSolicitudDao(): PedidoSolicitudDAO
     abstract fun pedidoDao(): PedidoDAO
+    abstract fun pedidoSolicitudDao(): PedidoSolicitudDAO
     abstract fun estadoPedidoDao(): EstadoPedidoDAO
-    abstract fun pedidoProcesadoDao(): PedidoProcesadoDAO
-    abstract fun solicitudProcesadaDao(): SolicitudProcesadaDAO
-
-
-
-
-
-
-
-
-
-
+    abstract fun aglomeradoPedidoDao(): AglomeradoPedidoDAO
 
     companion object {
         @Volatile
