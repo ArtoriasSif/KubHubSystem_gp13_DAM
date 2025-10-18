@@ -1,5 +1,6 @@
 package com.example.kubhubsystem_gp13_dam.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -30,11 +31,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.kubhubsystem_gp13_dam.local.AppDatabase
+import com.example.kubhubsystem_gp13_dam.manager.PerfilUsuarioManager
 import com.example.kubhubsystem_gp13_dam.model.Rol
 import com.example.kubhubsystem_gp13_dam.model.Usuario
 import com.example.kubhubsystem_gp13_dam.repository.DocenteRepository
 import com.example.kubhubsystem_gp13_dam.repository.RolRepository
 import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
+import com.example.kubhubsystem_gp13_dam.ui.components.AvatarUsuario
 import com.example.kubhubsystem_gp13_dam.viewmodel.GestionUsuariosEstado
 import com.example.kubhubsystem_gp13_dam.viewmodel.GestionUsuariosViewModel
 import kotlinx.coroutines.launch
@@ -48,155 +51,106 @@ fun GestionUsuariosScreen(
     val context = LocalContext.current
     val database = remember { AppDatabase.obtener(context.applicationContext) }
 
-    val usuarioRepository = remember { UsuarioRepository(database.usuarioDao()) }
-    val rolRepository = remember { RolRepository(database.rolDao()) }
-    val docenteRepository = remember { DocenteRepository(database.docenteDao()) }
+    // 🆕 Obtener el manager de perfiles
+    val perfilManager = remember { PerfilUsuarioManager.getInstance() }
+    val perfiles by perfilManager.perfiles.collectAsState()
 
     val viewModel: GestionUsuariosViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
                 return GestionUsuariosViewModel(
-                    usuarioRepository = usuarioRepository,
-                    rolRepository = rolRepository,
-                    docenteRepository = docenteRepository
+                    usuarioRepository = UsuarioRepository(database.usuarioDao()),
+                    rolRepository = RolRepository(database.rolDao()),
+                    docenteRepository = DocenteRepository(database.docenteDao())
                 ) as T
             }
         }
     )
 
     val estado by viewModel.estado.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    var showDeleteDialog by remember { mutableStateOf<Usuario?>(null) }
     var showNuevoUsuarioDialog by remember { mutableStateOf(false) }
 
-    // Mostrar mensajes
-    LaunchedEffect(estado.error, estado.mensajeExito) {
-        estado.error?.let { error ->
-            scope.launch {
-                snackbarHostState.showSnackbar(
-                    message = error,
-                    duration = SnackbarDuration.Long
-                )
-                viewModel.limpiarMensajes()
-            }
-        }
-
-        estado.mensajeExito?.let { mensaje ->
-            scope.launch {
-                snackbarHostState.showSnackbar(
-                    message = mensaje,
-                    duration = SnackbarDuration.Short
-                )
-                viewModel.limpiarMensajes()
-            }
+    // 🆕 Sincronizar perfiles cuando cambien los usuarios
+    LaunchedEffect(estado.usuarios) {
+        if (estado.usuarios.isNotEmpty()) {
+            perfilManager.inicializarPerfiles(estado.usuarios)
         }
     }
 
-    // Inicializar datos solo una vez
+    // Inicializar datos si es necesario
     LaunchedEffect(Unit) {
         viewModel.inicializarDatosSiEsNecesario()
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        topBar = {
-            // ✅ TopAppBar SIN flecha ni reload
-            TopAppBar(
-                title = { Text("Gestión de Usuarios") }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Mostrar mensajes
+    LaunchedEffect(estado.mensajeExito, estado.error) {
+        estado.mensajeExito?.let {
+            snackbarHostState.showSnackbar(
+                message = it,
+                duration = SnackbarDuration.Short
             )
-        },
+            viewModel.limpiarMensajes()
+        }
+        estado.error?.let {
+            snackbarHostState.showSnackbar(
+                message = it,
+                duration = SnackbarDuration.Long
+            )
+            viewModel.limpiarMensajes()
+        }
+    }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
-            // ✅ FAB que ABRE el diálogo
-            if (!estado.cargando) {
+            if (estado.usuarios.isNotEmpty() && !estado.cargando) {
                 ExtendedFloatingActionButton(
                     onClick = { showNuevoUsuarioDialog = true },
                     icon = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
-                    text = { Text("Nuevo Usuario") }
+                    text = { Text("Nuevo Usuario") },
+                    containerColor = Color(0xFFFFC107),
+                    contentColor = Color(0xFF6B4E00)
                 )
             }
         }
-    ) { padding ->
-        when {
-            estado.cargando -> {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            text = if (estado.inicializando)
-                                "Inicializando sistema..."
-                            else
-                                "Cargando usuarios...",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            when {
+                estado.inicializando || (estado.cargando && estado.usuarios.isEmpty()) -> {
+                    CargandoView()
                 }
-            }
-
-            estado.usuarios.isEmpty() && !estado.cargando -> {
-                PantallaInicial(
-                    onInicializar = { viewModel.inicializarDatos() },
-                    modifier = Modifier.padding(padding)
-                )
-            }
-
-            else -> {
-                ContenidoPrincipal(
-                    viewModel = viewModel,
-                    estado = estado,
-                    onFiltroRolChange = viewModel::onFiltroRolChange,
-                    onBuscarTextoChange = viewModel::onBuscarTextoChange,
-                    onEditarUsuario = onNavigateToDetalleUsuario,
-                    onEliminarUsuario = { showDeleteDialog = it },
-                    modifier = Modifier.padding(padding)
-                )
-            }
-        }
-    }
-
-    // ✅ Diálogo de confirmación de eliminación
-    showDeleteDialog?.let { usuario ->
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = null },
-            icon = { Icon(Icons.Default.Warning, contentDescription = null) },
-            title = { Text("Eliminar Usuario") },
-            text = {
-                Text("¿Está seguro que desea eliminar a ${usuario.primeroNombre} ${usuario.apellidoPaterno}? Esta acción no se puede deshacer.")
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.eliminarUsuario(usuario)
-                        showDeleteDialog = null
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
+                estado.usuarios.isEmpty() && !estado.cargando -> {
+                    PantallaInicial(onInicializar = { viewModel.inicializarDatos() })
+                }
+                else -> {
+                    ContenidoPrincipal(
+                        viewModel = viewModel,
+                        estado = estado,
+                        perfiles = perfiles,
+                        onFiltroRolChange = { viewModel.onFiltroRolChange(it) },
+                        onBuscarTextoChange = { viewModel.onBuscarTextoChange(it) },
+                        onEditarUsuario = onNavigateToDetalleUsuario,
+                        onEliminarUsuario = { usuario ->
+                            viewModel.eliminarUsuario(usuario)
+                            perfilManager.eliminarPerfil(usuario.idUsuario)
+                        }
                     )
-                ) {
-                    Text("Eliminar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = null }) {
-                    Text("Cancelar")
                 }
             }
-        )
+        }
     }
 
-    // ✅ Diálogo FUNCIONAL de nuevo usuario
     if (showNuevoUsuarioDialog) {
         NuevoUsuarioDialog(
             onDismiss = { showNuevoUsuarioDialog = false },
-            onCrear = { primeroNombre, segundoNombre, apellidoPaterno, apellidoMaterno,
-                        email, username, password, rol ->
+            onCrear = { primeroNombre, segundoNombre, apellidoPaterno, apellidoMaterno, email, username, password, rol ->
                 viewModel.crearUsuario(
                     primeroNombre = primeroNombre,
                     segundoNombre = segundoNombre,
@@ -335,7 +289,7 @@ fun NuevoUsuarioDialog(
                         singleLine = true
                     )
 
-                    Divider()
+                    HorizontalDivider()
 
                     Text(
                         text = "Credenciales",
@@ -384,7 +338,7 @@ fun NuevoUsuarioDialog(
                         singleLine = true
                     )
 
-                    Divider()
+                    HorizontalDivider()
 
                     Text(
                         text = "Rol del Usuario",
@@ -472,7 +426,7 @@ fun RolSelectionCard(
                 MaterialTheme.colorScheme.surface
         ),
         border = if (selected) {
-            androidx.compose.foundation.BorderStroke(2.dp, obtenerColorRol(rol))
+            BorderStroke(2.dp, obtenerColorRol(rol))
         } else null
     ) {
         Row(
@@ -518,63 +472,11 @@ fun RolSelectionCard(
     }
 }
 
-// ✅ Pantalla inicial cuando no hay usuarios
-@Composable
-private fun PantallaInicial(
-    onInicializar: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Icon(
-                Icons.Default.People,
-                contentDescription = null,
-                modifier = Modifier.size(120.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Bienvenido al Sistema",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "No hay usuarios en el sistema.\nInicialice los datos para comenzar.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Button(
-                onClick = onInicializar,
-                modifier = Modifier.fillMaxWidth(0.7f)
-            ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Inicializar Datos del Sistema")
-            }
-        }
-    }
-}
-
 @Composable
 private fun ContenidoPrincipal(
     viewModel: GestionUsuariosViewModel,
     estado: GestionUsuariosEstado,
+    perfiles: Map<Int, com.example.kubhubsystem_gp13_dam.model.PerfilUsuario>,
     onFiltroRolChange: (String) -> Unit,
     onBuscarTextoChange: (String) -> Unit,
     onEditarUsuario: (Int) -> Unit,
@@ -620,6 +522,7 @@ private fun ContenidoPrincipal(
             items(estado.usuariosFiltrados) { usuario ->
                 TarjetaUsuario(
                     usuario = usuario,
+                    perfil = perfiles[usuario.idUsuario],
                     esDocente = viewModel.esUsuarioDocente(usuario.idUsuario),
                     onClick = { onEditarUsuario(usuario.idUsuario) },
                     onEliminar = { onEliminarUsuario(usuario) },
@@ -631,6 +534,147 @@ private fun ContenidoPrincipal(
                 Spacer(modifier = Modifier.height(80.dp))
             }
         }
+    }
+}
+
+@Composable
+private fun TarjetaUsuario(
+    usuario: Usuario,
+    perfil: com.example.kubhubsystem_gp13_dam.model.PerfilUsuario?,
+    esDocente: Boolean,
+    onClick: () -> Unit,
+    onEliminar: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // 🆕 REEMPLAZADO: Ahora usa AvatarUsuario en lugar del Box con iniciales
+                AvatarUsuario(
+                    perfil = perfil,
+                    size = 56.dp,
+                    mostrarBorde = perfil?.fotoPerfil != null,
+                    colorBorde = obtenerColorRol(usuario.rol)
+                )
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+                Column {
+                    Text(
+                        text = "${usuario.primeroNombre} ${usuario.apellidoPaterno}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            Icons.Default.Email,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = usuario.email,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Surface(
+                        shape = RoundedCornerShape(6.dp),
+                        color = obtenerColorRol(usuario.rol).copy(alpha = 0.15f)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Badge,
+                                contentDescription = null,
+                                modifier = Modifier.size(12.dp),
+                                tint = obtenerColorRol(usuario.rol)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = usuario.rol.obtenerNombre(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = obtenerColorRol(usuario.rol),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+                }
+            }
+
+            IconButton(onClick = { showDeleteDialog = true }) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Eliminar",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            icon = {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error
+                )
+            },
+            title = { Text("Confirmar eliminación") },
+            text = {
+                Text("¿Estás seguro de que deseas eliminar a ${usuario.primeroNombre} ${usuario.apellidoPaterno}?")
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onEliminar()
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 
@@ -778,132 +822,112 @@ private fun FiltrosUsuarios(
 }
 
 @Composable
-private fun TarjetaUsuario(
-    usuario: Usuario,
-    esDocente: Boolean,
-    onClick: () -> Unit,
-    onEliminar: () -> Unit,
+private fun CargandoView() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
+        ) {
+            CircularProgressIndicator()
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                text = "Cargando datos...",
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+    }
+}
+
+@Composable
+private fun PantallaInicial(
+    onInicializar: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(12.dp)
+    Box(
+        modifier = modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(32.dp)
         ) {
-            Row(
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.CenterVertically
+            Icon(
+                Icons.Default.People,
+                contentDescription = null,
+                modifier = Modifier.size(120.dp),
+                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Bienvenido al Sistema",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = "No hay usuarios en el sistema.\nInicialice los datos para comenzar.",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Button(
+                onClick = onInicializar,
+                modifier = Modifier.fillMaxWidth(0.7f)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(
-                            obtenerColorRol(usuario.rol).copy(alpha = 0.2f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "${usuario.primeroNombre.first()}${usuario.apellidoPaterno.first()}",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = obtenerColorRol(usuario.rol)
-                    )
-                }
-
-                Spacer(modifier = Modifier.width(16.dp))
-
-                Column {
-                    Text(
-                        text = "${usuario.primeroNombre} ${usuario.apellidoPaterno}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Email,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = usuario.email,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    BadgeRol(rol = usuario.rol, esDocente = esDocente)
-                }
-            }
-
-            IconButton(onClick = onEliminar) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Eliminar",
-                    tint = MaterialTheme.colorScheme.error
-                )
+                Icon(Icons.Default.PlayArrow, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Inicializar Datos del Sistema")
             }
         }
     }
 }
 
 @Composable
-private fun BadgeRol(rol: Rol, esDocente: Boolean) {
-    val color = obtenerColorRol(rol)
-
-    Surface(
-        color = color.copy(alpha = 0.15f),
-        shape = RoundedCornerShape(8.dp)
+private fun EmptyStateView(modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = obtenerIconoRol(rol),
-                contentDescription = null,
-                tint = color,
-                modifier = Modifier.size(14.dp)
-            )
-            Spacer(modifier = Modifier.width(4.dp))
-            Text(
-                text = rol.obtenerNombre(),
-                style = MaterialTheme.typography.labelSmall,
-                color = color,
-                fontWeight = FontWeight.Medium
-            )
-        }
+        Icon(
+            Icons.Default.SearchOff,
+            contentDescription = null,
+            modifier = Modifier.size(80.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "No se encontraron usuarios",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = "Intenta ajustar los filtros de búsqueda",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+        )
     }
 }
 
+// Helper functions
 private fun obtenerColorRol(rol: Rol): Color {
     return when (rol) {
-        Rol.ADMIN -> Color(0xFFF44336)
-        Rol.CO_ADMIN -> Color(0xFFFF9800)
-        Rol.GESTOR_PEDIDOS -> Color(0xFF4CAF50)
-        Rol.DOCENTE -> Color(0xFF2196F3)
-        Rol.BODEGA -> Color(0xFF9C27B0)
-        Rol.ASISTENTE -> Color(0xFF00BCD4)
+        Rol.ADMIN -> Color(0xFFE53935)
+        Rol.CO_ADMIN -> Color(0xFFFB8C00)
+        Rol.GESTOR_PEDIDOS -> Color(0xFF43A047)
+        Rol.DOCENTE -> Color(0xFF1E88E5)
+        Rol.BODEGA -> Color(0xFF8E24AA)
+        Rol.ASISTENTE -> Color(0xFF00897B)
     }
 }
 
@@ -915,34 +939,5 @@ private fun obtenerIconoRol(rol: Rol): ImageVector {
         Rol.DOCENTE -> Icons.Default.School
         Rol.BODEGA -> Icons.Default.Inventory
         Rol.ASISTENTE -> Icons.Default.Person
-    }
-}
-
-@Composable
-private fun EmptyStateView(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier.fillMaxWidth(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(
-                Icons.Default.SearchOff,
-                contentDescription = null,
-                modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = "No se encontraron usuarios",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Intenta cambiar los filtros de búsqueda",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
 }
