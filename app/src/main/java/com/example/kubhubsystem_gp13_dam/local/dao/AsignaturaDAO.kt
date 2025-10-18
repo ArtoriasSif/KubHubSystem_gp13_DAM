@@ -37,4 +37,7 @@ interface AsignaturaDAO {
 
     @Query("SELECT COUNT(*) FROM asignatura WHERE idAsignatura = :idAsignatura")
     suspend fun existeAsignatura(idAsignatura: Int): Int
+
+    @Query("SELECT * FROM asignatura")
+    fun observarTodas(): Flow<List<AsignaturaEntity>>
 }

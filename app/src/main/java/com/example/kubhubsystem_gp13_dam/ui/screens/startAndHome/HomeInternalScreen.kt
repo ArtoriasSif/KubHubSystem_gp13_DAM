@@ -11,17 +11,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.kubhubsystem_gp13_dam.data.repository.PeriodoRepository
-import com.example.kubhubsystem_gp13_dam.model.PeriodoRecoleccion
+import com.example.kubhubsystem_gp13_dam.viewmodel.PedidoViewModel
+
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HomeInternalScreen() {
+fun HomeInternalScreen(
+    pedidoViewModel: PedidoViewModel? = null  // ✅ Parámetro opcional
+) {
     val periodoRepository = remember { PeriodoRepository.getInstance() }
     val periodoActual by periodoRepository.periodoActual.collectAsState()
+
+    // ✅ Observar el pedido activo desde la BD
+    val pedidoActivo by (pedidoViewModel?.pedidoActivo?.collectAsState() ?: remember { mutableStateOf(null) })
 
     var showIniciarPeriodoDialog by remember { mutableStateOf(false) }
     var showCerrarPeriodoDialog by remember { mutableStateOf(false) }
@@ -52,7 +58,7 @@ fun HomeInternalScreen() {
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
             colors = CardDefaults.cardColors(
-                containerColor = if (periodoActual != null)
+                containerColor = if (periodoActual != null && pedidoActivo != null)
                     Color(0xFF4CAF50).copy(alpha = 0.1f)
                 else
                     MaterialTheme.colorScheme.surfaceVariant
@@ -76,7 +82,10 @@ fun HomeInternalScreen() {
                             Icons.Default.Schedule,
                             contentDescription = null,
                             modifier = Modifier.size(40.dp),
-                            tint = if (periodoActual != null) Color(0xFF4CAF50) else MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = if (periodoActual != null && pedidoActivo != null)
+                                Color(0xFF4CAF50)
+                            else
+                                MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
                         Column {
@@ -86,7 +95,7 @@ fun HomeInternalScreen() {
                                 fontWeight = FontWeight.Bold
                             )
 
-                            if (periodoActual != null) {
+                            if (periodoActual != null && pedidoActivo != null) {
                                 Surface(
                                     color = Color(0xFF4CAF50),
                                     shape = RoundedCornerShape(8.dp)
@@ -119,7 +128,7 @@ fun HomeInternalScreen() {
 
                 HorizontalDivider()
 
-                if (periodoActual != null) {
+                if (periodoActual != null && pedidoActivo != null) {
                     // Información del periodo activo
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         InfoRow(
@@ -135,6 +144,12 @@ fun HomeInternalScreen() {
                         InfoRow(
                             label = "Solicitudes Recibidas",
                             value = "${periodoActual!!.solicitudesIds.size}"
+                        )
+
+                        InfoRow(
+                            label = "Estado del Pedido",
+                            value = pedidoActivo!!.estadoPedido.displayName,
+                            valueColor = Color(0xFF2196F3)
                         )
 
                         val diasRestantes = java.time.temporal.ChronoUnit.DAYS.between(
@@ -206,6 +221,63 @@ fun HomeInternalScreen() {
             }
         }
 
+        // ✅ NUEVA SECCIÓN: Vista rápida del Aglomerado (si hay pedido activo)
+        if (pedidoActivo != null) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF2196F3).copy(alpha = 0.1f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(24.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Inventory,
+                            contentDescription = null,
+                            modifier = Modifier.size(32.dp),
+                            tint = Color(0xFF2196F3)
+                        )
+                        Text(
+                            text = "Resumen del Pedido Actual",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    HorizontalDivider()
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = "Total de productos:",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = "${pedidoActivo!!.aglomerado.size}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF2196F3)
+                        )
+                    }
+
+                    Text(
+                        text = "Ver más detalles en Gestión de Pedidos",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
         // Cards de acceso rápido
         Text(
             text = "Acceso Rápido",
@@ -243,18 +315,27 @@ fun HomeInternalScreen() {
         }
     }
 
-    // Diálogo para iniciar periodo
+    // ✅ Diálogo para iniciar periodo (ACTUALIZADO)
     if (showIniciarPeriodoDialog) {
         IniciarPeriodoDialog(
             onDismiss = { showIniciarPeriodoDialog = false },
             onConfirm = { fechaCierre ->
+                // ✅ 1. Crear el período en PeriodoRepository
                 periodoRepository.iniciarPeriodo(fechaCierre)
+
+                // ✅ 2. Crear el pedido en la base de datos
+                pedidoViewModel?.let { vm ->
+                    val fechaInicio = LocalDate.now().atStartOfDay()
+                    val fechaFin = fechaCierre.atTime(23, 59, 59)
+                    vm.iniciarNuevoPeriodo(fechaInicio, fechaFin)
+                }
+
                 showIniciarPeriodoDialog = false
             }
         )
     }
 
-    // Diálogo para cerrar periodo
+    // ✅ Diálogo para cerrar periodo (ACTUALIZADO)
     if (showCerrarPeriodoDialog) {
         AlertDialog(
             onDismissRequest = { showCerrarPeriodoDialog = false },
@@ -265,7 +346,14 @@ fun HomeInternalScreen() {
             confirmButton = {
                 Button(
                     onClick = {
+                        // ✅ 1. Cerrar el período en PeriodoRepository
                         periodoActual?.let { periodoRepository.cerrarPeriodo(it.idPeriodo) }
+
+                        // ✅ 2. Desactivar el pedido en la BD
+                        pedidoActivo?.let { pedido ->
+                            pedidoViewModel?.cerrarPedidoActual(pedido.idPedido)
+                        }
+
                         showCerrarPeriodoDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red)

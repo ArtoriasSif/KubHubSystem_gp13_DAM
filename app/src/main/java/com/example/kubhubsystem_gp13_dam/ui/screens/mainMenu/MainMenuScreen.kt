@@ -15,11 +15,12 @@ import androidx.navigation.compose.rememberNavController
 import com.example.kubhubsystem_gp13_dam.ui.screens.GestionAcademicaScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.GestionPedidosScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.GestionUsuariosScreen
-import com.example.kubhubsystem_gp13_dam.ui.screens.SolicitudScreen
+
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.dashboard.DashboardScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome.HomeInternalScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.inventario.InventarioScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.recetas.RecetasScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.solicitud.SolicitudScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.usuarios.UsuariosScreen
 // ✅ NUEVOS IMPORTS
 
@@ -193,7 +194,9 @@ fun MainMenuScreen(
                 modifier = Modifier.padding(innerPadding)
             ) {
                 composable("home_internal") {
-                    HomeInternalScreen()
+                    HomeInternalScreen(
+                        pedidoViewModel = pedidoViewModel  // ✅ Pasar el ViewModel
+                    )
                 }
                 composable("dashboard") {
                     DashboardScreen()

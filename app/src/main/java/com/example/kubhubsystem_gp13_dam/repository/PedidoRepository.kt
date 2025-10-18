@@ -80,6 +80,10 @@ class PedidoRepository(
         )
     }
 
+    suspend fun desactivarPedido(idPedido: Int) {
+        pedidoDao.desactivarPedido(idPedido)
+    }
+
     private fun Pedido.toEntity(): PedidoEntity {
         return PedidoEntity(
             idPedido = idPedido,

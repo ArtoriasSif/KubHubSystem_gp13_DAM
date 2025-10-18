@@ -11,7 +11,8 @@ data class Solicitud(
     val reservaSala: ReservaSala,
     val cantidadPersonas: Int,
     val fechaSolicitud: LocalDateTime,                      // Fecha de la solicitud
-    val fechaCreacion: LocalDateTime = LocalDateTime.now()  // Momento actual del proceso
+    val fechaCreacion: LocalDateTime = LocalDateTime.now(), // Momento actual del proceso
+    val estado: String = "Pendiente"  // ✅ AGREGAR ESTA LÍNEA
 )
 
 data class DetalleSolicitud(

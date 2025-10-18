@@ -436,6 +436,7 @@ fun SolicitudesTab(
     onVerDetalle: (Int) -> Unit
 ) {
     var filtroEstado by remember { mutableStateOf("Todos") }
+    var solicitudExpandida by remember { mutableStateOf<Int?>(null) }  // ✅ NUEVO
     val estados = listOf("Todos", "Pendiente", "Aprobado", "Rechazado")
 
     Column(
@@ -462,8 +463,7 @@ fun SolicitudesTab(
         val solicitudesFiltradas = if (filtroEstado == "Todos") {
             solicitudes
         } else {
-            // Necesitarías agregar el estado a la solicitud
-            solicitudes
+            solicitudes.filter { it.estado == filtroEstado }  // ✅ Filtrar por estado
         }
 
         if (solicitudesFiltradas.isEmpty()) {
@@ -492,9 +492,20 @@ fun SolicitudesTab(
                 items(solicitudesFiltradas) { solicitud ->
                     SolicitudCard(
                         solicitud = solicitud,
-                        onAprobar = { viewModel.aprobarSolicitud(solicitud.idSolicitud) },
-                        onRechazar = { viewModel.rechazarSolicitud(solicitud.idSolicitud) },
-                        onVerDetalle = { onVerDetalle(solicitud.idSolicitud) }
+                        estaExpandida = solicitudExpandida == solicitud.idSolicitud,  // ✅ NUEVO
+                        onToggleExpansion = {  // ✅ NUEVO
+                            solicitudExpandida = if (solicitudExpandida == solicitud.idSolicitud) {
+                                null
+                            } else {
+                                solicitud.idSolicitud
+                            }
+                        },
+                        onAprobar = {
+                            viewModel.aprobarSolicitud(solicitud.idSolicitud)
+                        },
+                        onRechazar = {
+                            viewModel.rechazarSolicitud(solicitud.idSolicitud)
+                        }
                     )
                 }
             }
@@ -505,13 +516,13 @@ fun SolicitudesTab(
 @Composable
 fun SolicitudCard(
     solicitud: Solicitud,
+    estaExpandida: Boolean,  // ✅ NUEVO
+    onToggleExpansion: () -> Unit,  // ✅ NUEVO
     onAprobar: () -> Unit,
-    onRechazar: () -> Unit,
-    onVerDetalle: () -> Unit
+    onRechazar: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onVerDetalle
+        modifier = Modifier.fillMaxWidth()
     ) {
         Column(
             modifier = Modifier
@@ -525,13 +536,15 @@ fun SolicitudCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        text = solicitud.seccion.nombreSeccion,
-                        style = MaterialTheme.typography.titleMedium,
+                        text = String.format("%03d", solicitud.idSolicitud),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "Docente: ${solicitud.docenteSeccion.primeroNombre} ${solicitud.docenteSeccion.apellidoPaterno}",
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = "Sala: ${solicitud.reservaSala.sala.codigoSala} - ${solicitud.reservaSala.diaSemana.nombreMostrar} Bloque ${solicitud.reservaSala.bloqueHorario}",
@@ -545,50 +558,108 @@ fun SolicitudCard(
                     )
                 }
 
-                // Badge de estado (necesitarías agregar estado a Solicitud)
+                // Badge de estado con colores
                 AssistChip(
                     onClick = { },
-                    label = { Text("Pendiente") }, // Cambiar según estado real
+                    label = { Text(solicitud.estado) },  // ✅ Mostrar estado real
                     colors = AssistChipDefaults.assistChipColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        containerColor = when (solicitud.estado) {
+                            "Aprobado" -> MaterialTheme.colorScheme.tertiaryContainer
+                            "Rechazado" -> MaterialTheme.colorScheme.errorContainer
+                            else -> MaterialTheme.colorScheme.secondaryContainer
+                        }
                     )
                 )
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
+            // ✅ NUEVO: Detalles expandibles
+            if (estaExpandida) {
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+
+                Text(
+                    "Productos solicitados:",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                solicitud.detalleSolicitud.forEach { detalle ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = detalle.producto.nombreProducto,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = detalle.producto.categoria,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                        Text(
+                            text = "${detalle.cantidadUnidadMedida} ${detalle.producto.unidadMedida}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // Botones
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 FilledTonalButton(
-                    onClick = onVerDetalle,
+                    onClick = onToggleExpansion,  // ✅ Cambiar comportamiento
                     modifier = Modifier.weight(1f)
                 ) {
-                    Icon(Icons.Default.Visibility, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Ver")
-                }
-
-                Button(
-                    onClick = onAprobar,
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.tertiary
+                    Icon(
+                        if (estaExpandida) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null
                     )
-                ) {
-                    Icon(Icons.Default.Check, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("Aprobar")
+                    Text(if (estaExpandida) "Ocultar" else "Ver")
                 }
 
-                OutlinedButton(
-                    onClick = onRechazar,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Icon(Icons.Default.Close, contentDescription = null)
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text("Rechazar")
+                // ✅ Mostrar botones solo si está Pendiente
+                if (solicitud.estado == "Pendiente") {
+                    Button(
+                        onClick = onAprobar,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiary
+                        )
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Aprobar")
+                    }
+
+                    OutlinedButton(
+                        onClick = onRechazar,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
+                        )
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Rechazar")
+                    }
                 }
             }
         }

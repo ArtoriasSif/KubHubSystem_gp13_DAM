@@ -61,6 +61,19 @@ class PedidoViewModel(
             }
         }
     }
+    fun cerrarPedidoActual(idPedido: Int) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                pedidoRepository.desactivarPedido(idPedido)
+                _successMessage.value = "Período cerrado exitosamente"
+            } catch (e: Exception) {
+                _errorMessage.value = "Error al cerrar período: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
 
     private fun observarPedidoActivo() {
         viewModelScope.launch {

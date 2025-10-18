@@ -34,4 +34,6 @@ interface SeccionDAO {
 
     @Query("SELECT COUNT(*) FROM seccion WHERE idSeccion = :idSeccion")
     suspend fun existeSeccion(idSeccion: Int): Int
+    @Query("SELECT * FROM seccion WHERE idAsignatura = :idAsignatura")
+    suspend fun obtenerPorAsignatura(idAsignatura: Int): List<SeccionEntity>
 }

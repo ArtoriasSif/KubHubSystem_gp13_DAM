@@ -7,7 +7,6 @@ import com.example.kubhubsystem_gp13_dam.model.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-
 class SolicitudRepository(
     private val solicitudDao: SolicitudDAO,
     private val detalleSolicitudDao: DetalleSolicitudDAO,
@@ -27,10 +26,9 @@ class SolicitudRepository(
         // Obtener usuario gestor
         val usuarioEntity = usuarioDao.obtenerPorId(idUsuario)
         val gestorPedidos = usuarioEntity?.let {
-            val rolEntity = usuarioDao.obtenerPorId(it.idRol)
             Usuario(
                 idUsuario = it.idUsuario,
-                rol = Rol.desdeId(rolEntity?.idRol ?: 1) ?: Rol.GESTOR_PEDIDOS,
+                rol = Rol.desdeId(it.idRol) ?: Rol.GESTOR_PEDIDOS,  // ✅ Usar directamente it.idRol
                 primeroNombre = it.primeroNombre,
                 segundoNombre = it.segundoNombre,
                 apellidoMaterno = it.apellidoMaterno,
@@ -65,10 +63,9 @@ class SolicitudRepository(
 
         // Obtener docente de la sección
         val docenteSeccion = docenteEntity?.let {
-            val rolEntity = usuarioDao.obtenerPorId(it.idRol)
             Usuario(
                 idUsuario = it.idUsuario,
-                rol = Rol.desdeId(rolEntity?.idRol ?: 4) ?: Rol.DOCENTE,
+                rol = Rol.desdeId(it.idRol) ?: Rol.DOCENTE,  // ✅ Usar directamente it.idRol
                 primeroNombre = it.primeroNombre,
                 segundoNombre = it.segundoNombre,
                 apellidoMaterno = it.apellidoMaterno,
@@ -103,7 +100,7 @@ class SolicitudRepository(
                         idAsignatura = asig.idAsignatura,
                         nombreAsignatura = asig.nombreAsignatura,
                         codigoAsignatura = asig.codigoAsignatura,
-                        periodo = "" // Si necesitas el periodo, agrégalo a AsignaturaEntity
+                        periodo = ""
                     )
                 } ?: Asignatura(0, "", "", ""),
                 sala = salaEntity?.let { s -> Sala(s.idSala, s.codigoSala) } ?: Sala(0, ""),
@@ -148,7 +145,8 @@ class SolicitudRepository(
             reservaSala = reservaSala,
             cantidadPersonas = cantidadPersonas,
             fechaSolicitud = fechaSolicitudPlanificada,
-            fechaCreacion = fechaCreacion
+            fechaCreacion = fechaCreacion,
+            estado = estadoSolicitud  // ✅ AGREGAR ESTA LÍNEA
         )
     }
 
@@ -159,7 +157,7 @@ class SolicitudRepository(
             idSeccion = seccion.idSeccion,
             idReservaSala = reservaSala.idReservaSala,
             cantidadPersonas = cantidadPersonas,
-            estadoSolicitud = "Pendiente", // Por defecto
+            estadoSolicitud = estado,  // ✅ CAMBIAR de "Pendiente" a estado
             fechaSolicitudPlanificada = fechaSolicitud,
             fechaCreacion = fechaCreacion
         )

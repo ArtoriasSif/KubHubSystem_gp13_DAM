@@ -1,19 +1,20 @@
-package com.example.kubhubsystem_gp13_dam.ui.screens
+package com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.solicitud
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.foundation.lazy.items
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.kubhubsystem_gp13_dam.model.*
 import com.example.kubhubsystem_gp13_dam.ui.viewmodel.SolicitudViewModel
+import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -23,12 +24,16 @@ fun SolicitudScreen(
     viewModel: SolicitudViewModel,
     onNavigateBack: () -> Unit
 ) {
-    val solicitudActual by viewModel.solicitudActual.collectAsState()
     val detallesTemp by viewModel.detallesTemp.collectAsState()
     val productosDisponibles by viewModel.productosDisponibles.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
+
+    // Estados para los campos del formulario
+    var cantidadPersonas by remember { mutableStateOf("20") }
+    var observaciones by remember { mutableStateOf("") }
+    var fechaSeleccionada by remember { mutableStateOf(LocalDateTime.now()) }
 
     var mostrarDialogoProducto by remember { mutableStateOf(false) }
     var mostrarDialogoReceta by remember { mutableStateOf(false) }
@@ -36,29 +41,10 @@ fun SolicitudScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        if (solicitudActual?.idSolicitud == 0) "Nueva Solicitud"
-                        else "Editar Solicitud"
-                    )
-                },
+                title = { Text("Nueva Solicitud") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Default.ArrowBack, "Volver")
-                    }
-                },
-                actions = {
-                    IconButton(
-                        onClick = {
-                            if (solicitudActual?.idSolicitud == 0) {
-                                viewModel.guardarSolicitud()
-                            } else {
-                                viewModel.actualizarSolicitud()
-                            }
-                        },
-                        enabled = detallesTemp.isNotEmpty() && !isLoading
-                    ) {
-                        Icon(Icons.Default.Check, "Guardar")
                     }
                 }
             )
@@ -70,11 +56,65 @@ fun SolicitudScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
-            // Información de la solicitud
-            solicitudActual?.let { solicitud ->
-                InfoSolicitudCard(solicitud)
-                Spacer(modifier = Modifier.height(16.dp))
+            // Información básica
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "Información de la Solicitud",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    // Fecha
+                    OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column {
+                                Text(
+                                    "Fecha de Solicitud",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                                Text(
+                                    fechaSeleccionada.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")),
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                            }
+                            Icon(
+                                Icons.Default.CalendarToday,
+                                null,
+                                tint = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                    }
+
+                    // Cantidad de Personas
+                    OutlinedTextField(
+                        value = cantidadPersonas,
+                        onValueChange = { cantidadPersonas = it },
+                        label = { Text("Cantidad de Personas") },
+                        leadingIcon = { Icon(Icons.Default.People, null) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             // Botones para agregar productos
             Row(
@@ -100,9 +140,8 @@ fun SolicitudScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // Lista de productos
             Text(
                 "Productos Solicitados",
                 style = MaterialTheme.typography.titleMedium,
@@ -111,6 +150,7 @@ fun SolicitudScreen(
 
             Spacer(modifier = Modifier.height(8.dp))
 
+            // Lista de productos
             if (detallesTemp.isEmpty()) {
                 Box(
                     modifier = Modifier
@@ -150,9 +190,38 @@ fun SolicitudScreen(
                 }
             }
 
-            // Mostrar loading
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Observaciones
+            OutlinedTextField(
+                value = observaciones,
+                onValueChange = { observaciones = it },
+                label = { Text("Observaciones") },
+                placeholder = { Text("Comentarios adicionales...") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 3,
+                maxLines = 5
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Botón enviar
+            Button(
+                onClick = {
+                    if (detallesTemp.isNotEmpty()) {
+                        viewModel.guardarSolicitud()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = detallesTemp.isNotEmpty() && !isLoading
+            ) {
+                Icon(Icons.Default.Send, contentDescription = null)
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Enviar Solicitud")
+            }
+
             if (isLoading) {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
@@ -171,24 +240,23 @@ fun SolicitudScreen(
 
         if (mostrarDialogoReceta) {
             DialogoSeleccionarReceta(
-                viewModel = viewModel, // Pasar el ViewModel completo
+                viewModel = viewModel,
                 onDismiss = { mostrarDialogoReceta = false }
             )
         }
 
-        // Snackbars para mensajes
+        // Snackbars
         errorMessage?.let { mensaje ->
             LaunchedEffect(mensaje) {
-                // Mostrar snackbar o toast
+                // Aquí podrías mostrar un Snackbar
                 viewModel.clearError()
             }
         }
 
         successMessage?.let { mensaje ->
             LaunchedEffect(mensaje) {
-                // Mostrar snackbar o toast
                 viewModel.clearSuccess()
-                if (mensaje.contains("creada") || mensaje.contains("actualizada")) {
+                if (mensaje.contains("creada") || mensaje.contains("exitosa")) {
                     onNavigateBack()
                 }
             }
@@ -196,63 +264,9 @@ fun SolicitudScreen(
     }
 }
 
-@Composable
-fun InfoSolicitudCard(solicitud: Solicitud) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Text(
-                "Información de la Solicitud",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-
-            InfoRow("Sección", solicitud.seccion.nombreSeccion)
-            InfoRow("Docente", solicitud.docenteSeccion.let {
-                "${it.primeroNombre} ${it.apellidoPaterno}"
-            })
-            InfoRow("Sala", solicitud.reservaSala.sala.codigoSala)
-            InfoRow("Día", solicitud.reservaSala.diaSemana.nombreMostrar)
-            InfoRow("Bloque", solicitud.reservaSala.bloqueHorario.toString())
-            InfoRow("Personas", solicitud.cantidadPersonas.toString())
-            InfoRow(
-                "Fecha Solicitud",
-                solicitud.fechaSolicitud.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-            )
-        }
-    }
-}
-
-@Composable
-fun InfoRow(label: String, value: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 2.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = "$label:",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
-        )
-    }
-}
+// ============================================
+// COMPONENTES
+// ============================================
 
 @Composable
 fun DetalleProductoCard(
@@ -262,9 +276,7 @@ fun DetalleProductoCard(
 ) {
     var cantidad by remember { mutableStateOf(detalle.cantidadUnidadMedida.toString()) }
 
-    Card(
-        modifier = Modifier.fillMaxWidth()
-    ) {
+    Card(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -417,7 +429,7 @@ fun DialogoSeleccionarReceta(
     viewModel: SolicitudViewModel,
     onDismiss: () -> Unit
 ) {
-    val recetas by viewModel.recetasFiltradas.collectAsState()
+    val recetas by viewModel.recetas.collectAsState()
     val busqueda by viewModel.busquedaReceta.collectAsState()
 
     AlertDialog(
@@ -429,7 +441,6 @@ fun DialogoSeleccionarReceta(
                     .fillMaxWidth()
                     .height(500.dp)
             ) {
-                // Buscador
                 OutlinedTextField(
                     value = busqueda,
                     onValueChange = { viewModel.actualizarBusquedaReceta(it) },
@@ -466,13 +477,66 @@ fun DialogoSeleccionarReceta(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(recetas) { receta ->
-                            RecetaItemCard(
-                                receta = receta,
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
                                 onClick = {
                                     viewModel.cargarProductosDesdeReceta(receta.idReceta)
                                     onDismiss()
                                 }
-                            )
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.Top
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                text = receta.nombre,
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                text = receta.descripcion,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 2
+                                            )
+                                        }
+
+                                        AssistChip(
+                                            onClick = { },
+                                            label = { Text(receta.categoria) },
+                                            colors = AssistChipDefaults.assistChipColors(
+                                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                            )
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.height(4.dp))
+
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            Icons.Default.Restaurant,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                        Text(
+                                            text = "${receta.ingredientes.size} ingredientes",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -484,68 +548,4 @@ fun DialogoSeleccionarReceta(
             }
         }
     )
-}
-
-@Composable
-private fun RecetaItemCard(
-    receta: com.example.kubhubsystem_gp13_dam.ui.model.Receta,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        onClick = onClick
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = receta.nombre,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = receta.descripcion,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 2
-                    )
-                }
-
-                AssistChip(
-                    onClick = { },
-                    label = { Text(receta.categoria) },
-                    colors = AssistChipDefaults.assistChipColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    Icons.Default.Restaurant,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Text(
-                    text = "${receta.ingredientes.size} ingredientes",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        }
-    }
 }
