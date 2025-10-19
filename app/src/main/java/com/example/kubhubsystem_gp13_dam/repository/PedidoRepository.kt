@@ -5,6 +5,7 @@ import com.example.kubhubsystem_gp13_dam.local.entities.AglomeradoPedidoEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.PedidoEntity
 import com.example.kubhubsystem_gp13_dam.model.*
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.forEach
 import kotlinx.coroutines.flow.map
 import java.time.LocalDateTime
 
@@ -156,22 +157,55 @@ class PedidoRepository(
     }
 
     suspend fun recalcularAglomerado(idPedido: Int) {
-        // Eliminar aglomerado anterior
-        aglomeradoPedidoDao.eliminarPorPedido(idPedido)
+        try {
+            // 1. Limpiar aglomerado anterior
+            aglomeradoPedidoDao.eliminarPorPedido(idPedido)
 
-        // Obtener todas las solicitudes aprobadas o pendientes
-        val todasSolicitudes = solicitudDao.obtenerPorId(idPedido) // Ajustar query
-        
-        // Agrupar por producto y sumar cantidades
-        val aglomeradoMap = mutableMapOf<Int, MutableMap<String, Any>>()
+            // 2. Obtener todas las solicitudes aprobadas ✅ CAMBIO AQUÍ
+            val solicitudesAprobadas = solicitudDao.obtenerListaPorEstado("Aprobado")
 
-        // Aquí necesitarás iterar sobre las solicitudes y sus detalles
-        // Por ahora lo dejo simplificado
-        
-        // Insertar nuevo aglomerado
-        // aglomeradoPedidoDao.insertarVarios(nuevosAglomerados)
+            // 3. Agrupar productos por ID y sumar cantidades
+            val productosAgrupados = mutableMapOf<Int, Double>()
+            val asignaturaPorProducto = mutableMapOf<Int, Int?>()
+
+            solicitudesAprobadas.forEach { solicitudEntity ->
+                // Obtener detalles de la solicitud
+                val detalles = detalleSolicitudDao.obtenerPorSolicitud(solicitudEntity.idSolicitud)
+
+                // Obtener asignatura de la sección
+                val seccion = solicitudRepository.obtenerSolicitud(solicitudEntity.idSolicitud)
+                val idAsignatura = seccion?.reservaSala?.asignatura?.idAsignatura
+
+                detalles.forEach { detalle ->
+                    // Sumar cantidades del mismo producto
+                    val cantidadActual = productosAgrupados[detalle.idProducto] ?: 0.0
+                    productosAgrupados[detalle.idProducto] = cantidadActual + detalle.cantidaUnidadMedida
+
+                    // Guardar asignatura (usa la primera que encuentre)
+                    if (!asignaturaPorProducto.containsKey(detalle.idProducto)) {
+                        asignaturaPorProducto[detalle.idProducto] = idAsignatura
+                    }
+                }
+            }
+
+            // 4. Insertar en el aglomerado
+            val nuevosAglomerados = productosAgrupados.map { (idProducto, cantidad) ->
+                AglomeradoPedidoEntity(
+                    idAglomerado = 0,
+                    idPedido = idPedido,
+                    idProducto = idProducto,
+                    cantidadTotal = cantidad,
+                    idAsignatura = asignaturaPorProducto[idProducto]
+                )
+            }
+
+            if (nuevosAglomerados.isNotEmpty()) {
+                aglomeradoPedidoDao.insertarVarios(nuevosAglomerados)
+            }
+        } catch (e: Exception) {
+            throw Exception("Error al recalcular aglomerado: ${e.message}")
+        }
     }
-
     fun observarAglomeradoPorPedido(idPedido: Int): Flow<List<AglomeradoPedido>> {
         return aglomeradoPedidoDao.observarPorPedido(idPedido).map { entities ->
             entities.map { it.toDomain() }

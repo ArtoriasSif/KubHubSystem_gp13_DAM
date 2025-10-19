@@ -21,13 +21,17 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeInternalScreen(
-    pedidoViewModel: PedidoViewModel? = null  // ✅ Parámetro opcional
+    pedidoViewModel: PedidoViewModel? = null,
+    onNavigateToPedidos: () -> Unit = {}  // ✅ NUEVO: Para navegar a Gestión de Pedidos
 ) {
     val periodoRepository = remember { PeriodoRepository.getInstance() }
     val periodoActual by periodoRepository.periodoActual.collectAsState()
 
-    // ✅ Observar el pedido activo desde la BD
+    // Observar el pedido activo desde la BD
     val pedidoActivo by (pedidoViewModel?.pedidoActivo?.collectAsState() ?: remember { mutableStateOf(null) })
+
+    // ✅ NUEVO: Observar el aglomerado en tiempo real
+    val aglomerado by (pedidoViewModel?.aglomerado?.collectAsState() ?: remember { mutableStateOf(emptyList()) })
 
     var showIniciarPeriodoDialog by remember { mutableStateOf(false) }
     var showCerrarPeriodoDialog by remember { mutableStateOf(false) }
@@ -221,7 +225,7 @@ fun HomeInternalScreen(
             }
         }
 
-        // ✅ NUEVA SECCIÓN: Vista rápida del Aglomerado (si hay pedido activo)
+        // ✅ SECCIÓN ACTUALIZADA: Resumen del Pedido Actual
         if (pedidoActivo != null) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -253,6 +257,7 @@ fun HomeInternalScreen(
 
                     HorizontalDivider()
 
+                    // ✅ Usar el aglomerado observado en tiempo real
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -262,18 +267,25 @@ fun HomeInternalScreen(
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(
-                            text = "${pedidoActivo!!.aglomerado.size}",
+                            text = "${aglomerado.size}",  // ✅ CAMBIO PRINCIPAL
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF2196F3)
                         )
                     }
 
-                    Text(
-                        text = "Ver más detalles en Gestión de Pedidos",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    // ✅ NUEVO: Botón para ir a Gestión de Pedidos
+                    Button(
+                        onClick = onNavigateToPedidos,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF2196F3)
+                        )
+                    ) {
+                        Icon(Icons.Default.Visibility, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Ver más detalles en Gestión de Pedidos")
+                    }
                 }
             }
         }
@@ -315,27 +327,23 @@ fun HomeInternalScreen(
         }
     }
 
-    // ✅ Diálogo para iniciar periodo (ACTUALIZADO)
+    // Diálogo para iniciar periodo
     if (showIniciarPeriodoDialog) {
         IniciarPeriodoDialog(
             onDismiss = { showIniciarPeriodoDialog = false },
             onConfirm = { fechaCierre ->
-                // ✅ 1. Crear el período en PeriodoRepository
                 periodoRepository.iniciarPeriodo(fechaCierre)
-
-                // ✅ 2. Crear el pedido en la base de datos
                 pedidoViewModel?.let { vm ->
                     val fechaInicio = LocalDate.now().atStartOfDay()
                     val fechaFin = fechaCierre.atTime(23, 59, 59)
                     vm.iniciarNuevoPeriodo(fechaInicio, fechaFin)
                 }
-
                 showIniciarPeriodoDialog = false
             }
         )
     }
 
-    // ✅ Diálogo para cerrar periodo (ACTUALIZADO)
+    // Diálogo para cerrar periodo
     if (showCerrarPeriodoDialog) {
         AlertDialog(
             onDismissRequest = { showCerrarPeriodoDialog = false },
@@ -346,14 +354,10 @@ fun HomeInternalScreen(
             confirmButton = {
                 Button(
                     onClick = {
-                        // ✅ 1. Cerrar el período en PeriodoRepository
                         periodoActual?.let { periodoRepository.cerrarPeriodo(it.idPeriodo) }
-
-                        // ✅ 2. Desactivar el pedido en la BD
                         pedidoActivo?.let { pedido ->
                             pedidoViewModel?.cerrarPedidoActual(pedido.idPedido)
                         }
-
                         showCerrarPeriodoDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
@@ -370,6 +374,7 @@ fun HomeInternalScreen(
     }
 }
 
+// Resto de funciones Composable (sin cambios)
 @Composable
 fun InfoRow(
     label: String,

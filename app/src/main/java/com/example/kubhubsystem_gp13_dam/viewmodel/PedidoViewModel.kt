@@ -163,11 +163,27 @@ class PedidoViewModel(
     fun aprobarSolicitud(idSolicitud: Int) {
         viewModelScope.launch {
             try {
+                _isLoading.value = true
+
+                // 1. Aprobar la solicitud
                 solicitudRepository.actualizarEstadoSolicitud(idSolicitud, "Aprobado")
-                recalcularAglomerado()
+
+                // 2. Obtener el pedido activo
+                val pedido = _pedidoActivo.value
+
+                // 3. Recalcular aglomerado si hay pedido activo
+                if (pedido != null) {
+                    pedidoRepository.recalcularAglomerado(pedido.idPedido)
+                }
+
+                // 4. Verificar estado del pedido
                 verificarEstadoPedido()
+
+                _successMessage.value = "Solicitud aprobada y agregada al aglomerado"
             } catch (e: Exception) {
                 _errorMessage.value = "Error al aprobar: ${e.message}"
+            } finally {
+                _isLoading.value = false
             }
         }
     }

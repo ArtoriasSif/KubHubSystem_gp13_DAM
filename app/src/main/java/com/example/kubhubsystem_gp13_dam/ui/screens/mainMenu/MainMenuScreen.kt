@@ -195,7 +195,10 @@ fun MainMenuScreen(
             ) {
                 composable("home_internal") {
                     HomeInternalScreen(
-                        pedidoViewModel = pedidoViewModel  // ✅ Pasar el ViewModel
+                        pedidoViewModel = pedidoViewModel,
+                        onNavigateToPedidos = {
+                            navController.navigate("gestion_pedidos")  // O la ruta que uses
+                        }
                     )
                 }
                 composable("dashboard") {

@@ -25,6 +25,9 @@ interface SolicitudDAO {
     @Query("SELECT * FROM solicitud WHERE estadoSolicitud = :estado")
     fun observarPorEstado(estado: String): Flow<List<SolicitudEntity>>
 
+    @Query("SELECT * FROM solicitud WHERE estadoSolicitud = :estado")
+    suspend fun obtenerPorEstado(estado: String): List<SolicitudEntity>
+
     @Query("SELECT * FROM solicitud WHERE idSeccion = :idSeccion")
     fun observarPorSeccion(idSeccion: Int): Flow<List<SolicitudEntity>>
 
@@ -36,4 +39,7 @@ interface SolicitudDAO {
 
     @Query("DELETE FROM solicitud")
     suspend fun eliminarTodas()
+
+    @Query("SELECT * FROM solicitud WHERE estadoSolicitud = :estado")
+    suspend fun obtenerListaPorEstado(estado: String): List<SolicitudEntity>
 }
