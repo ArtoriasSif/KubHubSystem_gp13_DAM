@@ -10,14 +10,21 @@
     <uses-feature
         android:name="android.hardware.camera"
         android:required="false" />
-
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.CAMERA" />
 
-    <!-- Para Android 13+ (API 33+) - Permisos más específicos -->
+    <!-- Galería - Android 13+ (API 33+) -->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 
+    <!-- Galería - Android 11-12 (API 30-32) -->
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+
+    <!-- Escritura - Android 11-12 (API 30-32) -->
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"
+        tools:ignore="ScopedStorage" />
     <!-- Para Android 10+ mantener compatibilidad con almacenamiento -->
     <application
         android:allowBackup="true"
@@ -29,6 +36,21 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.KubHubSystem_gp13_DAM"
         tools:targetApi="31"> <!-- Asegúrate que targetApi sea 31 o superior -->
+
+        <!-- ====================================== -->
+        <!-- FILEPROVIDER PARA CÁMARA -->
+        <!-- ====================================== -->
+        <!-- Necesario para compartir archivos entre la app y la cámara -->
+        <!-- FILEPROVIDER PARA CÁMARA EN ANDROID 11+ -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_provider_paths" />
+        </provider>
 
         <activity
             android:name=".MainActivity"
@@ -42,5 +64,4 @@
             </intent-filter>
         </activity>
     </application>
-
 </manifest>

@@ -26,16 +26,13 @@ import com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome.HomeInternalScr
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.inventario.InventarioScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.recetas.RecetasScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.solicitud.SolicitudScreen
-import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.usuarios.UsuariosScreen
-import com.example.kubhubsystem_gp13_dam.ui.screens.perfil.PerfilUsuarioScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.perfil.PerfilUsuarioScreenSimple
 import kotlinx.coroutines.launch
 // ✅ NUEVOS IMPORTS
 
 
 import com.example.kubhubsystem_gp13_dam.ui.viewmodel.SolicitudViewModel
 import com.example.kubhubsystem_gp13_dam.viewmodel.PedidoViewModel
-
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -355,160 +352,5 @@ fun MainMenuScreen(
                 }
             }
         }
-    }
-}
-
-
-// Versión simplificada de PerfilUsuarioScreen que no usa ViewModels
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun PerfilUsuarioScreenSimple(
-    usuario: com.example.kubhubsystem_gp13_dam.model.Usuario,
-    perfilManager: PerfilUsuarioManager,
-    onNavigateBack: () -> Unit
-) {
-    val context = LocalContext.current
-    val perfiles by perfilManager.perfiles.collectAsState()
-    val perfil = perfiles[usuario.idUsuario]
-
-    var mostrarDialogoPermisos by remember { mutableStateOf(false) }
-
-    // Image picker
-    val imagePickerState = com.example.kubhubsystem_gp13_dam.utils.rememberImagePickerLauncher(
-        onImageSelected = { uri ->
-            perfilManager.actualizarFotoPerfil(usuario.idUsuario, uri)
-        },
-        onPermissionDenied = {
-            mostrarDialogoPermisos = true
-        }
-    )
-
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Perfil de Usuario") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, "Volver")
-                    }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(24.dp),
-            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
-        ) {
-            // Avatar
-            Box(modifier = Modifier.size(160.dp)) {
-                com.example.kubhubsystem_gp13_dam.ui.components.AvatarUsuario(
-                    perfil = perfil,
-                    size = 160.dp,
-                    onClick = { imagePickerState.solicitarImagen() }
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Nombre
-            Text(
-                text = "${usuario.primeroNombre} ${usuario.segundoNombre} ${usuario.apellidoPaterno} ${usuario.apellidoMaterno}".trim(),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Rol
-            Surface(
-                shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.secondaryContainer
-            ) {
-                Text(
-                    text = usuario.rol.obtenerNombre(),
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.labelLarge
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Botón cambiar foto
-            Button(onClick = { imagePickerState.solicitarImagen() }) {
-                Icon(Icons.Default.CameraAlt, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Cambiar foto")
-            }
-
-            if (perfil?.fotoPerfil != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(onClick = {
-                    perfilManager.actualizarFotoPerfil(usuario.idUsuario, null)
-                }) {
-                    Icon(Icons.Default.Delete, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Eliminar foto")
-                }
-            }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Información
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    InfoRow("Email", usuario.email)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    InfoRow("Username", usuario.username)
-                    Spacer(modifier = Modifier.height(12.dp))
-                    InfoRow("Rol", usuario.rol.obtenerNombre())
-                }
-            }
-        }
-    }
-
-    // Diálogo de permisos
-    if (mostrarDialogoPermisos) {
-        AlertDialog(
-            onDismissRequest = { mostrarDialogoPermisos = false },
-            icon = {
-                Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error)
-            },
-            title = { Text("Permiso necesario") },
-            text = {
-                Text("La app necesita acceso a tus fotos para cambiar la imagen de perfil.\n\n¿Deseas abrir la configuración?")
-            },
-            confirmButton = {
-                Button(onClick = {
-                    com.example.kubhubsystem_gp13_dam.utils.ImagePickerHelper.abrirConfiguracionApp(context)
-                    mostrarDialogoPermisos = false
-                }) {
-                    Text("Abrir configuración")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { mostrarDialogoPermisos = false }) {
-                    Text("Cancelar")
-                }
-            }
-        )
-    }
-}
-
-@Composable
-private fun InfoRow(label: String, value: String) {
-    Column {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = androidx.compose.ui.text.font.FontWeight.Medium
-        )
     }
 }

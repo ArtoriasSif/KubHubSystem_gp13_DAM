@@ -70,7 +70,7 @@ class PerfilUsuarioViewModel(
     /**
      * Actualiza la foto de perfil de un usuario específico
      */
-    fun actualizarFotoPerfil(idUsuario: Int, fotoUri: Uri) {
+    fun actualizarFotoPerfil(idUsuario: Int, fotoUri: Uri?) {
         viewModelScope.launch {
             _estado.update { it.copy(procesando = true, error = null) }
             try {
