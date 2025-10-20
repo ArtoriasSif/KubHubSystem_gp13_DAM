@@ -27,6 +27,7 @@ fun SolicitudScreen(
     val detallesTemp by viewModel.detallesTemp.collectAsState()
     val productosDisponibles by viewModel.productosDisponibles.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    var cantidadPersonasError by remember { mutableStateOf(false) }
     val errorMessage by viewModel.errorMessage.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
 
@@ -107,13 +108,36 @@ fun SolicitudScreen(
                         }
                     }
 
-                    // Cantidad de Personas
                     OutlinedTextField(
                         value = cantidadPersonas,
-                        onValueChange = { cantidadPersonas = it },
+                        onValueChange = { newValue ->
+                            // Solo permitir números
+                            if (newValue.isEmpty() || newValue.all { it.isDigit() }) {
+                                cantidadPersonas = newValue
+                                cantidadPersonasError =
+                                    newValue.isEmpty() || newValue.toIntOrNull() == null || newValue.toInt() <= 0
+
+                                // Actualizar en el ViewModel si es válido
+                                newValue.toIntOrNull()?.let { cantidad ->
+                                    if (cantidad > 0) {
+                                        viewModel.actualizarCantidadPersonas(cantidad)
+                                    }
+                                }
+                            }
+                        },
                         label = { Text("Cantidad de Personas") },
                         leadingIcon = { Icon(Icons.Default.People, null) },
-                        modifier = Modifier.fillMaxWidth()
+                        isError = cantidadPersonasError,
+                        supportingText = {
+                            if (cantidadPersonasError) {
+                                Text(
+                                    "Ingrese un número válido mayor a 0",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
                     )
                 }
             }
@@ -397,6 +421,7 @@ fun DetalleProductoCard(
     onEliminar: () -> Unit
 ) {
     var cantidad by remember { mutableStateOf(detalle.cantidadUnidadMedida.toString()) }
+    var cantidadError by remember { mutableStateOf(false) }  // ✅ NUEVO
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -423,18 +448,36 @@ fun DetalleProductoCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = cantidad,
-                    onValueChange = {
-                        cantidad = it
-                        it.toDoubleOrNull()?.let { nuevaCantidad ->
-                            onCantidadChange(nuevaCantidad)
-                        }
-                    },
-                    modifier = Modifier.width(80.dp),
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium
-                )
+                // ✅ CAMPO DE CANTIDAD VALIDADO
+                Column {
+                    OutlinedTextField(
+                        value = cantidad,
+                        onValueChange = { newValue ->
+                            // Permitir números y un punto decimal
+                            if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                cantidad = newValue
+                                val doubleValue = newValue.toDoubleOrNull()
+                                cantidadError = doubleValue == null || doubleValue <= 0
+
+                                if (doubleValue != null && doubleValue > 0) {
+                                    onCantidadChange(doubleValue)
+                                }
+                            }
+                        },
+                        modifier = Modifier.width(80.dp),
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        isError = cantidadError
+                    )
+                    if (cantidadError && cantidad.isNotEmpty()) {
+                        Text(
+                            "Inválido",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+                }
 
                 Text(
                     text = detalle.producto.unidadMedida,
@@ -462,6 +505,7 @@ fun DialogoAgregarProducto(
 ) {
     var productoSeleccionado by remember { mutableStateOf<Producto?>(null) }
     var cantidad by remember { mutableStateOf("") }
+    var cantidadError by remember { mutableStateOf(false) }  // ✅ NUEVO
     var expandido by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -513,12 +557,29 @@ fun DialogoAgregarProducto(
                     }
                 }
 
+                // ✅ CAMPO DE CANTIDAD VALIDADO
                 OutlinedTextField(
                     value = cantidad,
-                    onValueChange = { cantidad = it },
+                    onValueChange = { newValue ->
+                        // Permitir números y un punto decimal
+                        if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                            cantidad = newValue
+                            val doubleValue = newValue.toDoubleOrNull()
+                            cantidadError = doubleValue == null || doubleValue <= 0
+                        }
+                    },
                     label = { Text("Cantidad") },
                     suffix = { Text(productoSeleccionado?.unidadMedida ?: "") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = cantidadError,
+                    supportingText = {
+                        if (cantidadError && cantidad.isNotEmpty()) {
+                            Text(
+                                "Ingrese un número válido mayor a 0",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 )
             }
         },
@@ -533,7 +594,7 @@ fun DialogoAgregarProducto(
                         }
                     }
                 },
-                enabled = productoSeleccionado != null && cantidad.toDoubleOrNull() != null
+                enabled = productoSeleccionado != null && !cantidadError && cantidad.isNotEmpty()  // ✅ Validar
             ) {
                 Text("Agregar")
             }
