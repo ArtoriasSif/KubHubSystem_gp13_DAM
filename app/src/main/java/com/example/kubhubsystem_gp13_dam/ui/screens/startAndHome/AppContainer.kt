@@ -10,8 +10,8 @@ import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 import com.example.kubhubsystem_gp13_dam.repository.*
 import com.example.kubhubsystem_gp13_dam.data.repository.AsignaturaRepository  // ✅ AGREGAR
 import com.example.kubhubsystem_gp13_dam.ui.navigation.MenuRoutes
-import com.example.kubhubsystem_gp13_dam.ui.screens.login.LoginScreen
-import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.MainMenuScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.LoginScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.MainMenuScreen
 
 import com.example.kubhubsystem_gp13_dam.ui.viewmodel.SolicitudViewModel
 import com.example.kubhubsystem_gp13_dam.viewmodel.PedidoViewModel

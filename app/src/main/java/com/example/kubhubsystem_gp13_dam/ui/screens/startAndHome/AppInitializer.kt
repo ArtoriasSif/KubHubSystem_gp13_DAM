@@ -1,4 +1,4 @@
-package com.example.kubhubsystem_gp13_dam.ui
+package com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome
 
 import android.util.Log
 import com.example.kubhubsystem_gp13_dam.data.repository.AsignaturaRepository

@@ -1,4 +1,4 @@
-package com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.solicitud
+package com.example.kubhubsystem_gp13_dam.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn

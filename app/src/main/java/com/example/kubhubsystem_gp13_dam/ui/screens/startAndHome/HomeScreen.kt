@@ -28,7 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import com.example.kubhubsystem_gp13_dam.R
 import com.example.kubhubsystem_gp13_dam.local.AppDatabase
-import com.example.kubhubsystem_gp13_dam.ui.AppInitializer
+import com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome.AppInitializer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 

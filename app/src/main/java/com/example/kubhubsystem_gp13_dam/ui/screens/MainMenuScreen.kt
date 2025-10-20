@@ -1,4 +1,4 @@
-package com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu
+package com.example.kubhubsystem_gp13_dam.ui.screens
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -6,6 +6,7 @@ import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -15,17 +16,14 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.example.kubhubsystem_gp13_dam.local.AppDatabase
 import com.example.kubhubsystem_gp13_dam.manager.PerfilUsuarioManager
+import com.example.kubhubsystem_gp13_dam.model.Rol
+import com.example.kubhubsystem_gp13_dam.model.Usuario
 import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 import com.example.kubhubsystem_gp13_dam.repository.RolRepository
 import com.example.kubhubsystem_gp13_dam.repository.DocenteRepository
-import com.example.kubhubsystem_gp13_dam.ui.screens.GestionAcademicaScreen
-import com.example.kubhubsystem_gp13_dam.ui.screens.GestionPedidosScreen
-import com.example.kubhubsystem_gp13_dam.ui.screens.GestionUsuariosScreen
-import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.dashboard.DashboardScreen
+import com.example.kubhubsystem_gp13_dam.ui.screens.dashboard.DashboardScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome.HomeInternalScreen
-import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.inventario.InventarioScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.recetas.RecetasScreen
-import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.solicitud.SolicitudScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.perfil.PerfilUsuarioScreenSimple
 import kotlinx.coroutines.launch
 // ✅ NUEVOS IMPORTS
@@ -56,7 +54,7 @@ fun MainMenuScreen(
     val perfilManager = remember { PerfilUsuarioManager.getInstance() }
 
     // Estado para usuarios
-    var usuarios by remember { mutableStateOf<List<com.example.kubhubsystem_gp13_dam.model.Usuario>>(emptyList()) }
+    var usuarios by remember { mutableStateOf<List<Usuario>>(emptyList()) }
     var cargando by remember { mutableStateOf(true) }
 
     // Cargar usuarios al iniciar
@@ -64,10 +62,10 @@ fun MainMenuScreen(
         try {
             val usuariosEntity = usuarioRepository.obtenerTodos()
             usuarios = usuariosEntity.map { entity ->
-                com.example.kubhubsystem_gp13_dam.model.Usuario(
+                Usuario(
                     idUsuario = entity.idUsuario,
-                    rol = com.example.kubhubsystem_gp13_dam.model.Rol.desdeId(entity.idRol)
-                        ?: com.example.kubhubsystem_gp13_dam.model.Rol.DOCENTE,
+                    rol = Rol.desdeId(entity.idRol)
+                        ?: Rol.DOCENTE,
                     primeroNombre = entity.primeroNombre,
                     segundoNombre = entity.segundoNombre,
                     apellidoMaterno = entity.apellidoMaterno,
@@ -267,7 +265,7 @@ fun MainMenuScreen(
                     if (cargando) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
-                            contentAlignment = androidx.compose.ui.Alignment.Center
+                            contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator()
                         }
@@ -286,10 +284,10 @@ fun MainMenuScreen(
                         } else {
                             Box(
                                 modifier = Modifier.fillMaxSize(),
-                                contentAlignment = androidx.compose.ui.Alignment.Center
+                                contentAlignment = Alignment.Center
                             ) {
                                 Column(
-                                    horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                                    horizontalAlignment = Alignment.CenterHorizontally,
                                     verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
                                     Icon(
