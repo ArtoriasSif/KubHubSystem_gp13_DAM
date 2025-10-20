@@ -26,6 +26,7 @@ interface UsuarioDao {
     @Query("SELECT * FROM usuario WHERE idUsuario = :id")
     suspend fun obtenerPorId(id: Int): UsuarioEntity?
 
+
     @Query("SELECT * FROM usuario WHERE email = :emailOrUsername AND password = :contraseña" +
                                             " OR username = :emailOrUsername AND password = :contraseña")
     suspend fun iniciarSesion(emailOrUsername: String, contraseña: String): UsuarioEntity?
