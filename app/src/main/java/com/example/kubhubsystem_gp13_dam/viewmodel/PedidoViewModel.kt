@@ -14,7 +14,7 @@ class PedidoViewModel(
     private val solicitudRepository: SolicitudRepository
 ) : ViewModel() {
 
-    // Estados
+    //Estados
     private val _pedidoActivo = MutableStateFlow<Pedido?>(null)
     val pedidoActivo: StateFlow<Pedido?> = _pedidoActivo.asStateFlow()
 

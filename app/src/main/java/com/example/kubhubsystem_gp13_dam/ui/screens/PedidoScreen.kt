@@ -27,12 +27,12 @@ fun GestionPedidosScreen(  // ✅ Nombre cambiado
     viewModel: PedidoViewModel,
     onNavigateToSolicitud: (Int?) -> Unit
 ) {
-    val pedidoActivo by viewModel.pedidoActivo.collectAsState()
-    val solicitudesPedido by viewModel.solicitudesPedido.collectAsState()
-    val aglomerado by viewModel.aglomerado.collectAsState()
-    val progresoPedido by viewModel.progresoPedido.collectAsState()
-    val mostrarPedidoAnterior by viewModel.mostrarPedidoAnterior.collectAsState()
-    val isLoading by viewModel.isLoading.collectAsState()
+    var pedidoActivo by remember { mutableStateOf(viewModel.pedidoActivo.value) }
+    var solicitudesPedido by remember { mutableStateOf(viewModel.solicitudesPedido.value) }
+    var aglomerado by remember { mutableStateOf(viewModel.aglomerado.value) }
+    var progresoPedido by remember { mutableStateOf(viewModel.progresoPedido.value) }
+    var mostrarPedidoAnterior by remember { mutableStateOf(viewModel.mostrarPedidoAnterior.value) }
+    var isLoading by remember { mutableStateOf(viewModel.isLoading.value) }
 
     var pestañaSeleccionada by remember { mutableStateOf(0) }
 
