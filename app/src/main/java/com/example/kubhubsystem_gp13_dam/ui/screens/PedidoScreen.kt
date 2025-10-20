@@ -13,49 +13,67 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.kubhubsystem_gp13_dam.model.*
-
 import com.example.kubhubsystem_gp13_dam.viewmodel.PedidoViewModel
 
-
+/**
+ * Pantalla principal de gestión de pedidos.
+ * Muestra el estado del pedido activo, aglomerado de productos y solicitudes.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GestionPedidosScreen(  // ✅ Nombre cambiado
+fun GestionPedidosScreen(
     viewModel: PedidoViewModel,
     onNavigateToSolicitud: (Int?) -> Unit
 ) {
-    var pedidoActivo by remember { mutableStateOf(viewModel.pedidoActivo.value) }
-    var solicitudesPedido by remember { mutableStateOf(viewModel.solicitudesPedido.value) }
-    var aglomerado by remember { mutableStateOf(viewModel.aglomerado.value) }
-    var progresoPedido by remember { mutableStateOf(viewModel.progresoPedido.value) }
-    var mostrarPedidoAnterior by remember { mutableStateOf(viewModel.mostrarPedidoAnterior.value) }
-    var isLoading by remember { mutableStateOf(viewModel.isLoading.value) }
+    // Observar estados del ViewModel usando collectAsState
+    val pedidoActivo by viewModel.pedidoActivo.collectAsState()
+    val solicitudesPedido by viewModel.solicitudesPedido.collectAsState()
+    val aglomerado by viewModel.aglomerado.collectAsState()
+    val progresoPedido by viewModel.progresoPedido.collectAsState()
+    val mostrarPedidoAnterior by viewModel.mostrarPedidoAnterior.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
+    // Estado local para la pestaña seleccionada
     var pestañaSeleccionada by remember { mutableStateOf(0) }
+
+    // Monitorear tiempo de composición y detectar errores
+    DisposableEffect(Unit) {
+        val startTime = System.currentTimeMillis()
+
+        onDispose {
+            val compositionTime = System.currentTimeMillis() - startTime
+            // Si la composición tarda más de 3 segundos, podría haber un problema
+            if (compositionTime > 3000) {
+                println("⚠️ WARNING: GestionPedidosScreen tomó ${compositionTime}ms en componerse")
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("Gestión de Pedidos") },
                 actions = {
+                    // Botón para alternar entre pedido actual e histórico
                     IconButton(onClick = { viewModel.toggleMostrarPedidoAnterior() }) {
                         Icon(
                             if (mostrarPedidoAnterior) Icons.Default.Refresh else Icons.Default.History,
-                            "Ver histórico"
+                            contentDescription = "Ver histórico"
                         )
                     }
                 }
             )
         },
         floatingActionButton = {
+            // Mostrar FAB solo si no está en modo histórico y está en pestaña de solicitudes
             if (!mostrarPedidoAnterior && pestañaSeleccionada == 1) {
                 FloatingActionButton(
                     onClick = { onNavigateToSolicitud(null) }
                 ) {
-                    Icon(Icons.Default.Add, "Nueva Solicitud")
+                    Icon(Icons.Default.Add, contentDescription = "Nueva Solicitud")
                 }
             }
         }
@@ -74,7 +92,7 @@ fun GestionPedidosScreen(  // ✅ Nombre cambiado
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Tabs
+                // Pestañas: Aglomerado y Solicitudes
                 TabRow(selectedTabIndex = pestañaSeleccionada) {
                     Tab(
                         selected = pestañaSeleccionada == 0,
@@ -88,7 +106,7 @@ fun GestionPedidosScreen(  // ✅ Nombre cambiado
                     )
                 }
 
-                // Contenido según pestaña
+                // Contenido según pestaña seleccionada
                 when (pestañaSeleccionada) {
                     0 -> AglomeradoTab(
                         aglomerado = aglomerado,
@@ -101,36 +119,11 @@ fun GestionPedidosScreen(  // ✅ Nombre cambiado
                     )
                 }
             } ?: run {
-                // No hay pedido activo
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Description,
-                            contentDescription = null,
-                            modifier = Modifier.size(80.dp),
-                            tint = MaterialTheme.colorScheme.outline
-                        )
-                        Text(
-                            "No hay pedido activo",
-                            style = MaterialTheme.typography.titleLarge
-                        )
-                        Text(
-                            "Inicia un nuevo período para comenzar",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.outline
-                        )
-                    }
-                }
+                // No hay pedido activo - Mostrar estado vacío
+                EmptyPedidoState()
             }
 
+            // Indicador de carga
             if (isLoading) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
@@ -138,17 +131,58 @@ fun GestionPedidosScreen(  // ✅ Nombre cambiado
     }
 }
 
+/**
+ * Componente que muestra el estado vacío cuando no hay pedido activo.
+ */
+@Composable
+private fun EmptyPedidoState() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                Icons.Default.Description,
+                contentDescription = null,
+                modifier = Modifier.size(80.dp),
+                tint = MaterialTheme.colorScheme.outline
+            )
+            Text(
+                "No hay pedido activo",
+                style = MaterialTheme.typography.titleLarge
+            )
+            Text(
+                "Inicia un nuevo período para comenzar",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.outline
+            )
+        }
+    }
+}
+
+/**
+ * Barra de progreso visual que muestra el estado actual del pedido.
+ * Incluye 4 estados: En Proceso, Pendiente Revisión, Check Inventario, Enviado Cotización.
+ */
 @Composable
 fun BarraProgresoPedido(
     estadoActual: EstadoPedido,
     progreso: Float
 ) {
-    val estados = listOf(
-        EstadoPedido.EN_PROCESO,
-        EstadoPedido.PENDIENTE_REVISION,
-        EstadoPedido.CHECK_INVENTARIO,
-        EstadoPedido.ENVIADO_COTIZACION
-    )
+    // Lista de estados en orden secuencial
+    val estados = remember {
+        listOf(
+            EstadoPedido.EN_PROCESO,
+            EstadoPedido.PENDIENTE_REVISION,
+            EstadoPedido.CHECK_INVENTARIO,
+            EstadoPedido.ENVIADO_COTIZACION
+        )
+    }
 
     Card(
         modifier = Modifier
@@ -168,6 +202,7 @@ fun BarraProgresoPedido(
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // Fila de estados con indicadores visuales
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
@@ -177,7 +212,7 @@ fun BarraProgresoPedido(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         modifier = Modifier.weight(1f)
                     ) {
-                        // Círculo de estado
+                        // Círculo indicador de estado
                         Box(
                             modifier = Modifier
                                 .size(40.dp)
@@ -191,6 +226,7 @@ fun BarraProgresoPedido(
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
+                            // Check si está completado, número si no
                             if (estado.orden < estadoActual.orden) {
                                 Icon(
                                     Icons.Default.Check,
@@ -212,6 +248,7 @@ fun BarraProgresoPedido(
 
                         Spacer(modifier = Modifier.height(8.dp))
 
+                        // Nombre del estado
                         Text(
                             estado.displayName,
                             style = MaterialTheme.typography.bodySmall,
@@ -224,7 +261,7 @@ fun BarraProgresoPedido(
                         )
                     }
 
-                    // Línea conectora
+                    // Línea conectora entre estados
                     if (index < estados.size - 1) {
                         Box(
                             modifier = Modifier
@@ -244,7 +281,7 @@ fun BarraProgresoPedido(
                 }
             }
 
-            // Barra de progreso para solicitudes procesadas
+            // Barra de progreso de solicitudes (solo visible en estado PENDIENTE_REVISION)
             if (estadoActual == EstadoPedido.PENDIENTE_REVISION) {
                 Spacer(modifier = Modifier.height(16.dp))
                 Column {
@@ -276,6 +313,10 @@ fun BarraProgresoPedido(
     }
 }
 
+/**
+ * Pestaña que muestra el aglomerado de productos del pedido.
+ * Permite filtrar, agregar y editar cantidades.
+ */
 @Composable
 fun AglomeradoTab(
     aglomerado: List<AglomeradoPedido>,
@@ -289,7 +330,7 @@ fun AglomeradoTab(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Filtros y acciones
+        // Barra de acciones: contador, filtro y botón agregar
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -301,14 +342,21 @@ fun AglomeradoTab(
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Botón de filtro por asignatura
                 FilledTonalButton(
-                    onClick = { /* Implementar filtro por asignatura */ }
+                    onClick = {
+                        // <- Implementar filtro por asignatura
+                        // Mostrar diálogo con lista de asignaturas disponibles
+                        // y aplicar filtro según selección del usuario
+                        viewModel.aplicarFiltroAsignatura(filtroAsignatura)
+                    }
                 ) {
                     Icon(Icons.Default.FilterList, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Filtrar")
                 }
 
+                // Botón para agregar producto manual
                 Button(onClick = { mostrarDialogoAgregar = true }) {
                     Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
@@ -319,30 +367,17 @@ fun AglomeradoTab(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Lista de productos o estado vacío
         if (aglomerado.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.Inventory,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.outline
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "No hay productos en el aglomerado",
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                }
-            }
+            EmptyAglomeradoState()
         } else {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(aglomerado) { item ->
+                items(
+                    items = aglomerado,
+                    key = { it.idAglomerado } // Clave única para optimizar recomposición
+                ) { item ->
                     AglomeradoProductoCard(
                         aglomerado = item,
                         onCantidadChange = { nuevaCantidad ->
@@ -355,12 +390,44 @@ fun AglomeradoTab(
     }
 }
 
+/**
+ * Estado vacío para cuando no hay productos en el aglomerado.
+ */
+@Composable
+private fun EmptyAglomeradoState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Default.Inventory,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.outline
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "No hay productos en el aglomerado",
+                color = MaterialTheme.colorScheme.outline
+            )
+        }
+    }
+}
+
+/**
+ * Card individual de producto en el aglomerado.
+ * Permite editar la cantidad de forma inline.
+ */
 @Composable
 fun AglomeradoProductoCard(
     aglomerado: AglomeradoPedido,
     onCantidadChange: (Double) -> Unit
 ) {
-    var cantidad by remember { mutableStateOf(aglomerado.cantidadTotal.toString()) }
+    // Estado local para edición de cantidad
+    var cantidad by remember(aglomerado.cantidadTotal) {
+        mutableStateOf(aglomerado.cantidadTotal.toString())
+    }
     var editando by remember { mutableStateOf(false) }
 
     Card(
@@ -373,6 +440,7 @@ fun AglomeradoProductoCard(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Información del producto
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = aglomerado.producto.nombreProducto,
@@ -384,6 +452,7 @@ fun AglomeradoProductoCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline
                 )
+                // Mostrar asignatura si está asignado
                 aglomerado.asignatura?.let {
                     Text(
                         text = "Asignatura: ${it.nombreAsignatura}",
@@ -393,11 +462,13 @@ fun AglomeradoProductoCard(
                 }
             }
 
+            // Cantidad editable
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 if (editando) {
+                    // Modo edición: TextField + botón confirmar
                     OutlinedTextField(
                         value = cantidad,
                         onValueChange = { cantidad = it },
@@ -412,16 +483,17 @@ fun AglomeradoProductoCard(
                             }
                         }
                     ) {
-                        Icon(Icons.Default.Check, "Confirmar")
+                        Icon(Icons.Default.Check, contentDescription = "Confirmar")
                     }
                 } else {
+                    // Modo lectura: cantidad + botón editar
                     Text(
                         text = "${aglomerado.cantidadTotal} ${aglomerado.producto.unidadMedida}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
                     IconButton(onClick = { editando = true }) {
-                        Icon(Icons.Default.Edit, "Editar")
+                        Icon(Icons.Default.Edit, contentDescription = "Editar")
                     }
                 }
             }
@@ -429,6 +501,10 @@ fun AglomeradoProductoCard(
     }
 }
 
+/**
+ * Pestaña que muestra todas las solicitudes del pedido.
+ * Permite filtrar por estado y aprobar/rechazar solicitudes.
+ */
 @Composable
 fun SolicitudesTab(
     solicitudes: List<Solicitud>,
@@ -436,15 +512,17 @@ fun SolicitudesTab(
     onVerDetalle: (Int) -> Unit
 ) {
     var filtroEstado by remember { mutableStateOf("Todos") }
-    var solicitudExpandida by remember { mutableStateOf<Int?>(null) }  // ✅ NUEVO
-    val estados = listOf("Todos", "Pendiente", "Aprobado", "Rechazado")
+    var solicitudExpandida by remember { mutableStateOf<Int?>(null) }
+
+    // Lista de estados posibles
+    val estados = remember { listOf("Todos", "Pendiente", "Aprobado", "Rechazado") }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Filtro por estado
+        // Tabs de filtro por estado
         ScrollableTabRow(
             selectedTabIndex = estados.indexOf(filtroEstado),
             edgePadding = 0.dp
@@ -460,40 +538,30 @@ fun SolicitudesTab(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        val solicitudesFiltradas = if (filtroEstado == "Todos") {
-            solicitudes
-        } else {
-            solicitudes.filter { it.estado == filtroEstado }  // ✅ Filtrar por estado
+        // Filtrar solicitudes según estado seleccionado
+        val solicitudesFiltradas = remember(solicitudes, filtroEstado) {
+            if (filtroEstado == "Todos") {
+                solicitudes
+            } else {
+                solicitudes.filter { it.estado == filtroEstado }
+            }
         }
 
+        // Lista de solicitudes o estado vacío
         if (solicitudesFiltradas.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(
-                        Icons.Default.Assignment,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.outline
-                    )
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        "No hay solicitudes",
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                }
-            }
+            EmptySolicitudesState()
         } else {
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(solicitudesFiltradas) { solicitud ->
+                items(
+                    items = solicitudesFiltradas,
+                    key = { it.idSolicitud } // Clave única para optimizar recomposición
+                ) { solicitud ->
                     SolicitudCard(
                         solicitud = solicitud,
-                        estaExpandida = solicitudExpandida == solicitud.idSolicitud,  // ✅ NUEVO
-                        onToggleExpansion = {  // ✅ NUEVO
+                        estaExpandida = solicitudExpandida == solicitud.idSolicitud,
+                        onToggleExpansion = {
                             solicitudExpandida = if (solicitudExpandida == solicitud.idSolicitud) {
                                 null
                             } else {
@@ -513,11 +581,41 @@ fun SolicitudesTab(
     }
 }
 
+/**
+ * Estado vacío para cuando no hay solicitudes.
+ */
+@Composable
+private fun EmptySolicitudesState() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Icon(
+                Icons.Default.Assignment,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.outline
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "No hay solicitudes",
+                color = MaterialTheme.colorScheme.outline
+            )
+        }
+    }
+}
+
+/**
+ * Card de solicitud individual.
+ * Muestra información resumida y permite expandir para ver detalles completos.
+ * Incluye botones de aprobar/rechazar para solicitudes pendientes.
+ */
 @Composable
 fun SolicitudCard(
     solicitud: Solicitud,
-    estaExpandida: Boolean,  // ✅ NUEVO
-    onToggleExpansion: () -> Unit,  // ✅ NUEVO
+    estaExpandida: Boolean,
+    onToggleExpansion: () -> Unit,
     onAprobar: () -> Unit,
     onRechazar: () -> Unit
 ) {
@@ -529,28 +627,33 @@ fun SolicitudCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
+            // Encabezado: información básica + badge de estado
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
+                    // ID de solicitud formateado
                     Text(
                         text = String.format("%03d", solicitud.idSolicitud),
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
+                    // Información del docente
                     Text(
                         text = "Docente: ${solicitud.docenteSeccion.primeroNombre} ${solicitud.docenteSeccion.apellidoPaterno}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
+                    // Información de sala y horario
                     Text(
                         text = "Sala: ${solicitud.reservaSala.sala.codigoSala} - ${solicitud.reservaSala.diaSemana.nombreMostrar} Bloque ${solicitud.reservaSala.bloqueHorario}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
+                    // Resumen de productos y personas
                     Text(
                         text = "${solicitud.detalleSolicitud.size} productos - ${solicitud.cantidadPersonas} personas",
                         style = MaterialTheme.typography.bodySmall,
@@ -558,10 +661,10 @@ fun SolicitudCard(
                     )
                 }
 
-                // Badge de estado con colores
+                // Badge de estado con color según estado
                 AssistChip(
                     onClick = { },
-                    label = { Text(solicitud.estado) },  // ✅ Mostrar estado real
+                    label = { Text(solicitud.estado) },
                     colors = AssistChipDefaults.assistChipColors(
                         containerColor = when (solicitud.estado) {
                             "Aprobado" -> MaterialTheme.colorScheme.tertiaryContainer
@@ -574,7 +677,7 @@ fun SolicitudCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            // ✅ NUEVO: Detalles expandibles
+            // Detalles expandibles: lista de productos
             if (estaExpandida) {
                 Divider(modifier = Modifier.padding(vertical = 8.dp))
 
@@ -587,6 +690,7 @@ fun SolicitudCard(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                // Listar todos los productos de la solicitud
                 solicitud.detalleSolicitud.forEach { detalle ->
                     Row(
                         modifier = Modifier
@@ -618,13 +722,14 @@ fun SolicitudCard(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // Botones
+            // Botones de acción
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                // Botón para expandir/contraer detalles
                 FilledTonalButton(
-                    onClick = onToggleExpansion,  // ✅ Cambiar comportamiento
+                    onClick = onToggleExpansion,
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
@@ -635,7 +740,7 @@ fun SolicitudCard(
                     Text(if (estaExpandida) "Ocultar" else "Ver")
                 }
 
-                // ✅ Mostrar botones solo si está Pendiente
+                // Botones de aprobar/rechazar solo para solicitudes pendientes
                 if (solicitud.estado == "Pendiente") {
                     Button(
                         onClick = onAprobar,
