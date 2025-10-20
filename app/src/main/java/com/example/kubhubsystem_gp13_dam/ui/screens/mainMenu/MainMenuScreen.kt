@@ -331,7 +331,7 @@ fun MainMenuScreen(
                     SolicitudScreen(
                         viewModel = solicitudViewModel,
                         onNavigateBack = {
-                            navController.popBackStack()
+                            navController.navigate("solicitud")
                         }
                     )
                 }

@@ -8,6 +8,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.kubhubsystem_gp13_dam.local.AppDatabase
 import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 import com.example.kubhubsystem_gp13_dam.repository.*
+import com.example.kubhubsystem_gp13_dam.data.repository.AsignaturaRepository  // ✅ AGREGAR
 import com.example.kubhubsystem_gp13_dam.ui.navigation.MenuRoutes
 import com.example.kubhubsystem_gp13_dam.ui.screens.login.LoginScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.MainMenuScreen
@@ -19,14 +20,41 @@ import com.example.kubhubsystem_gp13_dam.viewmodel.PedidoViewModel
 fun AppContainer() {
     val navController = rememberNavController()
 
-    // ✅ Obtener contexto y base de datos
+    // Obtener contexto y base de datos
     val context = LocalContext.current
     val database = remember { AppDatabase.obtener(context) }
 
-    // ✅ Crear repositorios necesarios para LOGIN
-    val usuarioRepository = remember { UsuarioRepository(database.usuarioDao()) }
+    // ============================================
+    // REPOSITORIOS
+    // ============================================
 
-    // ✅ Crear repositorios necesarios para Solicitud
+    // Usuario Repository
+    val usuarioRepository = remember {
+        UsuarioRepository(database.usuarioDao())
+    }
+
+    // Producto Repository
+    val productoRepository = remember {
+        ProductoRepository(
+            dao = database.productoDao()
+        )
+    }
+
+    // ✅ NUEVO: Asignatura Repository
+    val asignaturaRepository = remember {
+        AsignaturaRepository(
+            asignaturaDAO = database.asignaturaDao()
+        )
+    }
+
+    // ✅ NUEVO: Sección Repository
+    val seccionRepository = remember {
+        SeccionRepository(
+            seccionDAO = database.seccionDao()
+        )
+    }
+
+    // Solicitud Repository
     val solicitudRepository = remember {
         SolicitudRepository(
             solicitudDao = database.solicitudDao(),
@@ -40,7 +68,7 @@ fun AppContainer() {
         )
     }
 
-    // ✅ Crear repositorio de Recetas (necesario para SolicitudViewModel)
+    // Receta Repository
     val recetaRepository = remember {
         com.example.kubhubsystem_gp13_dam.data.repository.RecetaRepository(
             recetaDAO = database.recetaDao(),
@@ -50,14 +78,15 @@ fun AppContainer() {
         )
     }
 
-    // ✅ Crear repositorio de Productos (necesario para SolicitudViewModel)
-    val productoRepository = remember {
-        ProductoRepository(
-            dao = database.productoDao()
+    val reservaSalaRepository = remember {
+        ReservaSalaRepository(
+            reservaSalaDAO = database.reservaSalaDao(),
+            salaDAO = database.salaDao(),
+            asignaturaDAO = database.asignaturaDao()
         )
     }
 
-    // ✅ Crear repositorio de Pedidos
+    // Pedido Repository
     val pedidoRepository = remember {
         PedidoRepository(
             pedidoDao = database.pedidoDao(),
@@ -71,14 +100,24 @@ fun AppContainer() {
         )
     }
 
-    // ✅ Crear ViewModels
+    // ============================================
+    // VIEW MODELS
+    // ============================================
+
+    // ✅ ACTUALIZADO: SolicitudViewModel con todos los repositorios
     val solicitudViewModel = remember {
         SolicitudViewModel(
             solicitudRepository = solicitudRepository,
             recetaRepository = recetaRepository,
-            productoRepository = productoRepository
+            productoRepository = productoRepository,
+            asignaturaRepository = asignaturaRepository,
+            seccionRepository = seccionRepository,
+            usuarioRepository = usuarioRepository,
+            reservaSalaRepository = reservaSalaRepository  // ✅ NUEVO
         )
     }
+
+
 
     val pedidoViewModel = remember {
         PedidoViewModel(
@@ -86,6 +125,10 @@ fun AppContainer() {
             solicitudRepository = solicitudRepository
         )
     }
+
+    // ============================================
+    // NAVEGACIÓN
+    // ============================================
 
     NavHost(
         navController = navController,
@@ -102,10 +145,10 @@ fun AppContainer() {
             )
         }
 
-        // Pantalla de login - ✅ AHORA CON REPOSITORIO
+        // Pantalla de login
         composable(MenuRoutes.Login.route) {
             LoginScreen(
-                usuarioRepository = usuarioRepository, // ✅ Pasar el repositorio
+                usuarioRepository = usuarioRepository,
                 onLoginSuccess = {
                     navController.navigate(MenuRoutes.MainMenu.route) {
                         popUpTo(MenuRoutes.Login.route) { inclusive = true }
@@ -122,7 +165,6 @@ fun AppContainer() {
                         popUpTo(0) { inclusive = true }
                     }
                 },
-                // ✅ Pasar los ViewModels
                 solicitudViewModel = solicitudViewModel,
                 pedidoViewModel = pedidoViewModel
             )

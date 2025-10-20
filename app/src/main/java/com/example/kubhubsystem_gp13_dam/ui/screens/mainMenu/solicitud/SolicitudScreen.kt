@@ -38,6 +38,10 @@ fun SolicitudScreen(
     var mostrarDialogoProducto by remember { mutableStateOf(false) }
     var mostrarDialogoReceta by remember { mutableStateOf(false) }
 
+    val asignaturas by viewModel.asignaturas.collectAsState()
+    val asignaturaSeleccionada by viewModel.asignaturaSeleccionada.collectAsState()
+    var expandidoAsignatura by remember { mutableStateOf(false) }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -110,6 +114,124 @@ fun SolicitudScreen(
                         label = { Text("Cantidad de Personas") },
                         leadingIcon = { Icon(Icons.Default.People, null) },
                         modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "Información Académica",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    ExposedDropdownMenuBox(
+                        expanded = expandidoAsignatura,
+                        onExpandedChange = { expandidoAsignatura = !expandidoAsignatura }
+                    ) {
+                        OutlinedTextField(
+                            value = asignaturaSeleccionada?.nombreAsignatura ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Asignatura") },
+                            placeholder = { Text("Seleccione una asignatura") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandidoAsignatura)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = expandidoAsignatura,
+                            onDismissRequest = { expandidoAsignatura = false }
+                        ) {
+                            asignaturas.forEach { asignatura ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(asignatura.nombreAsignatura)
+                                            Text(
+                                                asignatura.codigoAsignatura,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.outline
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        viewModel.seleccionarAsignatura(asignatura)
+                                        expandidoAsignatura = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // ✅ NUEVO: Selector de Sección
+                    val secciones by viewModel.secciones.collectAsState()
+                    val seccionSeleccionada by viewModel.seccionSeleccionada.collectAsState()
+                    var expandidoSeccion by remember { mutableStateOf(false) }
+
+                    ExposedDropdownMenuBox(
+                        expanded = expandidoSeccion,
+                        onExpandedChange = { expandidoSeccion = !expandidoSeccion }
+                    ) {
+                        OutlinedTextField(
+                            value = seccionSeleccionada?.nombreSeccion ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Sección") },
+                            placeholder = { Text("Seleccione una sección") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandidoSeccion)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            enabled = asignaturaSeleccionada != null
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = expandidoSeccion,
+                            onDismissRequest = { expandidoSeccion = false }
+                        ) {
+                            secciones.forEach { seccion ->
+                                DropdownMenuItem(
+                                    text = { Text(seccion.nombreSeccion) },
+                                    onClick = {
+                                        viewModel.seleccionarSeccion(seccion)
+                                        expandidoSeccion = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // ✅ NUEVO: Campo de Docente (editable, se llena automáticamente)
+                    val nombreDocente by viewModel.nombreDocente.collectAsState()
+
+                    OutlinedTextField(
+                        value = nombreDocente,
+                        onValueChange = { viewModel.actualizarNombreDocente(it) },
+                        label = { Text("Docente") },
+                        placeholder = { Text("Nombre del docente") },
+                        leadingIcon = { Icon(Icons.Default.Person, null) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = seccionSeleccionada != null
                     )
                 }
             }

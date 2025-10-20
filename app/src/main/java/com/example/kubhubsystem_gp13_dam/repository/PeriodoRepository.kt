@@ -45,6 +45,23 @@ class PeriodoRepository {
             _periodoActual.value = null
         }
     }
+    fun sincronizarConPedido(
+        idPedido: Int,
+        fechaInicio: LocalDate,
+        fechaFin: LocalDate,
+        estaActivo: Boolean
+    ) {
+        if (estaActivo) {
+            _periodoActual.value = PeriodoRecoleccion(
+                idPeriodo = idPedido,
+                fechaInicio = fechaInicio,
+                fechaCierre = fechaFin,
+                estaActivo = true
+            )
+        } else {
+            _periodoActual.value = null
+        }
+    }
 
     fun agregarSolicitudAPeriodo(idPeriodo: Int, idSolicitud: Int) {
         _periodos.value = _periodos.value.map { periodo ->
