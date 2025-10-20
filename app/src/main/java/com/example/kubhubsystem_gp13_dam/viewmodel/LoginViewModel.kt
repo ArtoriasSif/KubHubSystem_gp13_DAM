@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.kubhubsystem_gp13_dam.data.repository.LoginRepository
 import com.example.kubhubsystem_gp13_dam.model.UserRole
+import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -50,8 +51,11 @@ data class LoginUiState(
  */
 class LoginViewModel(
     // Repositorio para interactuar con la fuente de datos de login, se utiliza el patrón Singleton para que solo haya una instancia de LoginRepository
-    private val repository: LoginRepository = LoginRepository.getInstance()
+    private val usuarioRepository: UsuarioRepository
 ) : ViewModel() {
+
+    // ✅ INICIALIZACIÓN CORRECTA DEL LOGIN REPOSITORY
+    private val loginRepository = LoginRepository.getInstance(usuarioRepository)
 
     // =================================================================
     // CICLO DE VIDA DEL VIEWMODEL
@@ -127,7 +131,7 @@ class LoginViewModel(
      * Evita recomposiciones innecesarias verificando cambios.
      */
     fun selectDemoRole(role: UserRole) {
-        val credentials = repository.getDemoCredentials(role)
+        val credentials = loginRepository.getDemoCredentials(role)
         if (credentials != null) {
             // Solo actualiza si las credenciales o el rol son diferentes
             val currentState = _uiState.value
@@ -202,11 +206,13 @@ class LoginViewModel(
         // viewModelScope.launch ejecuta el código sin bloquear la interfaz.
         viewModelScope.launch {
             try {
-                val result = repository.login(currentState.email, currentState.password)
+                // ✅ ESTA LLAMADA AHORA CONSULTA LA BASE DE DATOS REAL
+                val result = loginRepository.login(currentState.email, currentState.password)
 
                 when (result) {
                     null -> {
                         //✅ Login exitoso, Detiene el indicador de carga, Llama a la función onSuccess() (navegar a siguiente screen).
+                        //✅ Login exitoso (usuario encontrado en BD)
                         _uiState.update {
                             it.copy(isLoading = false)
                         }

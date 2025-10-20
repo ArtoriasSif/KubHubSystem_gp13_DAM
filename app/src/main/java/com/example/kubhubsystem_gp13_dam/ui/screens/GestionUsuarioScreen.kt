@@ -1,5 +1,6 @@
 package com.example.kubhubsystem_gp13_dam.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -30,11 +31,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.kubhubsystem_gp13_dam.local.AppDatabase
+import com.example.kubhubsystem_gp13_dam.manager.PerfilUsuarioManager
 import com.example.kubhubsystem_gp13_dam.model.Rol
 import com.example.kubhubsystem_gp13_dam.model.Usuario
 import com.example.kubhubsystem_gp13_dam.repository.DocenteRepository
 import com.example.kubhubsystem_gp13_dam.repository.RolRepository
 import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
+import com.example.kubhubsystem_gp13_dam.ui.components.AvatarUsuario
 import com.example.kubhubsystem_gp13_dam.viewmodel.GestionUsuariosEstado
 import com.example.kubhubsystem_gp13_dam.viewmodel.GestionUsuariosViewModel
 import kotlinx.coroutines.launch
@@ -48,28 +51,41 @@ fun GestionUsuariosScreen(
     val context = LocalContext.current
     val database = remember { AppDatabase.obtener(context.applicationContext) }
 
-    val usuarioRepository = remember { UsuarioRepository(database.usuarioDao()) }
-    val rolRepository = remember { RolRepository(database.rolDao()) }
-    val docenteRepository = remember { DocenteRepository(database.docenteDao()) }
+    // 🆕 Obtener el manager de perfiles
+    val perfilManager = remember { PerfilUsuarioManager.getInstance() }
+    val perfiles by perfilManager.perfiles.collectAsState()
 
     val viewModel: GestionUsuariosViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
                 return GestionUsuariosViewModel(
-                    usuarioRepository = usuarioRepository,
-                    rolRepository = rolRepository,
-                    docenteRepository = docenteRepository
+                    usuarioRepository = UsuarioRepository(database.usuarioDao()),
+                    rolRepository = RolRepository(database.rolDao()),
+                    docenteRepository = DocenteRepository(database.docenteDao())
                 ) as T
             }
         }
     )
 
     val estado by viewModel.estado.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var showDeleteDialog by remember { mutableStateOf<Usuario?>(null) }
     var showNuevoUsuarioDialog by remember { mutableStateOf(false) }
+
+    // 🆕 Sincronizar perfiles cuando cambien los usuarios
+    LaunchedEffect(estado.usuarios) {
+        if (estado.usuarios.isNotEmpty()) {
+            perfilManager.inicializarPerfiles(estado.usuarios)
+        }
+    }
+
+    // Inicializar datos si es necesario (solo una vez)
+    LaunchedEffect(Unit) {
+        viewModel.inicializarDatosSiEsNecesario()
+    }
+
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // Mostrar mensajes
     LaunchedEffect(estado.error, estado.mensajeExito) {
@@ -94,15 +110,10 @@ fun GestionUsuariosScreen(
         }
     }
 
-    // Inicializar datos solo una vez
-    LaunchedEffect(Unit) {
-        viewModel.inicializarDatosSiEsNecesario()
-    }
-
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            // ✅ TopAppBar SIN flecha ni reload
+            // ✅ TopAppBar del archivo 1 (priorizado)
             TopAppBar(
                 title = { Text("Gestión de Usuarios") }
             )
@@ -113,7 +124,9 @@ fun GestionUsuariosScreen(
                 ExtendedFloatingActionButton(
                     onClick = { showNuevoUsuarioDialog = true },
                     icon = { Icon(Icons.Default.PersonAdd, contentDescription = null) },
-                    text = { Text("Nuevo Usuario") }
+                    text = { Text("Nuevo Usuario") },
+                    containerColor = Color(0xFFFFC107),
+                    contentColor = Color(0xFF6B4E00)
                 )
             }
         }
@@ -151,17 +164,18 @@ fun GestionUsuariosScreen(
                 ContenidoPrincipal(
                     viewModel = viewModel,
                     estado = estado,
-                    onFiltroRolChange = viewModel::onFiltroRolChange,
-                    onBuscarTextoChange = viewModel::onBuscarTextoChange,
+                    perfiles = perfiles, // 🆕 Del archivo 2
+                    onFiltroRolChange = { viewModel.onFiltroRolChange(it) },
+                    onBuscarTextoChange = { viewModel.onBuscarTextoChange(it) },
                     onEditarUsuario = onNavigateToDetalleUsuario,
-                    onEliminarUsuario = { showDeleteDialog = it },
+                    onEliminarUsuario = { showDeleteDialog = it }, // Del archivo 1
                     modifier = Modifier.padding(padding)
                 )
             }
         }
     }
 
-    // ✅ Diálogo de confirmación de eliminación
+    // ✅ Diálogo de confirmación de eliminación (del archivo 1 - priorizado)
     showDeleteDialog?.let { usuario ->
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
@@ -174,6 +188,8 @@ fun GestionUsuariosScreen(
                 Button(
                     onClick = {
                         viewModel.eliminarUsuario(usuario)
+                        // 🆕 AGREGADO: También eliminar del manager de perfiles (del archivo 2)
+                        perfilManager.eliminarPerfil(usuario.idUsuario)
                         showDeleteDialog = null
                     },
                     colors = ButtonDefaults.buttonColors(
@@ -191,12 +207,11 @@ fun GestionUsuariosScreen(
         )
     }
 
-    // ✅ Diálogo FUNCIONAL de nuevo usuario
+    // ✅ AGREGADO: NuevoUsuarioDialog del archivo 2
     if (showNuevoUsuarioDialog) {
         NuevoUsuarioDialog(
             onDismiss = { showNuevoUsuarioDialog = false },
-            onCrear = { primeroNombre, segundoNombre, apellidoPaterno, apellidoMaterno,
-                        email, username, password, rol ->
+            onCrear = { primeroNombre, segundoNombre, apellidoPaterno, apellidoMaterno, email, username, password, rol ->
                 viewModel.crearUsuario(
                     primeroNombre = primeroNombre,
                     segundoNombre = segundoNombre,
@@ -213,7 +228,7 @@ fun GestionUsuariosScreen(
     }
 }
 
-// ✅ DIÁLOGO DE NUEVO USUARIO
+// ✅ DIÁLOGO DE NUEVO USUARIO (del archivo 2)
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NuevoUsuarioDialog(
@@ -335,7 +350,7 @@ fun NuevoUsuarioDialog(
                         singleLine = true
                     )
 
-                    Divider()
+                    HorizontalDivider()
 
                     Text(
                         text = "Credenciales",
@@ -384,7 +399,7 @@ fun NuevoUsuarioDialog(
                         singleLine = true
                     )
 
-                    Divider()
+                    HorizontalDivider()
 
                     Text(
                         text = "Rol del Usuario",
@@ -472,7 +487,7 @@ fun RolSelectionCard(
                 MaterialTheme.colorScheme.surface
         ),
         border = if (selected) {
-            androidx.compose.foundation.BorderStroke(2.dp, obtenerColorRol(rol))
+            BorderStroke(2.dp, obtenerColorRol(rol))
         } else null
     ) {
         Row(
@@ -575,6 +590,7 @@ private fun PantallaInicial(
 private fun ContenidoPrincipal(
     viewModel: GestionUsuariosViewModel,
     estado: GestionUsuariosEstado,
+    perfiles: Map<Int, com.example.kubhubsystem_gp13_dam.model.PerfilUsuario>, // 🆕 Del archivo 2
     onFiltroRolChange: (String) -> Unit,
     onBuscarTextoChange: (String) -> Unit,
     onEditarUsuario: (Int) -> Unit,
@@ -620,6 +636,7 @@ private fun ContenidoPrincipal(
             items(estado.usuariosFiltrados) { usuario ->
                 TarjetaUsuario(
                     usuario = usuario,
+                    perfil = perfiles[usuario.idUsuario], // 🆕 AGREGADO del archivo 2
                     esDocente = viewModel.esUsuarioDocente(usuario.idUsuario),
                     onClick = { onEditarUsuario(usuario.idUsuario) },
                     onEliminar = { onEliminarUsuario(usuario) },
@@ -780,6 +797,7 @@ private fun FiltrosUsuarios(
 @Composable
 private fun TarjetaUsuario(
     usuario: Usuario,
+    perfil: com.example.kubhubsystem_gp13_dam.model.PerfilUsuario?, // 🆕 AGREGADO del archivo 2
     esDocente: Boolean,
     onClick: () -> Unit,
     onEliminar: () -> Unit,
@@ -803,22 +821,13 @@ private fun TarjetaUsuario(
                 modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(56.dp)
-                        .background(
-                            obtenerColorRol(usuario.rol).copy(alpha = 0.2f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "${usuario.primeroNombre.first()}${usuario.apellidoPaterno.first()}",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = obtenerColorRol(usuario.rol)
-                    )
-                }
+                // 🆕 MODIFICADO: Usar AvatarUsuario del archivo 2
+                AvatarUsuario(
+                    perfil = perfil,
+                    size = 56.dp,
+                    mostrarBorde = perfil?.fotoPerfil != null,
+                    colorBorde = obtenerColorRol(usuario.rol)
+                )
 
                 Spacer(modifier = Modifier.width(16.dp))
 
@@ -897,6 +906,7 @@ private fun BadgeRol(rol: Rol, esDocente: Boolean) {
 }
 
 private fun obtenerColorRol(rol: Rol): Color {
+    // Usar colores del archivo 1 (más consistente con el tema)
     return when (rol) {
         Rol.ADMIN -> Color(0xFFF44336)
         Rol.CO_ADMIN -> Color(0xFFFF9800)

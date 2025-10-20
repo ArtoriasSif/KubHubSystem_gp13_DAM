@@ -28,74 +28,79 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao) {
 
     suspend fun inicializarUsuarios() {
         val usuariosIniciales = listOf(
-            // Usuario para cada rol (6 usuarios)
+            // ADMIN - debe coincidir con admin@kubhub.com
             UsuarioEntity(
                 idUsuario = 1,
                 idRol = 1, // Admin
-                primeroNombre = "Carlos",
-                segundoNombre = "Alberto",
-                apellidoMaterno = "Gómez",
-                apellidoPaterno = "López",
-                email = "admin@kubhub.com",
-                username = "admin",
-                password = "admin123"
+                primeroNombre = "Administrador", // Cambiado para coincidir con displayName
+                segundoNombre = "",
+                apellidoMaterno = "Sistema",
+                apellidoPaterno = "KubHub",
+                email = "admin@kubhub.com", // COINCIDE con username de la lista demo
+                username = "admin@kubhub.com", // COINCIDE exactamente
+                password = "admin123" // COINCIDE exactamente
             ),
+            // CO-ADMIN - debe coincidir con coadmin@kubhub.com
             UsuarioEntity(
                 idUsuario = 2,
                 idRol = 2, // Co-Admin
-                primeroNombre = "María",
-                segundoNombre = "Fernanda",
-                apellidoMaterno = "Rodríguez",
-                apellidoPaterno = "Martínez",
-                email = "coadmin@kubhub.com",
-                username = "coadmin",
-                password = "coadmin123"
+                primeroNombre = "Co-Administrador", // Cambiado para coincidir
+                segundoNombre = "",
+                apellidoMaterno = "Sistema",
+                apellidoPaterno = "KubHub",
+                email = "coadmin@kubhub.com", // COINCIDE
+                username = "coadmin@kubhub.com", // COINCIDE
+                password = "coadmin123" // COINCIDE
             ),
+            // GESTOR_PEDIDOS - debe coincidir con gestor@kubhub.com
             UsuarioEntity(
                 idUsuario = 3,
                 idRol = 3, // Gestor de pedidos
-                primeroNombre = "Pedro",
-                segundoNombre = "Antonio",
-                apellidoMaterno = "Silva",
-                apellidoPaterno = "García",
-                email = "gestor@kubhub.com",
-                username = "gestor",
-                password = "gestor123"
+                primeroNombre = "Gestor",
+                segundoNombre = "de Pedidos",
+                apellidoMaterno = "Operaciones",
+                apellidoPaterno = "KubHub",
+                email = "gestor@kubhub.com", // COINCIDE
+                username = "gestor@kubhub.com", // COINCIDE
+                password = "gestor123" // COINCIDE
             ),
+            // PROFESOR - debe coincidir con profesor@kubhub.com
             UsuarioEntity(
                 idUsuario = 4,
                 idRol = 4, // Profesor
-                primeroNombre = "Ana",
-                segundoNombre = "Isabel",
-                apellidoMaterno = "Pérez",
-                apellidoPaterno = "Hernández",
-                email = "profesor@kubhub.com",
-                username = "profesor",
-                password = "profesor123"
+                primeroNombre = "Profesor",
+                segundoNombre = "Principal",
+                apellidoMaterno = "Académico",
+                apellidoPaterno = "KubHub",
+                email = "profesor@kubhub.com", // COINCIDE
+                username = "profesor@kubhub.com", // COINCIDE
+                password = "profesor123" // COINCIDE
             ),
+            // BODEGA - debe coincidir con bodega@kubhub.com
             UsuarioEntity(
                 idUsuario = 5,
                 idRol = 5, // Bodega
-                primeroNombre = "Luis",
-                segundoNombre = "Miguel",
-                apellidoMaterno = "Torres",
-                apellidoPaterno = "Ramírez",
-                email = "bodega@kubhub.com",
-                username = "bodega",
-                password = "bodega123"
+                primeroNombre = "Bodeguero",
+                segundoNombre = "",
+                apellidoMaterno = "Inventario",
+                apellidoPaterno = "KubHub",
+                email = "bodega@kubhub.com", // COINCIDE
+                username = "bodega@kubhub.com", // COINCIDE
+                password = "bodega123" // COINCIDE
             ),
+            // ASISTENTE - debe coincidir con asistente@kubhub.com
             UsuarioEntity(
                 idUsuario = 6,
                 idRol = 6, // Asistente
-                primeroNombre = "Laura",
-                segundoNombre = "Patricia",
-                apellidoMaterno = "Díaz",
-                apellidoPaterno = "Castro",
-                email = "asistente@kubhub.com",
-                username = "asistente",
-                password = "asistente123"
+                primeroNombre = "Asistente",
+                segundoNombre = "",
+                apellidoMaterno = "Apoyo",
+                apellidoPaterno = "KubHub",
+                email = "asistente@kubhub.com", // COINCIDE
+                username = "asistente@kubhub.com", // COINCIDE
+                password = "asistente123" // COINCIDE
             ),
-            // 4 usuarios adicionales como docentes (rol Profesor - idRol 4)
+            // LOS SIGUIENTES 4 USUARIOS SE MANTIENEN IGUAL (profesores adicionales)
             UsuarioEntity(
                 idUsuario = 7,
                 idRol = 4, // Profesor

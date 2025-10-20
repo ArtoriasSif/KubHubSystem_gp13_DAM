@@ -6,6 +6,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.example.kubhubsystem_gp13_dam.local.AppDatabase
+import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 import com.example.kubhubsystem_gp13_dam.repository.*
 import com.example.kubhubsystem_gp13_dam.ui.navigation.MenuRoutes
 import com.example.kubhubsystem_gp13_dam.ui.screens.login.LoginScreen
@@ -21,6 +22,9 @@ fun AppContainer() {
     // ✅ Obtener contexto y base de datos
     val context = LocalContext.current
     val database = remember { AppDatabase.obtener(context) }
+
+    // ✅ Crear repositorios necesarios para LOGIN
+    val usuarioRepository = remember { UsuarioRepository(database.usuarioDao()) }
 
     // ✅ Crear repositorios necesarios para Solicitud
     val solicitudRepository = remember {
@@ -98,9 +102,10 @@ fun AppContainer() {
             )
         }
 
-        // Pantalla de login
+        // Pantalla de login - ✅ AHORA CON REPOSITORIO
         composable(MenuRoutes.Login.route) {
             LoginScreen(
+                usuarioRepository = usuarioRepository, // ✅ Pasar el repositorio
                 onLoginSuccess = {
                     navController.navigate(MenuRoutes.MainMenu.route) {
                         popUpTo(MenuRoutes.Login.route) { inclusive = true }
