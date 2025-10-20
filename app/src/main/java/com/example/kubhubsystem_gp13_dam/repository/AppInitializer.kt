@@ -18,7 +18,6 @@ class AppInitializer(private val db: AppDatabase) {
     suspend fun inicializarTodo(onProgress: (String) -> Unit = {}) {
         val tag = "AppInitializer"
 
-        // ✅ MANTENIENDO TU ORDEN EXACTO
         onProgress("Configurando roles")
         val rolRepository = RolRepository(db.rolDao())
         rolRepository.inicializarRoles()
@@ -45,8 +44,12 @@ class AppInitializer(private val db: AppDatabase) {
         Log.d(tag, "✅ Inventario actualizado")
 
         onProgress("Cargando recetas")
-        val recetaRepository = RecetaRepository(db.recetaDao(), db.detalleRecetaDao(),
-            db.productoDao(), db.inventarioDao())
+        val recetaRepository = RecetaRepository(
+            db.recetaDao(),
+            db.detalleRecetaDao(),
+            db.productoDao(),
+            db.inventarioDao()
+        )
         recetaRepository.inicializarRecetas()
         Log.d(tag, "✅ Recetas cargadas")
 
@@ -66,7 +69,12 @@ class AppInitializer(private val db: AppDatabase) {
         Log.d(tag, "✅ Secciones configuradas")
 
         onProgress("Procesando reservas")
-        val reservaSalaRepository = ReservaSalaRepository(db.reservaSalaDao())
+        // ✅ CORRECCIÓN: Pasar los 3 DAOs necesarios
+        val reservaSalaRepository = ReservaSalaRepository(
+            reservaSalaDAO = db.reservaSalaDao(),
+            salaDAO = db.salaDao(),
+            asignaturaDAO = db.asignaturaDao()
+        )
         reservaSalaRepository.inicializarReservas()
         Log.d(tag, "✅ Reservas procesadas")
 

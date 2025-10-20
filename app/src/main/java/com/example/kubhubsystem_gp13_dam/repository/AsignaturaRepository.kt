@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.first
 
 class AsignaturaRepository(private val asignaturaDAO: AsignaturaDAO) {
 
@@ -45,6 +46,9 @@ class AsignaturaRepository(private val asignaturaDAO: AsignaturaDAO) {
         return asignaturaDAO.obtenerAsignaturaPorCodigo(codigo)?.toAsignatura()
     }
 
+    suspend fun obtenerTodas(): List<Asignatura> {
+        return asignaturaDAO.obtenerTodasLasAsignaturas().first().map { it.toAsignatura() }
+    }
     suspend fun insertarAsignatura(asignatura: Asignatura) {
         asignaturaDAO.insertarAsignatura(asignatura.toEntity())
     }
@@ -64,11 +68,10 @@ class AsignaturaRepository(private val asignaturaDAO: AsignaturaDAO) {
     // Extension functions para convertir entre Entity y Model
     private fun AsignaturaEntity.toAsignatura(): Asignatura {
         return Asignatura(
-            idAsignatura = this.idAsignatura,
-            nombreAsignatura = this.nombreAsignatura,
-            codigoAsignatura = this.codigoAsignatura,
-            periodo = "2025-1",
-            secciones = emptyList() // Las secciones se manejarán por separado
+            idAsignatura = idAsignatura,
+            nombreAsignatura = nombreAsignatura,
+            codigoAsignatura = codigoAsignatura,
+            periodo = ""
         )
     }
 

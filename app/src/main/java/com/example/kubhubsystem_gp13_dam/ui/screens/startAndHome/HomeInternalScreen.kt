@@ -8,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,6 +36,19 @@ fun HomeInternalScreen(
 
     var showIniciarPeriodoDialog by remember { mutableStateOf(false) }
     var showCerrarPeriodoDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(pedidoActivo) {
+        pedidoActivo?.let { pedido ->
+            if (pedido.estaActivo) {
+                periodoRepository.sincronizarConPedido(
+                    idPedido = pedido.idPedido,
+                    fechaInicio = pedido.fechaInicioRango.toLocalDate(),
+                    fechaFin = pedido.fechaFinRango.toLocalDate(),
+                    estaActivo = true
+                )
+            }
+        }
+    }
 
     Column(
         modifier = Modifier

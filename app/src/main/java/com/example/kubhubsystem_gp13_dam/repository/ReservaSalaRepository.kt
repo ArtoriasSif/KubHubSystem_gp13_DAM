@@ -1,6 +1,8 @@
 package com.example.kubhubsystem_gp13_dam.repository
 
+import com.example.kubhubsystem_gp13_dam.local.dao.AsignaturaDAO
 import com.example.kubhubsystem_gp13_dam.local.dao.ReservaSalaDAO
+import com.example.kubhubsystem_gp13_dam.local.dao.SalaDAO
 import com.example.kubhubsystem_gp13_dam.local.entities.ReservaSalaEntity
 import com.example.kubhubsystem_gp13_dam.model.Asignatura
 import com.example.kubhubsystem_gp13_dam.model.DiaSemana
@@ -10,7 +12,11 @@ import com.example.kubhubsystem_gp13_dam.model.Seccion
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
-class ReservaSalaRepository(private val reservaSalaDAO: ReservaSalaDAO) {
+class ReservaSalaRepository(private val reservaSalaDAO: ReservaSalaDAO,
+                            private val salaDAO: SalaDAO,
+                            private val asignaturaDAO: AsignaturaDAO
+) {
+
 
     suspend fun inicializarReservas() {
         val reservasIniciales = listOf(
@@ -81,7 +87,30 @@ class ReservaSalaRepository(private val reservaSalaDAO: ReservaSalaDAO) {
     }
 
     suspend fun obtenerReservasPorSeccion(idSeccion: Int): List<ReservaSala> {
-        return reservaSalaDAO.obtenerReservasPorSeccion(idSeccion).map { it.toReservaSala() }
+        val reservasEntity = reservaSalaDAO.obtenerReservasPorSeccion(idSeccion)  // ✅ CORREGIDO
+
+        return reservasEntity.map { entity ->
+            val salaEntity = salaDAO.obtenerSalaPorId(entity.idSala)
+            val asignaturaEntity = asignaturaDAO.findAsignaturaByidSeccion(entity.idSeccion)  // ✅ Tu método custom
+
+            ReservaSala(
+                idReservaSala = entity.idReservaSala,
+                seccion = Seccion(idSeccion, ""),
+                asignatura = asignaturaEntity?.let { asig ->
+                    Asignatura(
+                        idAsignatura = asig.idAsignatura,
+                        nombreAsignatura = asig.nombreAsignatura,
+                        codigoAsignatura = asig.codigoAsignatura,
+                        periodo = ""
+                    )
+                } ?: Asignatura(0, "Sin asignatura", "", ""),
+                sala = salaEntity?.let { sala ->
+                    Sala(sala.idSala, sala.codigoSala)
+                } ?: Sala(0, "Sin sala"),
+                diaSemana = DiaSemana.valueOf(entity.diaSemana ?: "LUNES"),  // ✅ Agregar null-safety
+                bloqueHorario = entity.bloque
+            )
+        }
     }
 
     suspend fun obtenerReservasPorSala(idSala: Int): List<ReservaSala> {
@@ -117,6 +146,8 @@ class ReservaSalaRepository(private val reservaSalaDAO: ReservaSalaDAO) {
     suspend fun obtenerReservasPorDiaYBloque(dia: DiaSemana, bloque: Int): List<ReservaSala> {
         return reservaSalaDAO.obtenerReservasPorDiaYBloque(dia.name, bloque).map { it.toReservaSala() }
     }
+
+
 
     // Extension functions para convertir entre Entity y Model
     private fun ReservaSalaEntity.toReservaSala(): ReservaSala {

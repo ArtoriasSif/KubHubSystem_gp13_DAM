@@ -68,7 +68,6 @@ interface ReservaSalaDAO {
 
     @Query("SELECT * FROM reserva_sala WHERE idSeccion = :idSeccion")
     suspend fun obtenerReservasPorSeccion(idSeccion: Int): List<ReservaSalaEntity>
-
     // ============================================
     // MÉTODOS DE CONSULTA - POR SALA
     // ============================================
@@ -181,6 +180,8 @@ interface ReservaSalaDAO {
     """)
     suspend fun obtenerConteoReservasPorSala(): List<ConteoReservasSala>
 
+    @Query("SELECT * FROM reserva_sala WHERE idSeccion = :idSeccion")
+    suspend fun obtenerPorSeccion(idSeccion: Int): List<ReservaSalaEntity>
     /**
      * Obtiene las salas disponibles para un día y bloque específico
      */

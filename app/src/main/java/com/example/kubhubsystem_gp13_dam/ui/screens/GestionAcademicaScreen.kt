@@ -40,7 +40,7 @@ fun GestionAcademicaScreen(
     val asignaturaRepository = remember { AsignaturaRepository(database.asignaturaDao()) }
     val seccionRepository = remember { SeccionRepository(database.seccionDao()) }
     val salaRepository = remember { SalaRepository(database.salaDao()) }
-    val reservaSalaRepository = remember { ReservaSalaRepository(database.reservaSalaDao()) }
+    val reservaSalaRepository = remember { ReservaSalaRepository(database.reservaSalaDao(),database.salaDao(),database.asignaturaDao()) }
     val usuarioRepository = remember { UsuarioRepository(database.usuarioDao()) }
 
     val viewModel: GestionAcademicaViewModel = viewModel(

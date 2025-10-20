@@ -27,6 +27,7 @@ fun SolicitudScreen(
     val detallesTemp by viewModel.detallesTemp.collectAsState()
     val productosDisponibles by viewModel.productosDisponibles.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    var cantidadPersonasError by remember { mutableStateOf(false) }
     val errorMessage by viewModel.errorMessage.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
 
@@ -37,6 +38,10 @@ fun SolicitudScreen(
 
     var mostrarDialogoProducto by remember { mutableStateOf(false) }
     var mostrarDialogoReceta by remember { mutableStateOf(false) }
+
+    val asignaturas by viewModel.asignaturas.collectAsState()
+    val asignaturaSeleccionada by viewModel.asignaturaSeleccionada.collectAsState()
+    var expandidoAsignatura by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -103,13 +108,154 @@ fun SolicitudScreen(
                         }
                     }
 
-                    // Cantidad de Personas
                     OutlinedTextField(
                         value = cantidadPersonas,
-                        onValueChange = { cantidadPersonas = it },
+                        onValueChange = { newValue ->
+                            // Solo permitir números
+                            if (newValue.isEmpty() || newValue.all { it.isDigit() }) {
+                                cantidadPersonas = newValue
+                                cantidadPersonasError =
+                                    newValue.isEmpty() || newValue.toIntOrNull() == null || newValue.toInt() <= 0
+
+                                // Actualizar en el ViewModel si es válido
+                                newValue.toIntOrNull()?.let { cantidad ->
+                                    if (cantidad > 0) {
+                                        viewModel.actualizarCantidadPersonas(cantidad)
+                                    }
+                                }
+                            }
+                        },
                         label = { Text("Cantidad de Personas") },
                         leadingIcon = { Icon(Icons.Default.People, null) },
-                        modifier = Modifier.fillMaxWidth()
+                        isError = cantidadPersonasError,
+                        supportingText = {
+                            if (cantidadPersonasError) {
+                                Text(
+                                    "Ingrese un número válido mayor a 0",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        "Información Académica",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    ExposedDropdownMenuBox(
+                        expanded = expandidoAsignatura,
+                        onExpandedChange = { expandidoAsignatura = !expandidoAsignatura }
+                    ) {
+                        OutlinedTextField(
+                            value = asignaturaSeleccionada?.nombreAsignatura ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Asignatura") },
+                            placeholder = { Text("Seleccione una asignatura") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandidoAsignatura)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor()
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = expandidoAsignatura,
+                            onDismissRequest = { expandidoAsignatura = false }
+                        ) {
+                            asignaturas.forEach { asignatura ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Column {
+                                            Text(asignatura.nombreAsignatura)
+                                            Text(
+                                                asignatura.codigoAsignatura,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.outline
+                                            )
+                                        }
+                                    },
+                                    onClick = {
+                                        viewModel.seleccionarAsignatura(asignatura)
+                                        expandidoAsignatura = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // ✅ NUEVO: Selector de Sección
+                    val secciones by viewModel.secciones.collectAsState()
+                    val seccionSeleccionada by viewModel.seccionSeleccionada.collectAsState()
+                    var expandidoSeccion by remember { mutableStateOf(false) }
+
+                    ExposedDropdownMenuBox(
+                        expanded = expandidoSeccion,
+                        onExpandedChange = { expandidoSeccion = !expandidoSeccion }
+                    ) {
+                        OutlinedTextField(
+                            value = seccionSeleccionada?.nombreSeccion ?: "",
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Sección") },
+                            placeholder = { Text("Seleccione una sección") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandidoSeccion)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(),
+                            enabled = asignaturaSeleccionada != null
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = expandidoSeccion,
+                            onDismissRequest = { expandidoSeccion = false }
+                        ) {
+                            secciones.forEach { seccion ->
+                                DropdownMenuItem(
+                                    text = { Text(seccion.nombreSeccion) },
+                                    onClick = {
+                                        viewModel.seleccionarSeccion(seccion)
+                                        expandidoSeccion = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // ✅ NUEVO: Campo de Docente (editable, se llena automáticamente)
+                    val nombreDocente by viewModel.nombreDocente.collectAsState()
+
+                    OutlinedTextField(
+                        value = nombreDocente,
+                        onValueChange = { viewModel.actualizarNombreDocente(it) },
+                        label = { Text("Docente") },
+                        placeholder = { Text("Nombre del docente") },
+                        leadingIcon = { Icon(Icons.Default.Person, null) },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = seccionSeleccionada != null
                     )
                 }
             }
@@ -275,6 +421,7 @@ fun DetalleProductoCard(
     onEliminar: () -> Unit
 ) {
     var cantidad by remember { mutableStateOf(detalle.cantidadUnidadMedida.toString()) }
+    var cantidadError by remember { mutableStateOf(false) }  // ✅ NUEVO
 
     Card(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -301,18 +448,36 @@ fun DetalleProductoCard(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
-                    value = cantidad,
-                    onValueChange = {
-                        cantidad = it
-                        it.toDoubleOrNull()?.let { nuevaCantidad ->
-                            onCantidadChange(nuevaCantidad)
-                        }
-                    },
-                    modifier = Modifier.width(80.dp),
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyMedium
-                )
+                // ✅ CAMPO DE CANTIDAD VALIDADO
+                Column {
+                    OutlinedTextField(
+                        value = cantidad,
+                        onValueChange = { newValue ->
+                            // Permitir números y un punto decimal
+                            if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                                cantidad = newValue
+                                val doubleValue = newValue.toDoubleOrNull()
+                                cantidadError = doubleValue == null || doubleValue <= 0
+
+                                if (doubleValue != null && doubleValue > 0) {
+                                    onCantidadChange(doubleValue)
+                                }
+                            }
+                        },
+                        modifier = Modifier.width(80.dp),
+                        singleLine = true,
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        isError = cantidadError
+                    )
+                    if (cantidadError && cantidad.isNotEmpty()) {
+                        Text(
+                            "Inválido",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.padding(start = 4.dp)
+                        )
+                    }
+                }
 
                 Text(
                     text = detalle.producto.unidadMedida,
@@ -340,6 +505,7 @@ fun DialogoAgregarProducto(
 ) {
     var productoSeleccionado by remember { mutableStateOf<Producto?>(null) }
     var cantidad by remember { mutableStateOf("") }
+    var cantidadError by remember { mutableStateOf(false) }  // ✅ NUEVO
     var expandido by remember { mutableStateOf(false) }
 
     AlertDialog(
@@ -391,12 +557,29 @@ fun DialogoAgregarProducto(
                     }
                 }
 
+                // ✅ CAMPO DE CANTIDAD VALIDADO
                 OutlinedTextField(
                     value = cantidad,
-                    onValueChange = { cantidad = it },
+                    onValueChange = { newValue ->
+                        // Permitir números y un punto decimal
+                        if (newValue.isEmpty() || newValue.matches(Regex("^\\d*\\.?\\d*$"))) {
+                            cantidad = newValue
+                            val doubleValue = newValue.toDoubleOrNull()
+                            cantidadError = doubleValue == null || doubleValue <= 0
+                        }
+                    },
                     label = { Text("Cantidad") },
                     suffix = { Text(productoSeleccionado?.unidadMedida ?: "") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = cantidadError,
+                    supportingText = {
+                        if (cantidadError && cantidad.isNotEmpty()) {
+                            Text(
+                                "Ingrese un número válido mayor a 0",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 )
             }
         },
@@ -411,7 +594,7 @@ fun DialogoAgregarProducto(
                         }
                     }
                 },
-                enabled = productoSeleccionado != null && cantidad.toDoubleOrNull() != null
+                enabled = productoSeleccionado != null && !cantidadError && cantidad.isNotEmpty()  // ✅ Validar
             ) {
                 Text("Agregar")
             }

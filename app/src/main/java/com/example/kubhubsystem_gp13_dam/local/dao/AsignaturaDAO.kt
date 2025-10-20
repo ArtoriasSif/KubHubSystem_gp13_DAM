@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.Flow
 import androidx.room.Query
 import androidx.room.Update
 import com.example.kubhubsystem_gp13_dam.local.entities.AsignaturaEntity
+import com.example.kubhubsystem_gp13_dam.model.Seccion
 
 @Dao
 interface AsignaturaDAO {
@@ -40,4 +41,7 @@ interface AsignaturaDAO {
 
     @Query("SELECT * FROM asignatura")
     fun observarTodas(): Flow<List<AsignaturaEntity>>
+
+    @Query("SELECT a.* FROM asignatura a JOIN seccion s ON a.idAsignatura = s.idAsignatura where s.idSeccion= :idSeccion")
+    suspend fun findAsignaturaByidSeccion(idSeccion: Int): AsignaturaEntity?
 }

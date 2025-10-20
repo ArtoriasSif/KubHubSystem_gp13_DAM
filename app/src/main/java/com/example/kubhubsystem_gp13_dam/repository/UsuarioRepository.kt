@@ -2,6 +2,8 @@ package com.example.kubhubsystem_gp13_dam.repository
 
 import com.example.kubhubsystem_gp13_dam.local.dao.UsuarioDao
 import com.example.kubhubsystem_gp13_dam.local.entities.UsuarioEntity
+import com.example.kubhubsystem_gp13_dam.model.Rol
+import com.example.kubhubsystem_gp13_dam.model.Usuario
 
 class UsuarioRepository(private val usuarioDao: UsuarioDao) {
 
@@ -15,8 +17,24 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao) {
 
     suspend fun obtenerPorId(id: Int): UsuarioEntity? = usuarioDao.obtenerPorId(id)
 
-    suspend fun iniciarSesion(emailOrUsername: String, contraseña: String): UsuarioEntity? =
-        usuarioDao.iniciarSesion(emailOrUsername, contraseña)
+    suspend fun obtenerUsuarioPorId(id: Int): Usuario? {
+        val entity = usuarioDao.obtenerPorId(id) ?: return null
+
+        return Usuario(
+            idUsuario = entity.idUsuario,
+            rol = Rol.desdeId(entity.idRol) ?: Rol.GESTOR_PEDIDOS,
+            primeroNombre = entity.primeroNombre,
+            segundoNombre = entity.segundoNombre,
+            apellidoMaterno = entity.apellidoMaterno,
+            apellidoPaterno = entity.apellidoPaterno,
+            email = entity.email,
+            username = entity.username,
+            password = entity.password
+        )
+    }
+
+    suspend fun iniciarSesion(usuario: String, contraseña: String): UsuarioEntity? =
+        usuarioDao.iniciarSesion(usuario, contraseña)
 
     suspend fun obtenerPorCorreo(correo: String): UsuarioEntity? =
         usuarioDao.obtenerPorCorreo(correo)

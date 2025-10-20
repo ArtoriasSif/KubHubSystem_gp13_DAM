@@ -2,10 +2,14 @@ package com.example.kubhubsystem_gp13_dam.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.kubhubsystem_gp13_dam.data.repository.AsignaturaRepository
 import com.example.kubhubsystem_gp13_dam.data.repository.RecetaRepository
 import com.example.kubhubsystem_gp13_dam.model.*
 import com.example.kubhubsystem_gp13_dam.repository.SolicitudRepository
 import com.example.kubhubsystem_gp13_dam.repository.ProductoRepository
+import com.example.kubhubsystem_gp13_dam.repository.ReservaSalaRepository
+import com.example.kubhubsystem_gp13_dam.repository.SeccionRepository
+import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
@@ -13,10 +17,20 @@ import java.time.LocalDateTime
 class SolicitudViewModel(
     private val solicitudRepository: SolicitudRepository,
     private val recetaRepository: RecetaRepository,
-    private val productoRepository: ProductoRepository
+    private val productoRepository: ProductoRepository,
+    private val asignaturaRepository: AsignaturaRepository,  // ✅ AGREGAR
+    private val seccionRepository: SeccionRepository,        // ✅ AGREGAR
+    private val usuarioRepository: UsuarioRepository,
+    private val reservaSalaRepository: ReservaSalaRepository
 ) : ViewModel() {
 
     // Estados
+
+    private val _reservasSala = MutableStateFlow<List<ReservaSala>>(emptyList())
+    val reservasSala: StateFlow<List<ReservaSala>> = _reservasSala.asStateFlow()
+
+    private val _reservaSalaSeleccionada = MutableStateFlow<ReservaSala?>(null)
+    val reservaSalaSeleccionada: StateFlow<ReservaSala?> = _reservaSalaSeleccionada.asStateFlow()
     private val _solicitudes = MutableStateFlow<List<Solicitud>>(emptyList())
     val solicitudes: StateFlow<List<Solicitud>> = _solicitudes.asStateFlow()
 
@@ -70,7 +84,28 @@ class SolicitudViewModel(
     init {
         observarSolicitudes()
         cargarProductos()
+        cargarAsignaturas()
     }
+    // ✅ NUEVOS ESTADOS
+    private val _asignaturas = MutableStateFlow<List<Asignatura>>(emptyList())
+    val asignaturas: StateFlow<List<Asignatura>> = _asignaturas.asStateFlow()
+
+    private val _secciones = MutableStateFlow<List<Seccion>>(emptyList())
+    val secciones: StateFlow<List<Seccion>> = _secciones.asStateFlow()
+
+    private val _asignaturaSeleccionada = MutableStateFlow<Asignatura?>(null)
+    val asignaturaSeleccionada: StateFlow<Asignatura?> = _asignaturaSeleccionada.asStateFlow()
+
+    private val _seccionSeleccionada = MutableStateFlow<Seccion?>(null)
+    val seccionSeleccionada: StateFlow<Seccion?> = _seccionSeleccionada.asStateFlow()
+
+    private val _nombreDocente = MutableStateFlow("")
+    val nombreDocente: StateFlow<String> = _nombreDocente.asStateFlow()
+
+    private val _cantidadPersonas = MutableStateFlow(20)
+    val cantidadPersonas: StateFlow<Int> = _cantidadPersonas.asStateFlow()
+
+
 
     private fun observarSolicitudes() {
         viewModelScope.launch {
@@ -146,14 +181,61 @@ class SolicitudViewModel(
         }
     }
 
-    fun guardarSolicitud() {
+    fun guardarSolicitud(onSuccess: () -> Unit = {}) {
         viewModelScope.launch {
             try {
                 _isLoading.value = true
 
-                // Por ahora crear una solicitud básica
-                // TODO: Completar con datos reales de asignatura/sección cuando se agregue esa funcionalidad
-                val solicitudTemp = Solicitud(
+                val asignatura = _asignaturaSeleccionada.value
+                val seccion = _seccionSeleccionada.value
+                val reservaSala = _reservaSalaSeleccionada.value  // ✅ Usar la real
+
+                if (asignatura == null || seccion == null) {
+                    _errorMessage.value = "Debe seleccionar asignatura y sección"
+                    return@launch
+                }
+
+                // ✅ Validar que haya reserva de sala
+                if (reservaSala == null) {
+                    _errorMessage.value = "Esta sección no tiene reservas de sala asignadas"
+                    return@launch
+                }
+
+                if (_detallesTemp.value.isEmpty()) {
+                    _errorMessage.value = "Debe agregar al menos un producto"
+                    return@launch
+                }
+
+                // Obtener docente
+                val docenteEntity = seccion.idDocente?.let { id ->
+                    usuarioRepository.obtenerPorId(id)
+                }
+
+                val docente = docenteEntity?.let { entity ->
+                    Usuario(
+                        idUsuario = entity.idUsuario,
+                        rol = Rol.desdeId(entity.idRol) ?: Rol.DOCENTE,
+                        primeroNombre = entity.primeroNombre,
+                        segundoNombre = entity.segundoNombre ?: "",
+                        apellidoMaterno = entity.apellidoMaterno ?: "",
+                        apellidoPaterno = entity.apellidoPaterno ?: "",
+                        email = entity.email ?: "",
+                        username = entity.username ?: "",
+                        password = entity.password ?: ""
+                    )
+                } ?: Usuario(
+                    idUsuario = 0,
+                    rol = Rol.DOCENTE,
+                    primeroNombre = "Sin",
+                    segundoNombre = "",
+                    apellidoMaterno = "",
+                    apellidoPaterno = "Docente",
+                    email = "",
+                    username = "",
+                    password = ""
+                )
+
+                val solicitud = Solicitud(
                     idSolicitud = 0,
                     detalleSolicitud = _detallesTemp.value,
                     gestorPedidos = Usuario(
@@ -167,36 +249,22 @@ class SolicitudViewModel(
                         username = "admin",
                         password = ""
                     ),
-                    seccion = Seccion(1, "Sección A"),
-                    docenteSeccion = Usuario(
-                        idUsuario = 2,
-                        rol = Rol.DOCENTE,
-                        primeroNombre = "Juan",
-                        segundoNombre = "",
-                        apellidoMaterno = "",
-                        apellidoPaterno = "Pérez",
-                        email = "jperez@escuela.cl",
-                        username = "jperez",
-                        password = ""
-                    ),
-                    reservaSala = ReservaSala(
-                        idReservaSala = 1,
-                        seccion = Seccion(1, "Sección A"),
-                        asignatura = Asignatura(1, "Cocina Básica", "COC101", ""),
-                        sala = Sala(1, "Sala 101"),
-                        diaSemana = DiaSemana.LUNES,
-                        bloqueHorario = 1
-                    ),
-                    cantidadPersonas = 20,
+                    seccion = seccion,
+                    docenteSeccion = docente,
+                    reservaSala = reservaSala,  // ✅ Ahora es la reserva real
+                    cantidadPersonas = _cantidadPersonas.value,
                     fechaSolicitud = LocalDateTime.now(),
                     fechaCreacion = LocalDateTime.now()
                 )
 
-                solicitudRepository.crearSolicitud(solicitudTemp)
+                solicitudRepository.crearSolicitud(solicitud)
 
                 _successMessage.value = "Solicitud creada exitosamente"
                 limpiarSolicitudActual()
+                onSuccess()
             } catch (e: Exception) {
+                println("❌ Error al guardar solicitud: ${e.message}")
+                e.printStackTrace()
                 _errorMessage.value = "Error al guardar solicitud: ${e.message}"
             } finally {
                 _isLoading.value = false
@@ -221,10 +289,6 @@ class SolicitudViewModel(
         }
     }
 
-    private fun limpiarSolicitudActual() {
-        _solicitudActual.value = null
-        _detallesTemp.value = emptyList()
-    }
 
     fun clearError() {
         _errorMessage.value = null
@@ -233,4 +297,118 @@ class SolicitudViewModel(
     fun clearSuccess() {
         _successMessage.value = null
     }
+    // ✅ NUEVOS MÉTODOS
+    private fun cargarAsignaturas() {
+        viewModelScope.launch {
+            try {
+                val asignaturas = asignaturaRepository.obtenerTodas()
+                _asignaturas.value = asignaturas
+            } catch (e: Exception) {
+                _errorMessage.value = "Error al cargar asignaturas: ${e.message}"
+            }
+        }
+    }
+
+    fun seleccionarAsignatura(asignatura: Asignatura) {
+        _asignaturaSeleccionada.value = asignatura
+        cargarSeccionesPorAsignatura(asignatura.idAsignatura)
+    }
+
+    private fun cargarSeccionesPorAsignatura(idAsignatura: Int) {
+        viewModelScope.launch {
+            try {
+                val secciones = seccionRepository.obtenerSeccionesPorAsignatura(idAsignatura)
+                _secciones.value = secciones
+            } catch (e: Exception) {
+                _errorMessage.value = "Error al cargar secciones: ${e.message}"
+            }
+        }
+    }
+
+    fun seleccionarSeccion(seccion: Seccion) {
+        _seccionSeleccionada.value = seccion
+
+        // Cargar docente
+        seccion.idDocente?.let { idDocente ->
+            cargarDocenteDeSeccion(idDocente)
+        } ?: run {
+            _nombreDocente.value = "Sin docente asignado"
+        }
+
+        // ✅ NUEVO: Cargar reservas de sala de la sección
+        cargarReservasDeSala(seccion.idSeccion)
+    }
+    private fun cargarReservasDeSala(idSeccion: Int) {
+        viewModelScope.launch {
+            try {
+                val reservas = reservaSalaRepository.obtenerReservasPorSeccion(idSeccion)
+                _reservasSala.value = reservas
+
+                // Seleccionar la primera automáticamente si existe
+                _reservaSalaSeleccionada.value = reservas.firstOrNull()
+
+                if (reservas.isEmpty()) {
+                    _errorMessage.value = "Advertencia: Esta sección no tiene reservas de sala asignadas"
+                }
+            } catch (e: Exception) {
+                println("❌ Error al cargar reservas de sala: ${e.message}")
+                _reservasSala.value = emptyList()
+                _reservaSalaSeleccionada.value = null
+            }
+        }
+    }
+
+    // ✅ NUEVO: Método para seleccionar una reserva específica
+    fun seleccionarReservaSala(reserva: ReservaSala) {
+        _reservaSalaSeleccionada.value = reserva
+    }
+
+    private fun cargarDocenteDeSeccion(idDocente: Int) {
+        viewModelScope.launch {
+            try {
+                val docenteEntity = usuarioRepository.obtenerPorId(idDocente)
+                _nombreDocente.value = docenteEntity?.let { entity ->
+                    "${entity.primeroNombre} ${entity.apellidoPaterno}"
+                } ?: "Sin docente asignado"
+            } catch (e: Exception) {
+                println("❌ Error al cargar docente: ${e.message}")
+                _nombreDocente.value = "Sin docente asignado"
+            }
+        }
+    }
+
+    fun actualizarNombreDocente(nuevoNombre: String) {
+        _nombreDocente.value = nuevoNombre
+    }
+
+    fun actualizarCantidadPersonas(cantidad: Int) {
+        _cantidadPersonas.value = cantidad
+    }
+
+    // Métodos existentes
+    fun agregarProducto(producto: Producto, cantidad: Double) {
+        val nuevoDetalle = DetalleSolicitud(
+            idDetalleSolicitud = 0,
+            idSolicitud = 0,
+            producto = producto,
+            cantidadUnidadMedida = cantidad
+        )
+        _detallesTemp.value = _detallesTemp.value + nuevoDetalle
+    }
+
+    fun eliminarProducto(detalle: DetalleSolicitud) {
+        _detallesTemp.value = _detallesTemp.value.filter { it != detalle }
+    }
+
+
+    fun limpiarSolicitudActual() {
+        _detallesTemp.value = emptyList()
+        _asignaturaSeleccionada.value = null
+        _seccionSeleccionada.value = null
+        _nombreDocente.value = ""
+        _cantidadPersonas.value = 20
+        _reservasSala.value = emptyList()  // ✅ AGREGAR
+        _reservaSalaSeleccionada.value = null  // ✅ AGREGAR
+    }
+
 }
