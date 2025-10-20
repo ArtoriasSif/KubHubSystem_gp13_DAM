@@ -84,6 +84,9 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("io.coil-kt:coil:2.6.0")
 
+    // ✅ 🌍 GOOGLE PLAY SERVICES - LOCATION (NUEVO)
+    implementation("com.google.android.gms:play-services-location:21.3.0")
+
     // ✅ FIX METADATA
     implementation("org.jetbrains.kotlinx:kotlinx-metadata-jvm:0.6.2")
 

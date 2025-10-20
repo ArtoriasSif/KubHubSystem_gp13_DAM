@@ -1,5 +1,8 @@
 package com.example.kubhubsystem_gp13_dam.ui.screens.login
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -19,14 +22,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.kubhubsystem_gp13_dam.model.UserRole
+import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 import com.example.kubhubsystem_gp13_dam.ui.theme.loginTextFieldColors
+import com.example.kubhubsystem_gp13_dam.viewmodel.LocationViewModel
 import com.example.kubhubsystem_gp13_dam.viewmodel.LoginViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -43,21 +49,33 @@ import kotlinx.coroutines.launch
  *
  * En resumen: esta función se encarga de mostrar la UI del login y de reaccionar
  * a los cambios de estado de forma segura y automática.
- */
+* 🆕 NUEVO: Ahora incluye sistema de ubicación automática que se activa 3 segundos después de cargar
+*/
 @Composable
 fun LoginScreen(
     usuarioRepository: UsuarioRepository, // ✅ Recibir el repositorio como parámetro
     onLoginSuccess: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+
     // ✅ Crear el ViewModel manualmente con las dependencias necesarias
     val viewModel: LoginViewModel = remember {
         LoginViewModel(usuarioRepository)
     }
+
+    // 🆕 NUEVO: ViewModel de ubicación
+    val locationViewModel: LocationViewModel = remember {
+        LocationViewModel(context)
+    }
+
     /**📌 Obtenemos el estado completo de la UI desde el ViewModel
      *    uiState: trae toda la información actual de la pantalla desde el ViewModel (email, password, rol, errores, carga)
      *    que es observado mediante StateFlow, lo que garantiza recomposición automática ante cambios. En otras palabras GG
      */
     val uiState by viewModel.uiState.collectAsState()
+
+    // 🆕 NUEVO: Estado de la ubicación
+    val locationUiState by locationViewModel.uiState.collectAsState()
 
     //📌 Estados locales de la UI
     var showDemoAccounts by remember { mutableStateOf(false) }          // Controla si el panel de "cuentas demo" se muestra
@@ -79,6 +97,62 @@ fun LoginScreen(
      */
 
     val shouldShowDemoGrid by remember { derivedStateOf { showDemoAccounts && !isLoadingDemoAccounts } }
+
+    // 🆕 NUEVO: Sistema de permisos de ubicación
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val fineLocationGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] ?: false
+        val coarseLocationGranted = permissions[Manifest.permission.ACCESS_COARSE_LOCATION] ?: false
+
+        if (fineLocationGranted || coarseLocationGranted) {
+            println("✅ Permisos de ubicación concedidos")
+            locationViewModel.checkPermissions()
+            // Obtener ubicación con retraso de 3 segundos
+            locationViewModel.getLocationWithDelay(delayMillis = 3000L)
+        } else {
+            println("❌ Permisos de ubicación denegados")
+        }
+    }
+
+    // 🆕 NUEVO: Efecto para solicitar permisos y obtener ubicación automáticamente
+    LaunchedEffect(Unit) {
+        println("🚀 LoginScreen cargada - Iniciando proceso de ubicación...")
+
+        // Verificar si ya tiene permisos
+        locationViewModel.checkPermissions()
+
+        if (locationUiState.hasPermission) {
+            // Si ya tiene permisos, obtener ubicación con retraso
+            println("✅ Permisos ya concedidos, obteniendo ubicación en 3 segundos...")
+            locationViewModel.getLocationWithDelay(delayMillis = 3000L)
+        } else {
+            // Si no tiene permisos, solicitarlos
+            println("⚠️ Solicitando permisos de ubicación...")
+            delay(1000L) // Pequeño delay para que la UI esté completamente cargada
+            permissionLauncher.launch(
+                arrayOf(
+                    Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                )
+            )
+        }
+    }
+
+    // 🆕 NUEVO: Snackbar para mostrar ubicación obtenida
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(locationUiState.location) {
+        locationUiState.location?.let { location ->
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    message = "📍 Ubicación: ${locationViewModel.getFormattedLocation()}",
+                    duration = SnackbarDuration.Short
+                )
+            }
+        }
+    }
 
     /**  💀 Diagnóstico de rendimiento (solo DEBUG)
      *   Este bloque mide cuánto tarda en componerse este Composable.

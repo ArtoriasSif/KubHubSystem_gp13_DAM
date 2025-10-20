@@ -71,16 +71,16 @@ class LoginRepository(private val usuarioRepository: UsuarioRepository) {
     /**
      * Simula el inicio de sesión con delay (como si fuera una llamada a servidor).
      *
-     * @param username Correo del usuario
+     * @param emailOrUsername Correo del usuario
      * @param password Contraseña ingresada
      * @return String? → Devuelve:
-     *  - `"username"` si el usuario no existe
+     *  - `"email"` si el usuario no existe
      *  - `"password"` si la contraseña es incorrecta
      *  - `null` si la autenticación es exitosa
      */
-    suspend fun login(username: String, password: String): String? {
+    suspend fun login(emailOrUsername: String, password: String): String? {
         /*** Consulta el usuario en la base de datos ***/
-        val usuarioEntity = usuarioRepository.iniciarSesion(username, password)
+        val usuarioEntity = usuarioRepository.iniciarSesion(emailOrUsername, password)
 
         /*** Delay para tiempo de sincronizarcion ***/
         delay(1500)
@@ -89,7 +89,7 @@ class LoginRepository(private val usuarioRepository: UsuarioRepository) {
         return when {
             usuarioEntity == null -> {
                 // Verifica si al menos el usuario existe (solo username)
-                val usuarioPorCorreo = usuarioRepository.obtenerPorCorreo(username)
+                val usuarioPorCorreo = usuarioRepository.obtenerPorCorreo(emailOrUsername)
                 if (usuarioPorCorreo == null) {
                     "username" // Usuario no existe
                 } else {

@@ -15,8 +15,8 @@ class UsuarioRepository(private val usuarioDao: UsuarioDao) {
 
     suspend fun obtenerPorId(id: Int): UsuarioEntity? = usuarioDao.obtenerPorId(id)
 
-    suspend fun iniciarSesion(usuario: String, contraseña: String): UsuarioEntity? =
-        usuarioDao.iniciarSesion(usuario, contraseña)
+    suspend fun iniciarSesion(emailOrUsername: String, contraseña: String): UsuarioEntity? =
+        usuarioDao.iniciarSesion(emailOrUsername, contraseña)
 
     suspend fun obtenerPorCorreo(correo: String): UsuarioEntity? =
         usuarioDao.obtenerPorCorreo(correo)
