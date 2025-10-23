@@ -92,7 +92,7 @@ object SpanishTextValidator  {
             "bk", "bp", "bq", "db", "dp", "dq", "fb", "fp", "fq",
             "gb", "gp", "gq", "jb", "jp", "jq", "kb", "kp", "kq",
             "pb", "pq", "qb", "qp", "vb", "vp", "vq", "wb", "wp", "wq",
-            "xb", "xp", "xq", "zb", "zp", "zq",
+            "xb", "xp", "xq", "zb", "zp", "zq","xd",
             // Q sin u
             "qa", "qe", "qi", "qo",
             // H después de consonantes específicas

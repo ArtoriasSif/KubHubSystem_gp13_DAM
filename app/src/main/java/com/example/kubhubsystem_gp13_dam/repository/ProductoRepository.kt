@@ -3,9 +3,11 @@ package com.example.kubhubsystem_gp13_dam.repository
 import com.example.kubhubsystem_gp13_dam.local.dao.ProductoDAO
 import com.example.kubhubsystem_gp13_dam.local.entities.ProductoEntity
 import com.example.kubhubsystem_gp13_dam.model.Producto
+import com.example.kubhubsystem_gp13_dam.utils.SpanishSingularConverter
 import com.example.kubhubsystem_gp13_dam.utils.SpanishTextValidator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 class ProductoRepository(private val dao: ProductoDAO) {
@@ -48,20 +50,11 @@ class ProductoRepository(private val dao: ProductoDAO) {
         unidadMedida: String
     ): Long {
         return withContext(Dispatchers.IO) {
-            // Validar y formatear los textos
+            // 1. Validar y formatear los textos
             val nombreProductoValidado = SpanishTextValidator.validarYFormatearTexto(nombreProducto)
             val categoriaValidada = SpanishTextValidator.validarYFormatearTexto(categoria)
 
-            //Validar que producto no existe en la bbdd
-            val productoExistente = nombreProductoValidado?.let {
-                dao.buscarPorNombre(it)
-            }
-            if (productoExistente != null) {
-                throw IllegalArgumentException("Ya existe un producto con ese nombre")
-            }
-
-            // Verificar si ambos campos son válidos
-            // Mensajes de error específicos
+            // 2. Verificar validez de los campos ANTES de continuar
             when {
                 nombreProductoValidado == null && categoriaValidada == null ->
                     throw IllegalArgumentException("Nombre y categoría contienen errores de formato")
@@ -73,24 +66,49 @@ class ProductoRepository(private val dao: ProductoDAO) {
                     throw IllegalArgumentException("Categoría contiene errores de formato: '$categoria'")
             }
 
-            // Si llegamos aquí, ambos campos son válidos
+            // 3. Normalizar el nombre a singular para búsqueda
+            val nombreNormalizado = SpanishSingularConverter.normalizarTexto(nombreProductoValidado)
+
+            // 4. Buscar productos existentes con nombre similar (en singular)
+            val productosExistentes = dao.observarTodos().first()
+
+            val productoConflictivo = productosExistentes.find { producto ->
+                // Si estamos actualizando, ignorar el producto actual
+                if (idProducto != null && producto.idProducto == idProducto) {
+                    return@find false
+                }
+
+                // Comparar nombres normalizados (singular)
+                val nombreExistenteNormalizado = SpanishSingularConverter.normalizarTexto(producto.nombreProducto)
+                nombreExistenteNormalizado == nombreNormalizado
+            }
+
+            // 5. Si existe conflicto, lanzar excepción con información útil
+            if (productoConflictivo != null) {
+                throw IllegalArgumentException(
+                    "Ya existe un producto similar: '${productoConflictivo.nombreProducto}'. " +
+                            "No se puede guardar '${nombreProductoValidado}'"
+                )
+            }
+
+            // 6. Guardar o actualizar el producto
             if (idProducto == null) {
-                // Insertar nuevo producto con los textos validados
+                // Insertar nuevo producto con el nombre formateado (como lo escribió el usuario)
                 dao.insertar(
                     ProductoEntity(
                         idProducto = 0,
-                        nombreProducto = nombreProductoValidado, // Usar el texto validado
-                        categoria = categoriaValidada,           // Usar el texto validado
+                        nombreProducto = nombreProductoValidado,
+                        categoria = categoriaValidada,
                         unidad = unidadMedida
                     )
                 )
             } else {
-                // Actualizar producto existente con los textos validados
+                // Actualizar producto existente
                 dao.actualizar(
                     ProductoEntity(
                         idProducto = idProducto,
-                        nombreProducto = nombreProductoValidado, // Usar el texto validado
-                        categoria = categoriaValidada,           // Usar el texto validado
+                        nombreProducto = nombreProductoValidado,
+                        categoria = categoriaValidada,
                         unidad = unidadMedida
                     )
                 )
