@@ -30,6 +30,8 @@ interface ProductoDAO {
     @Query("SELECT * FROM producto WHERE nombreProducto = :nombre LIMIT 1")
     suspend fun buscarPorNombre(nombre: String): ProductoEntity?
 
+
+
     // ✅ CORREGIDO: Ahora es suspend para no bloquear el hilo principal
     @Query("SELECT nombreProducto FROM producto WHERE idProducto = :id")
     suspend fun buscarNombrePorId(id: Int): String?
@@ -51,4 +53,6 @@ interface ProductoDAO {
 
     @Query("DELETE FROM producto")
     suspend fun eliminarTodos()
+
+    companion object
 }

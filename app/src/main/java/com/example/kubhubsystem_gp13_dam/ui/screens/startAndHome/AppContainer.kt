@@ -130,6 +130,7 @@ fun AppContainer() {
     // NAVEGACIÓN
     // ============================================
 
+    //El componente que define la estructura de navegación de la aplicación
     NavHost(
         navController = navController,
         startDestination = MenuRoutes.Home.route

@@ -219,7 +219,7 @@ class LoginViewModel(
                         onSuccess()
                     }
                     //❌ Errores: Detiene la carga, Muestra el mensaje de error correspondiente.
-                    "username" -> {
+                    "email o username" -> {
                         _uiState.update {
                             it.copy(
                                 isLoading = false,

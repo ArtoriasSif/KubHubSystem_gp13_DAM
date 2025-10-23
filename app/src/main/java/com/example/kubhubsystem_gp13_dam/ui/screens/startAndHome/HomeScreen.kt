@@ -33,6 +33,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
+                // NaVerga seguinte pantalla
 fun HomeScreen(onNavigateToLogin: () -> Unit) {
     var step by remember { mutableStateOf(0) }
     var initializationComplete by remember { mutableStateOf(false) }
@@ -51,13 +52,20 @@ fun HomeScreen(onNavigateToLogin: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         val maxSize = min(maxWidth, maxHeight)
-        val circleSize = maxSize * 0.45f
+        val circleSize = maxSize * 0.45f // 45% de la resolucion de pantalla
+        /**
+        Conceptualmente, Animatable es un contenedor inteligente que almacena un valor y
+        automatiza completamente su animación, gestionando de forma segura las corrutinas,
+        interrupciones y estados internos para crear transiciones suaves entre valores.
+        **/
+                                //tiene{valorActual,SabeAnimar,RecuerdaVelocidYTarget }
         val logoSize = remember { Animatable(0.dp, Dp.VectorConverter) }
 
         // Animación de puntos suspensivos
         LaunchedEffect(initializationComplete) {
             var counter = 0
             while (!initializationComplete) {
+                                   //Devolve el resto de la division
                 dotAnimation = when (counter % 3) {
                     0 -> "."
                     1 -> ".."
@@ -72,12 +80,15 @@ fun HomeScreen(onNavigateToLogin: () -> Unit) {
         // Inicialización y animaciones
         LaunchedEffect(Unit) {
             // Animaciones iniciales de logos
+                  //.detiene la animacion en cursor
             logoSize.snapTo(0.dp)
+                  //.anima suavemente a un nuevo valor en un tiempo dado
             logoSize.animateTo(circleSize, animationSpec = tween(900))
             delay(500)
             step = 1
-
+                  //.detiene la animacion en cursor
             logoSize.snapTo(0.dp)
+                  //.anima suavemente a un nuevo valor en un tiempo dado
             logoSize.animateTo(circleSize, animationSpec = tween(900))
             delay(1000)
             step = 2
@@ -85,7 +96,7 @@ fun HomeScreen(onNavigateToLogin: () -> Unit) {
             delay(1000)
             step = 3
 
-            // Inicialización silenciosa de la base de datos
+            // Nueva coroutine funcionando en segundo plano
             val initializationJob = coroutineScope.launch {
                 try {
                     appInitializer.inicializarTodo { /* No mostramos progreso */ }
@@ -96,7 +107,7 @@ fun HomeScreen(onNavigateToLogin: () -> Unit) {
                 }
             }
 
-            // Esperar a que la inicialización termine
+            // Esperar a que que la coroutine de inicialización finalice antes de continuar
             initializationJob.join()
 
             // Navegar después de un breve delay

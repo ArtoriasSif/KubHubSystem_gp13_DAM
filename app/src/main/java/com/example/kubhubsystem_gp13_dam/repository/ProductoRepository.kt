@@ -3,6 +3,7 @@ package com.example.kubhubsystem_gp13_dam.repository
 import com.example.kubhubsystem_gp13_dam.local.dao.ProductoDAO
 import com.example.kubhubsystem_gp13_dam.local.entities.ProductoEntity
 import com.example.kubhubsystem_gp13_dam.model.Producto
+import com.example.kubhubsystem_gp13_dam.utils.SpanishTextValidator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -45,32 +46,60 @@ class ProductoRepository(private val dao: ProductoDAO) {
         nombreProducto: String,
         categoria: String,
         unidadMedida: String
-    ): Long { // Cambiar el tipo de retorno a Long (ID generado)
+    ): Long {
         return withContext(Dispatchers.IO) {
+            // Validar y formatear los textos
+            val nombreProductoValidado = SpanishTextValidator.validarYFormatearTexto(nombreProducto)
+            val categoriaValidada = SpanishTextValidator.validarYFormatearTexto(categoria)
+
+            //Validar que producto no existe en la bbdd
+            val productoExistente = nombreProductoValidado?.let {
+                dao.buscarPorNombre(it)
+            }
+            if (productoExistente != null) {
+                throw IllegalArgumentException("Ya existe un producto con ese nombre")
+            }
+
+            // Verificar si ambos campos son válidos
+            // Mensajes de error específicos
+            when {
+                nombreProductoValidado == null && categoriaValidada == null ->
+                    throw IllegalArgumentException("Nombre y categoría contienen errores de formato")
+
+                nombreProductoValidado == null ->
+                    throw IllegalArgumentException("Nombre de producto contiene errores de formato: '$nombreProducto'")
+
+                categoriaValidada == null ->
+                    throw IllegalArgumentException("Categoría contiene errores de formato: '$categoria'")
+            }
+
+            // Si llegamos aquí, ambos campos son válidos
             if (idProducto == null) {
-                // Insertar nuevo producto y retornar el ID generado
+                // Insertar nuevo producto con los textos validados
                 dao.insertar(
                     ProductoEntity(
                         idProducto = 0,
-                        nombreProducto = nombreProducto,
-                        categoria = categoria,
+                        nombreProducto = nombreProductoValidado, // Usar el texto validado
+                        categoria = categoriaValidada,           // Usar el texto validado
                         unidad = unidadMedida
                     )
                 )
             } else {
-                // Actualizar producto existente
+                // Actualizar producto existente con los textos validados
                 dao.actualizar(
                     ProductoEntity(
                         idProducto = idProducto,
-                        nombreProducto = nombreProducto,
-                        categoria = categoria,
+                        nombreProducto = nombreProductoValidado, // Usar el texto validado
+                        categoria = categoriaValidada,           // Usar el texto validado
                         unidad = unidadMedida
                     )
                 )
-                idProducto.toLong() // Retornar el ID existente
+                idProducto.toLong()
             }
         }
     }
+
+
     suspend fun actualizarProducto (producto: ProductoEntity) = dao.actualizar(producto)
 
     suspend fun actualizarNombreProducto(nuevoNombre: String,id: Int) = dao.actualizarNombreProducto(id, nuevoNombre)

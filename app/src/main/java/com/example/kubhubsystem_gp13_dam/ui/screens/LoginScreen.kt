@@ -158,7 +158,7 @@ fun LoginScreen(
      *   Es útil para detectar "frame drops" o lentitud en la renderización,
      *   cuando hay demasiadas operaciones pesadas dentro de la composición. (Como es el caso XD)
      */
-    if (false) { // Cambiar a true solo para debugging, cuando se quiera medir rendimiento
+    if (true) { // Cambiar a true solo para debugging, cuando se quiera medir rendimiento
         DisposableEffect(Unit) {
             val startTime = System.currentTimeMillis()
             println("🔵 LoginScreen: Composición iniciada")
@@ -243,7 +243,7 @@ fun LoginScreen(
                 LoginTextField(
                     value = uiState.email,  // Valor actual del campo, gestionado por el ViewModel
                     onValueChange = { viewModel.updateEmail(it) }, // Callback que actualiza el estado reactivo en el ViewModel
-                    label = "Correo Electrónico*",  // Etiqueta visible sobre el campo
+                    label = "Correo Electrónico o Username*",  // Etiqueta visible sobre el campo
                     placeholder = "correo@ejemplo.com", // Texto guía cuando el campo está vacío
                     isError = hasError, // Control visual de error (bordes/colores rojos)
                     leadingIcon = Icons.Default.Email // Ícono al inicio, representando el tipo de dato (correo)

@@ -12,6 +12,7 @@ import com.example.kubhubsystem_gp13_dam.repository.ReservaSalaRepository
 import com.example.kubhubsystem_gp13_dam.repository.RolRepository
 import com.example.kubhubsystem_gp13_dam.repository.SeccionRepository
 import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
+import kotlinx.coroutines.delay
 
 class AppInitializer(private val db: AppDatabase) {
 
@@ -82,3 +83,23 @@ class AppInitializer(private val db: AppDatabase) {
         Log.d(tag, "🎉 Base de datos inicializada COMPLETAMENTE")
     }
 }
+/**
+ * Log.d(...)
+ * Es una clase utilitaria de Android que proporciona métodos para enviar mensajes al Logcat
+ * (la ventana de registro del sistema Android en el IDE, como Android Studio).
+ *
+ * Log.d(tag, "...")
+ * Es el método de la clase Log que indica el nivel de prioridad del mensaje.
+ * La 'd' significa Debug (Depuración). Estos mensajes se usan para registrar
+ * información detallada sobre el funcionamiento normal de un programa.
+ *
+ * Log.d("AppInitializer", ...)
+ * El primer argumento. Es una cadena de texto (String) usada para identificar el origen del
+ * mensaje de registro. En tu código, tag es la variable que contiene "AppInitializer".
+ * Esto permite filtrar fácilmente los mensajes en Logcat
+ *
+ * Log.d(..., "✅ Roles inicializados")
+ * El segundo argumento. Es el mensaje real que se va a mostrar. Suele describir el evento
+ * que acaba de ocurrir. El emoji ✅ es útil para hacer el mensaje más visible y fácil de
+ * identificar en el flujo de Logcat.
+ * */
