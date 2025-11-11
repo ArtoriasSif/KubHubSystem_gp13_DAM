@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose) // ✅ Reemplaza el plugin incorrecto
+    alias(libs.plugins.kotlin.compose)
     id("kotlin-kapt")
 }
 
@@ -16,6 +16,9 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // ✅ Genera la constante BASE_URL dentro de BuildConfig
+        buildConfigField("String", "BASE_URL", "\"http://98.94.74.221/\"")
     }
 
     buildTypes {
@@ -37,7 +40,9 @@ android {
         jvmTarget = "11"
     }
 
+    // ✅ ESTA SECCIÓN DEBE IR AQUÍ (al mismo nivel que defaultConfig)
     buildFeatures {
+        buildConfig = true // 🔥 habilita la generación de BuildConfig
         compose = true
     }
 
@@ -52,6 +57,7 @@ android {
 dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.runtime)
+
     // ✅ ROOM
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
@@ -84,14 +90,15 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.6.0")
     implementation("io.coil-kt:coil:2.6.0")
 
-    // ✅ 🌍 GOOGLE PLAY SERVICES - LOCATION (NUEVO)
+    // ✅ GOOGLE PLAY SERVICES - LOCATION
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
-    // ✅ FIX METADATA
-    implementation("org.jetbrains.kotlinx:kotlinx-metadata-jvm:0.6.2")
-
-    // ✅ FIX ANNOTATIONS
-    implementation("org.jetbrains:annotations:23.0.0")
+    // ✅ RETROFIT & OKHTTP
+    val retrofitVersion = "2.11.0"
+    val okhttpVersion = "4.12.0"
+    implementation("com.squareup.retrofit2:retrofit:$retrofitVersion")
+    implementation("com.squareup.retrofit2:converter-gson:$retrofitVersion")
+    implementation("com.squareup.okhttp3:okhttp:$okhttpVersion")
 
     // ✅ TESTING
     testImplementation("junit:junit:4.13.2")
@@ -100,7 +107,7 @@ dependencies {
     androidTestImplementation(platform("androidx.compose:compose-bom:2024.12.01"))
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 
-    // ✅ DEBUG (corregido)
+    // ✅ DEBUG
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

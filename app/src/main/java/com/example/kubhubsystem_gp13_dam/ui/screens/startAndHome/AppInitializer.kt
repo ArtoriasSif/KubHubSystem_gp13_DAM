@@ -38,10 +38,6 @@ class AppInitializer(private val db: AppDatabase) {
         productoRepository.inicializarProductos()
         Log.d(tag, "✅ Productos inicializados")
 
-        onProgress("Actualizando inventario")
-        val inventarioRepository = InventarioRepository(db.inventarioDao(), db.productoDao())
-        inventarioRepository.inicializarInventario()
-        Log.d(tag, "✅ Inventario actualizado")
 
         onProgress("Cargando recetas")
         val recetaRepository = RecetaRepository(

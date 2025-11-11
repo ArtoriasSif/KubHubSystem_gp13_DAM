@@ -14,1074 +14,105 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.example.kubhubsystem_gp13_dam.model.Producto
-import com.example.kubhubsystem_gp13_dam.model.EstadoInventario
-import com.example.kubhubsystem_gp13_dam.model.Inventario
-import com.example.kubhubsystem_gp13_dam.local.AppDatabase
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.example.kubhubsystem_gp13_dam.local.remote.RetrofitClient
+import com.example.kubhubsystem_gp13_dam.local.remote.InventarioApiService
+import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductoResponseDTO
 import com.example.kubhubsystem_gp13_dam.repository.InventarioRepository
-import com.example.kubhubsystem_gp13_dam.repository.MovimientoRepository
-import com.example.kubhubsystem_gp13_dam.repository.ProductoRepository
 import com.example.kubhubsystem_gp13_dam.ui.viewmodel.InventarioViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventarioScreen() {
-    val context = LocalContext.current
-    val database = remember { AppDatabase.obtener(context.applicationContext) }
-
-    val productoRepository = remember { ProductoRepository(database.productoDao()) }
-    val inventarioRepository = remember {
-        InventarioRepository(
-            invDao = database.inventarioDao(),
-            proDao = database.productoDao()
-        )
-    }
-    val movimientoRepository = remember {
-        MovimientoRepository(
-            movimientoDao = database.movimientoDao(),
-            inventarioDao = database.inventarioDao()
-        )
-    }
-
     val viewModel = remember {
-        InventarioViewModel(
-            productoRepository = productoRepository,
-            inventarioRepository = inventarioRepository,
-            movimientoRepository = movimientoRepository
-        )
+        val apiService = RetrofitClient.createService(InventarioApiService::class.java)
+        val repository = InventarioRepository(apiService)
+        InventarioViewModel(repository)
     }
 
-    val productosFiltrados by viewModel.productosFiltrados.collectAsState()
-    val categoriasFromDb by viewModel.categorias.collectAsState()
-    val selectedCategoria by viewModel.selectedCategoria.collectAsState()
+    val inventariosPaginados by viewModel.inventariosPaginados.collectAsState()
+    val categorias by viewModel.categorias.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
+    val selectedCategoria by viewModel.selectedCategoria.collectAsState()
+    val currentPage by viewModel.currentPage.collectAsState()
+    val totalPages by viewModel.totalPages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
-    val inventarios by viewModel.inventarios.collectAsState()
-
-    val categoriasConTodos by remember(categoriasFromDb) {
-        derivedStateOf { listOf("Todos") + categoriasFromDb }
-    }
 
     var showDialog by remember { mutableStateOf(false) }
     var showCategoryMenu by remember { mutableStateOf(false) }
-    var productoEditando by remember { mutableStateOf<Producto?>(null) }
+    var itemEditando by remember { mutableStateOf<InventoryWithProductoResponseDTO?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Mostrar mensajes
+    val categoriasConTodos by remember(categorias) {
+        derivedStateOf { listOf("Todas las categorías") + categorias }
+    }
+
     LaunchedEffect(errorMessage, successMessage) {
         errorMessage?.let {
-            snackbarHostState.showSnackbar(
-                message = it,
-                duration = SnackbarDuration.Short
-            )
+            snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short)
             viewModel.clearError()
         }
         successMessage?.let {
-            snackbarHostState.showSnackbar(
-                message = it,
-                duration = SnackbarDuration.Short
-            )
+            snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short)
             viewModel.clearSuccess()
         }
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.background)
-        ) {
-            InventarioHeader()
-
-            InventarioToolbar(
-                searchQuery = searchQuery,
-                selectedCategoria = selectedCategoria,
-                categorias = categoriasConTodos,
-                showCategoryMenu = showCategoryMenu,
-                onSearchChange = viewModel::updateSearchQuery,
-                onCategoryMenuToggle = { showCategoryMenu = it },
-                onCategorySelected = { categoria ->
-                    viewModel.updateSelectedCategoria(categoria)
-                    showCategoryMenu = false
-                },
-                onNewProducto = {
-                    productoEditando = null
-                    showDialog = true
-                }
-            )
-
-            ProductoCounter(count = productosFiltrados.size)
-
-            if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            }
-
-            ProductosTable(
-                productos = productosFiltrados,
-                inventarios = inventarios,
-                isLoading = isLoading,
-                onEdit = { producto ->
-                    productoEditando = producto
-                    showDialog = true
-                },
-                onDelete = { id ->
-                    viewModel.eliminarProducto(id)
-                },
-                onUpdateStock = { idInventario, stock ->
-                    viewModel.actualizarStock(idInventario, stock)
-                },
-                onRegistrarEntrada = { idInventario, cantidad ->
-                    viewModel.registrarEntrada(idInventario, cantidad)
-                },
-                onRegistrarSalida = { idInventario, cantidad ->
-                    viewModel.registrarSalida(idInventario, cantidad)
-                }
-            )
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            InventarioFooter()
-        }
-    }
-
-    if (showDialog) {
-        ProductoDialog(
-            producto = productoEditando,
-            onDismiss = {
-                showDialog = false
-                productoEditando = null
-            },
-            onSave = { producto, stockInicial, ubicacion ->
-                if (productoEditando != null) {
-                    // Modo EDICIÓN: solo actualizar producto
-                    viewModel.actualizarProducto(producto)
-                } else {
-                    // Modo CREACIÓN: crear producto + inventario
-                    viewModel.agregarProductoConInventario(
-                        producto = producto,
-                        stockInicial = stockInicial,
-                        ubicacion = ubicacion
-                    )
-                }
-                showDialog = false
-                productoEditando = null
-            }
-        )
-    }
-}
-
-@Composable
-private fun ProductosTable(
-    productos: List<Producto>,
-    inventarios: List<Inventario>,
-    isLoading: Boolean,
-    onEdit: (Producto) -> Unit,
-    onDelete: (Int) -> Unit,
-    onUpdateStock: (Int, Double) -> Unit,
-    onRegistrarEntrada: (Int, Double) -> Unit,
-    onRegistrarSalida: (Int, Double) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column {
-            ProductosTableHeader()
-            HorizontalDivider()
-
-            if (productos.isEmpty() && !isLoading) {
-                EmptyProductosPlaceholder()
-            } else {
-                LazyColumn {
-                    items(
-                        items = productos,
-                        key = { it.idProducto }
-                    ) { producto ->
-                        val inventario = inventarios.find { it.idProducto == producto.idProducto }
-
-                        if (inventario != null) {
-                            ProductoRow(
-                                producto = producto,
-                                inventario = inventario,
-                                onEdit = { onEdit(producto) },
-                                onDelete = { onDelete(producto.idProducto) },
-                                onUpdateStock = { newStock ->
-                                    onUpdateStock(inventario.idInventario, newStock)
-                                },
-                                onRegistrarEntrada = { cantidad ->
-                                    onRegistrarEntrada(inventario.idInventario, cantidad)
-                                },
-                                onRegistrarSalida = { cantidad ->
-                                    onRegistrarSalida(inventario.idInventario, cantidad)
-                                }
-                            )
-                            HorizontalDivider()
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProductoRow(
-    producto: Producto,
-    inventario: Inventario,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    onUpdateStock: (Double) -> Unit,
-    onRegistrarEntrada: (Double) -> Unit,
-    onRegistrarSalida: (Double) -> Unit
-) {
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var showMenuOptions by remember { mutableStateOf(false) }
-    var showStockDialog by remember { mutableStateOf(false) }
-    var showMovimientoDialog by remember { mutableStateOf(false) }
-    var tipoMovimiento by remember { mutableStateOf("ENTRADA") }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(inventario.nombreProducto, modifier = Modifier.weight(2f))
-        Text(producto.categoria, modifier = Modifier.weight(1.5f))
-
-        TextButton(
-            onClick = { showStockDialog = true },
-            modifier = Modifier.weight(1f)
+                .padding(24.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = if (inventario.stock % 1 != 0.0) {
-                    inventario.stock.toString()
-                } else {
-                    inventario.stock.toInt().toString()
-                },
+                text = "Inventario",
+                fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
-                color = when (inventario.estado) {
-                    EstadoInventario.DISPONIBLE -> Color(0xFF4CAF50)
-                    EstadoInventario.AGOTADO -> Color(0xFFF44336)
-                    EstadoInventario.BAJO_STOCK -> Color(0xFFFF9800)
-                }
+                color = MaterialTheme.colorScheme.onBackground
             )
-        }
-
-        Text(producto.unidadMedida, modifier = Modifier.weight(1f))
-
-        EstadoBadge(
-            estado = inventario.estado,
-            modifier = Modifier.weight(1.5f)
-        )
-
-        ProductoActions(
-            onEdit = onEdit,
-            onMoreOptions = { showMenuOptions = true },
-            showMenu = showMenuOptions,
-            onDismissMenu = { showMenuOptions = false },
-            onAjustarStock = {
-                showMenuOptions = false
-                showStockDialog = true
-            },
-            onRegistrarEntrada = {
-                showMenuOptions = false
-                tipoMovimiento = "ENTRADA"
-                showMovimientoDialog = true
-            },
-            onRegistrarSalida = {
-                showMenuOptions = false
-                tipoMovimiento = "SALIDA"
-                showMovimientoDialog = true
-            },
-            onDelete = {
-                showMenuOptions = false
-                showDeleteDialog = true
-            },
-            modifier = Modifier.weight(1f)
-        )
-    }
-
-    if (showStockDialog) {
-        StockAdjustDialog(
-            productoNombre = inventario.nombreProducto,
-            stockActual = inventario.stock,
-            unidad = producto.unidadMedida,
-            onDismiss = { showStockDialog = false },
-            onConfirm = { nuevoStock ->
-                onUpdateStock(nuevoStock)
-                showStockDialog = false
-            }
-        )
-    }
-
-    if (showMovimientoDialog) {
-        MovimientoDialog(
-            productoNombre = inventario.nombreProducto,
-            stockActual = inventario.stock,
-            unidad = producto.unidadMedida,
-            tipoMovimiento = tipoMovimiento,
-            onDismiss = { showMovimientoDialog = false },
-            onConfirm = { cantidad ->
-                when (tipoMovimiento) {
-                    "ENTRADA" -> onRegistrarEntrada(cantidad)
-                    "SALIDA" -> onRegistrarSalida(cantidad)
-                }
-                showMovimientoDialog = false
-            }
-        )
-    }
-
-    if (showDeleteDialog) {
-        DeleteConfirmDialog(
-            productoNombre = inventario.nombreProducto,
-            onDismiss = { showDeleteDialog = false },
-            onConfirm = {
-                onDelete()
-                showDeleteDialog = false
-            }
-        )
-    }
-}
-
-@Composable
-private fun ProductoActions(
-    onEdit: () -> Unit,
-    onMoreOptions: () -> Unit,
-    showMenu: Boolean,
-    onDismissMenu: () -> Unit,
-    onAjustarStock: () -> Unit,
-    onRegistrarEntrada: () -> Unit,
-    onRegistrarSalida: () -> Unit,
-    onDelete: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(modifier = modifier) {
-        Row {
-            IconButton(onClick = onEdit) {
-                Icon(
-                    Icons.Default.Edit,
-                    contentDescription = "Editar",
-                    tint = Color(0xFFFFC107)
-                )
-            }
-
-            IconButton(onClick = onMoreOptions) {
-                Icon(
-                    Icons.Default.MoreVert,
-                    contentDescription = "Más opciones"
-                )
-            }
-        }
-
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = onDismissMenu
-        ) {
-            DropdownMenuItem(
-                text = { Text("Registrar Entrada") },
-                onClick = onRegistrarEntrada,
-                leadingIcon = {
-                    Icon(Icons.Default.Add, contentDescription = null, tint = Color(0xFF4CAF50))
-                }
-            )
-            DropdownMenuItem(
-                text = { Text("Registrar Salida") },
-                onClick = onRegistrarSalida,
-                leadingIcon = {
-                    Icon(Icons.Default.Remove, contentDescription = null, tint = Color(0xFFF44336))
-                }
-            )
-            HorizontalDivider()
-            DropdownMenuItem(
-                text = { Text("Ajustar Stock Manual") },
-                onClick = onAjustarStock,
-                leadingIcon = {
-                    Icon(Icons.Default.Edit, contentDescription = null)
-                }
-            )
-            DropdownMenuItem(
-                text = { Text("Eliminar") },
-                onClick = onDelete,
-                leadingIcon = {
-                    Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun MovimientoDialog(
-    productoNombre: String,
-    stockActual: Double,
-    unidad: String,
-    tipoMovimiento: String,
-    onDismiss: () -> Unit,
-    onConfirm: (Double) -> Unit
-) {
-    var cantidad by remember { mutableStateOf("") }
-    val isEntrada = tipoMovimiento == "ENTRADA"
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
             Text(
-                "${if (isEntrada) "Registrar Entrada" else "Registrar Salida"} - $productoNombre"
+                text = "Gestione los productos del inventario, vea movimientos y actualice existencias.",
+                fontSize = 14.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
             )
-        },
-        text = {
-            Column {
-                Text("Stock actual: ${if (stockActual % 1 != 0.0) stockActual else stockActual.toInt()} $unidad")
-                Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 OutlinedTextField(
-                    value = cantidad,
-                    onValueChange = {
-                        if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) {
-                            cantidad = it
-                        }
+                    value = searchQuery,
+                    onValueChange = viewModel::updateSearchQuery,
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text("Buscar productos...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     },
-                    label = { Text("Cantidad") },
                     singleLine = true,
-                    supportingText = {
-                        if (!isEntrada) {
-                            val cant = cantidad.toDoubleOrNull() ?: 0.0
-                            if (cant > stockActual) {
-                                Text(
-                                    "Stock insuficiente",
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
-                        }
-                    }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "La fecha y hora se registrarán automáticamente",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val cant = cantidad.toDoubleOrNull() ?: 0.0
-                    if (cant > 0) {
-                        onConfirm(cant)
-                    }
-                },
-                enabled = cantidad.toDoubleOrNull()?.let {
-                    it > 0 && (isEntrada || it <= stockActual)
-                } == true,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isEntrada) Color(0xFF4CAF50) else Color(0xFFF44336)
-                )
-            ) {
-                Text("Registrar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        }
-    )
-}
-
-// Mantener los demás composables sin cambios (InventarioHeader, InventarioToolbar, etc.)
-// ... (resto del código igual al anterior)
-
-@Composable
-private fun InventarioHeader() {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(24.dp)
-    ) {
-        Text(
-            text = "Inventario",
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "Gestione los productos del inventario, vea movimientos y actualice existencias.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun InventarioToolbar(
-    searchQuery: String,
-    selectedCategoria: String,
-    categorias: List<String>,
-    showCategoryMenu: Boolean,
-    onSearchChange: (String) -> Unit,
-    onCategoryMenuToggle: (Boolean) -> Unit,
-    onCategorySelected: (String) -> Unit,
-    onNewProducto: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(24.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        OutlinedTextField(
-            value = searchQuery,
-            onValueChange = onSearchChange,
-            modifier = Modifier.weight(1f),
-            placeholder = { Text("Buscar productos...") },
-            leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp)
-        )
-
-        CategoryFilterButton(
-            selectedCategoria = selectedCategoria,
-            categorias = categorias,
-            showMenu = showCategoryMenu,
-            onToggleMenu = onCategoryMenuToggle,
-            onSelectCategoria = { categoria ->
-                onCategorySelected(categoria)
-                onCategoryMenuToggle(false)
-            }
-        )
-
-        OutlinedButton(
-            onClick = { /* TODO: Implementar realizar pedido */ },
-            modifier = Modifier.height(56.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Icon(Icons.Default.ShoppingCart, contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Realizar Pedido")
-        }
-
-        Button(
-            onClick = onNewProducto,
-            modifier = Modifier.height(56.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFFC107))
-        ) {
-            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(20.dp), tint = Color.Black)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Nuevo Producto", color = Color.Black)
-        }
-    }
-}
-
-@Composable
-private fun CategoryFilterButton(
-    selectedCategoria: String,
-    categorias: List<String>,
-    showMenu: Boolean,
-    onToggleMenu: (Boolean) -> Unit,
-    onSelectCategoria: (String) -> Unit
-) {
-    Box {
-        OutlinedButton(
-            onClick = { onToggleMenu(true) },
-            modifier = Modifier.height(56.dp),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Icon(Icons.Default.FilterList, contentDescription = null, modifier = Modifier.size(20.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(selectedCategoria)
-        }
-
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = { onToggleMenu(false) }
-        ) {
-            categorias.forEach { categoria ->
-                DropdownMenuItem(
-                    text = { Text(categoria) },
-                    onClick = {
-                        onSelectCategoria(categoria)
-                        onToggleMenu(false)
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProductoCounter(count: Int) {
-    Text(
-        text = "$count producto(s) encontrado(s)",
-        modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
-}
-
-@Composable
-private fun ProductosTable(
-    productos: List<Producto>,
-    inventarios: List<Inventario>,
-    isLoading: Boolean,
-    onEdit: (Producto) -> Unit,
-    onDelete: (Int) -> Unit,
-    onUpdateStock: (Int, Double) -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column {
-            ProductosTableHeader()
-            HorizontalDivider()
-
-            if (productos.isEmpty() && !isLoading) {
-                EmptyProductosPlaceholder()
-            } else {
-                LazyColumn {
-                    items(
-                        items = productos,
-                        key = { it.idProducto }
-                    ) { producto ->
-                        val inventario = inventarios.find { it.idProducto == producto.idProducto }
-
-                        if (inventario != null) {
-                            ProductoRow(
-                                producto = producto,
-                                inventario = inventario,
-                                onEdit = { onEdit(producto) },
-                                onDelete = { onDelete(producto.idProducto) },
-                                onUpdateStock = { newStock ->
-                                    onUpdateStock(inventario.idInventario, newStock)
-                                }
-                            )
-                            HorizontalDivider()
-                        }
-                    }
-                }
-            }
-
-            ProductosPagination()
-        }
-    }
-}
-
-@Composable
-private fun ProductosTableHeader() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text("NOMBRE", modifier = Modifier.weight(2f), fontWeight = FontWeight.Bold)
-        Text("CATEGORÍA", modifier = Modifier.weight(1.5f), fontWeight = FontWeight.Bold)
-        Text("STOCK", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-        Text("UNIDAD", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-        Text("ESTADO", modifier = Modifier.weight(1.5f), fontWeight = FontWeight.Bold)
-        Text("ACCIONES", modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun EmptyProductosPlaceholder() {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(32.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = "No se encontraron productos",
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun ProductosPagination() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        IconButton(onClick = { /* TODO: Página anterior */ }) {
-            Icon(Icons.Default.ChevronLeft, contentDescription = "Anterior")
-        }
-        Text(
-            text = "1",
-            modifier = Modifier.padding(horizontal = 16.dp),
-            style = MaterialTheme.typography.bodyLarge
-        )
-        IconButton(onClick = { /* TODO: Página siguiente */ }) {
-            Icon(Icons.Default.ChevronRight, contentDescription = "Siguiente")
-        }
-    }
-}
-
-@Composable
-private fun InventarioFooter() {
-    Text(
-        text = "© 2025 KuHub System | Version 0.1",
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
-}
-
-@Composable
-private fun ProductoRow(
-    producto: Producto,
-    inventario: Inventario,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    onUpdateStock: (Double) -> Unit
-) {
-    var showDeleteDialog by remember { mutableStateOf(false) }
-    var showMenuOptions by remember { mutableStateOf(false) }
-    var showStockDialog by remember { mutableStateOf(false) }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(inventario.nombreProducto, modifier = Modifier.weight(2f))
-        Text(producto.categoria, modifier = Modifier.weight(1.5f))
-
-        TextButton(
-            onClick = { showStockDialog = true },
-            modifier = Modifier.weight(1f)
-        ) {
-            Text(
-                text = if (inventario.stock % 1 != 0.0) {
-                    inventario.stock.toString()
-                } else {
-                    inventario.stock.toInt().toString()
-                },
-                fontWeight = FontWeight.Bold,
-                color = when (inventario.estado) {
-                    EstadoInventario.DISPONIBLE -> Color(0xFF4CAF50)
-                    EstadoInventario.AGOTADO -> Color(0xFFF44336)
-                    EstadoInventario.BAJO_STOCK -> Color(0xFFFF9800)
-                }
-            )
-        }
-
-        Text(producto.unidadMedida, modifier = Modifier.weight(1f))
-
-        EstadoBadge(
-            estado = inventario.estado,
-            modifier = Modifier.weight(1.5f)
-        )
-
-        ProductoActions(
-            onEdit = onEdit,
-            onMoreOptions = { showMenuOptions = true },
-            showMenu = showMenuOptions,
-            onDismissMenu = { showMenuOptions = false },
-            onAdjustStock = {
-                showMenuOptions = false
-                showStockDialog = true
-            },
-            onDelete = {
-                showMenuOptions = false
-                showDeleteDialog = true
-            },
-            modifier = Modifier.weight(1f)
-        )
-    }
-
-    if (showStockDialog) {
-        StockAdjustDialog(
-            productoNombre = inventario.nombreProducto,
-            stockActual = inventario.stock,
-            unidad = producto.unidadMedida,
-            onDismiss = { showStockDialog = false },
-            onConfirm = { nuevoStock ->
-                onUpdateStock(nuevoStock)
-                showStockDialog = false
-            }
-        )
-    }
-
-    if (showDeleteDialog) {
-        DeleteConfirmDialog(
-            productoNombre = inventario.nombreProducto,
-            onDismiss = { showDeleteDialog = false },
-            onConfirm = {
-                onDelete()
-                showDeleteDialog = false
-            }
-        )
-    }
-}
-
-@Composable
-private fun EstadoBadge(
-    estado: EstadoInventario,
-    modifier: Modifier = Modifier
-) {
-    val (backgroundColor, textColor, text) = when (estado) {
-        EstadoInventario.DISPONIBLE -> Triple(
-            Color(0xFF4CAF50).copy(alpha = 0.2f),
-            Color(0xFF2E7D32),
-            "Disponible"
-        )
-        EstadoInventario.AGOTADO -> Triple(
-            Color(0xFFF44336).copy(alpha = 0.2f),
-            Color(0xFFC62828),
-            "Agotado"
-        )
-        EstadoInventario.BAJO_STOCK -> Triple(
-            Color(0xFFFF9800).copy(alpha = 0.2f),
-            Color(0xFFE65100),
-            "Bajo Stock"
-        )
-    }
-
-    Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
-        color = backgroundColor
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.bodySmall,
-            color = textColor
-        )
-    }
-}
-
-@Composable
-private fun ProductoActions(
-    onEdit: () -> Unit,
-    onMoreOptions: () -> Unit,
-    showMenu: Boolean,
-    onDismissMenu: () -> Unit,
-    onAdjustStock: () -> Unit,
-    onDelete: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(modifier = modifier) {
-        Row {
-            IconButton(onClick = onEdit) {
-                Icon(
-                    Icons.Default.Edit,
-                    contentDescription = "Editar",
-                    tint = Color(0xFFFFC107)
-                )
-            }
-
-            IconButton(onClick = onMoreOptions) {
-                Icon(
-                    Icons.Default.MoreVert,
-                    contentDescription = "Más opciones"
-                )
-            }
-        }
-
-        DropdownMenu(
-            expanded = showMenu,
-            onDismissRequest = onDismissMenu
-        ) {
-            DropdownMenuItem(
-                text = { Text("Ajustar Stock") },
-                onClick = onAdjustStock,
-                leadingIcon = {
-                    Icon(Icons.Default.Edit, contentDescription = null)
-                }
-            )
-            DropdownMenuItem(
-                text = { Text("Eliminar") },
-                onClick = onDelete,
-                leadingIcon = {
-                    Icon(Icons.Default.Delete, contentDescription = null, tint = Color.Red)
-                }
-            )
-        }
-    }
-}
-
-@Composable
-private fun StockAdjustDialog(
-    productoNombre: String,
-    stockActual: Double,
-    unidad: String,
-    onDismiss: () -> Unit,
-    onConfirm: (Double) -> Unit
-) {
-    var nuevoStock by remember {
-        mutableStateOf(
-            if (stockActual % 1 != 0.0) stockActual.toString()
-            else stockActual.toInt().toString()
-        )
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Ajustar Stock - $productoNombre") },
-        text = {
-            Column {
-                Text("Stock actual: ${if (stockActual % 1 != 0.0) stockActual else stockActual.toInt()} $unidad")
-                Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = nuevoStock,
-                    onValueChange = {
-                        if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) {
-                            nuevoStock = it
-                        }
-                    },
-                    label = { Text("Nuevo stock") },
-                    singleLine = true
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    val stock = nuevoStock.toDoubleOrNull() ?: 0.0
-                    onConfirm(stock)
-                }
-            ) {
-                Text("Actualizar")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        }
-    )
-}
-
-@Composable
-private fun DeleteConfirmDialog(
-    productoNombre: String,
-    onDismiss: () -> Unit,
-    onConfirm: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Eliminar Producto") },
-        text = { Text("¿Está seguro de que desea eliminar $productoNombre?") },
-        confirmButton = {
-            TextButton(
-                onClick = onConfirm
-            ) {
-                Text("Eliminar", color = Color.Red)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
-            }
-        }
-    )
-}
-
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ProductoDialog(
-    producto: Producto?,
-    onDismiss: () -> Unit,
-    onSave: (Producto, stockInicial: Double, ubicacion: String) -> Unit
-) {
-    // Datos del Producto
-    var nombre by remember { mutableStateOf(producto?.nombreProducto ?: "") }
-    var categoria by remember { mutableStateOf(producto?.categoria ?: "Secos") }
-    var unidad by remember { mutableStateOf(producto?.unidadMedida ?: "kg") }
-
-    // Datos del Inventario (solo para productos nuevos)
-    var stockInicial by remember { mutableStateOf("") }
-    var ubicacion by remember { mutableStateOf("Bodega Principal") }
-
-    var showCategoryMenu by remember { mutableStateOf(false) }
-    var showUnidadMenu by remember { mutableStateOf(false) }
-    var showUbicacionMenu by remember { mutableStateOf(false) }
-
-    val categorias = listOf("Secos", "Líquidos", "Lácteos", "Frescos", "Congelados", "Enlatados")
-    val unidades = listOf("kg", "l", "unidad", "g", "ml", "caja")
-    val ubicaciones = listOf("Bodega Principal", "Bodega Secundaria", "Refrigerador A", "Refrigerador B", "Congelador")
-
-    val isEditMode = producto != null
-
-    val isFormValid by remember {
-        derivedStateOf {
-            if (isEditMode) {
-                nombre.isNotEmpty()
-            } else {
-                nombre.isNotEmpty() &&
-                        stockInicial.isNotEmpty() &&
-                        (stockInicial.toDoubleOrNull() ?: -1.0) >= 0
-            }
-        }
-    }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Text(if (isEditMode) "Editar Producto" else "Nuevo Producto")
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // SECCIÓN: Información del Producto
-                Text(
-                    text = "Información del Producto",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-
-                OutlinedTextField(
-                    value = nombre,
-                    onValueChange = { nombre = it },
-                    label = { Text("Nombre del producto *") },
-                    placeholder = { Text("Ej: Harina 0000") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
-                    isError = nombre.isEmpty()
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    shape = RoundedCornerShape(8.dp)
                 )
 
                 ExposedDropdownMenuBox(
@@ -1089,26 +120,37 @@ private fun ProductoDialog(
                     onExpandedChange = { showCategoryMenu = it }
                 ) {
                     OutlinedTextField(
-                        value = categoria,
+                        value = selectedCategoria,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Categoría *") },
+                        leadingIcon = {
+                            Icon(Icons.Default.FilterList, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        },
                         trailingIcon = {
                             ExposedDropdownMenuDefaults.TrailingIcon(expanded = showCategoryMenu)
                         },
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor()
+                            .width(220.dp)
+                            .menuAnchor(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                            focusedContainerColor = MaterialTheme.colorScheme.surface,
+                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                            focusedTextColor = MaterialTheme.colorScheme.onSurface
+                        ),
+                        shape = RoundedCornerShape(8.dp)
                     )
                     ExposedDropdownMenu(
                         expanded = showCategoryMenu,
                         onDismissRequest = { showCategoryMenu = false }
                     ) {
-                        categorias.forEach { cat ->
+                        categoriasConTodos.forEach { cat ->
                             DropdownMenuItem(
                                 text = { Text(cat) },
                                 onClick = {
-                                    categoria = cat
+                                    viewModel.updateSelectedCategoria(cat)
                                     showCategoryMenu = false
                                 }
                             )
@@ -1116,196 +158,523 @@ private fun ProductoDialog(
                     }
                 }
 
-                ExposedDropdownMenuBox(
-                    expanded = showUnidadMenu,
-                    onExpandedChange = { showUnidadMenu = it }
+                OutlinedButton(
+                    onClick = { },
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        containerColor = Color.Transparent,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.height(56.dp)
                 ) {
-                    OutlinedTextField(
-                        value = unidad,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Unidad de medida *") },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = showUnidadMenu)
-                        },
+                    Icon(Icons.Default.ShoppingCart, null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Realizar Pedido")
+                }
+
+                Button(
+                    onClick = {
+                        itemEditando = null
+                        showDialog = true
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFFFFA500)
+                    ),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.height(56.dp)
+                ) {
+                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Nuevo Producto", color = Color.Black, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(500.dp),
+                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(8.dp)
+            ) {
+                Column {
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor()
-                    )
-                    ExposedDropdownMenu(
-                        expanded = showUnidadMenu,
-                        onDismissRequest = { showUnidadMenu = false }
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        unidades.forEach { u ->
-                            DropdownMenuItem(
-                                text = { Text(u) },
-                                onClick = {
-                                    unidad = u
-                                    showUnidadMenu = false
-                                }
-                            )
-                        }
+                        TableHeaderText("NOMBRE", 0.25f)
+                        TableHeaderText("CATEGORÍA", 0.15f)
+                        TableHeaderText("STOCK", 0.12f)
+                        TableHeaderText("UNIDAD", 0.12f)
+                        TableHeaderText("ESTADO", 0.15f)
+                        TableHeaderText("ACCIONES", 0.15f)
                     }
-                }
 
-                // SECCIÓN: Inventario Inicial (solo para productos nuevos)
-                if (!isEditMode) {
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    HorizontalDivider()
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    Text(
-                        text = "Inventario Inicial",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    Text(
-                        text = "Configure el stock inicial del producto en el inventario",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    OutlinedTextField(
-                        value = stockInicial,
-                        onValueChange = {
-                            if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) {
-                                stockInicial = it
-                            }
-                        },
-                        label = { Text("Stock inicial *") },
-                        placeholder = { Text("Ej: 100") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        isError = stockInicial.isEmpty() || (stockInicial.toDoubleOrNull() ?: -1.0) < 0,
-                        supportingText = {
-                            if (stockInicial.isNotEmpty()) {
-                                val stock = stockInicial.toDoubleOrNull() ?: 0.0
-                                Text(
-                                    text = if (stock >= 0) {
-                                        "Stock: ${if (stock % 1 != 0.0) stock else stock.toInt()} $unidad"
-                                    } else {
-                                        "Stock inválido"
-                                    },
-                                    color = if (stock >= 0)
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    else
-                                        MaterialTheme.colorScheme.error
-                                )
-                            }
-                        },
-                        leadingIcon = {
-                            Icon(
-                                Icons.Default.Inventory,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    )
-
-                    ExposedDropdownMenuBox(
-                        expanded = showUbicacionMenu,
-                        onExpandedChange = { showUbicacionMenu = it }
-                    ) {
-                        OutlinedTextField(
-                            value = ubicacion,
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Ubicación *") },
-                            trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = showUbicacionMenu)
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .menuAnchor(),
-                            leadingIcon = {
-                                Icon(
-                                    Icons.Default.Place,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary
-                                )
-                            }
-                        )
-                        ExposedDropdownMenu(
-                            expanded = showUbicacionMenu,
-                            onDismissRequest = { showUbicacionMenu = false }
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            ubicaciones.forEach { ubi ->
-                                DropdownMenuItem(
-                                    text = { Text(ubi) },
-                                    onClick = {
-                                        ubicacion = ubi
-                                        showUbicacionMenu = false
+                            CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                        }
+                    } else if (inventariosPaginados.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text("No hay productos disponibles", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    } else {
+                        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                            items(inventariosPaginados) { item ->
+                                InventarioRow(
+                                    item = item,
+                                    onEdit = {
+                                        itemEditando = item
+                                        showDialog = true
+                                    },
+                                    onDelete = {
+                                        viewModel.eliminarInventario(item.idInventario, item.nombreProducto)
                                     }
                                 )
+                                if (item != inventariosPaginados.last()) {
+                                    Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = { viewModel.previousPage() },
+                    enabled = currentPage > 1
+                ) {
+                    Icon(
+                        Icons.Default.ChevronLeft,
+                        contentDescription = null,
+                        tint = if (currentPage > 1) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
+                    )
+                }
+
+                Text(
+                    text = currentPage.toString(),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 24.dp)
+                )
+
+                IconButton(
+                    onClick = { viewModel.nextPage() },
+                    enabled = currentPage < totalPages
+                ) {
+                    Icon(
+                        Icons.Default.ChevronRight,
+                        contentDescription = null,
+                        tint = if (currentPage < totalPages) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
+        }
+    }
+
+    if (showDialog) {
+        InventarioDialog(
+            item = itemEditando,
+            categorias = categorias,
+            onDismiss = { showDialog = false },
+            onSave = { idInv, idProd, nombre, desc, cat, unidad, stock, stockMin ->
+                viewModel.actualizarInventario(
+                    idInventario = idInv,
+                    idProducto = idProd,
+                    nombreProducto = nombre,
+                    descripcionProducto = desc,
+                    nombreCategoria = cat,
+                    unidadMedida = unidad,
+                    stock = stock,
+                    stockMinimo = stockMin
+                )
+                showDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun RowScope.TableHeaderText(text: String, weight: Float) {
+    Text(
+        text = text,
+        modifier = Modifier.weight(weight),
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
+    )
+}
+
+@Composable
+private fun InventarioRow(
+    item: InventoryWithProductoResponseDTO,
+    onEdit: () -> Unit,
+    onDelete: () -> Unit
+) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = item.nombreProducto,
+            modifier = Modifier.weight(0.25f),
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 14.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Text(
+            text = item.nombreCategoria,
+            modifier = Modifier.weight(0.15f),
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 14.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Text(
+            text = item.stock.toInt().toString(),
+            modifier = Modifier.weight(0.12f),
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 14.sp
+        )
+
+        Text(
+            text = item.unidadMedida,
+            modifier = Modifier.weight(0.12f),
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 14.sp
+        )
+
+        Surface(
+            modifier = Modifier.weight(0.15f),
+            color = Color(0xFF00C853),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                text = "Disponible",
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                color = Color.Black,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium
+            )
+        }
+
+        Row(
+            modifier = Modifier.weight(0.15f),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            IconButton(
+                onClick = onEdit,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = "Editar",
+                    tint = Color(0xFFFFA500),
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            IconButton(
+                onClick = { },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.Default.Menu,
+                    contentDescription = "Detalles",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            IconButton(
+                onClick = { showDeleteDialog = true },
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Eliminar",
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Confirmar eliminación") },
+            text = { Text("¿Está seguro que desea eliminar '${item.nombreProducto}'?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDelete()
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun InventarioDialog(
+    item: InventoryWithProductoResponseDTO?, // Si es null → crear, si no → editar
+    categorias: List<String>,
+    onDismiss: () -> Unit,
+    onSave: (
+        idInventario: Int,
+        idProducto: Int,
+        nombre: String,
+        descripcion: String,
+        categoria: String,
+        unidad: String,
+        stock: Double,
+        stockMinimo: Double
+    ) -> Unit
+) {
+    val isEditMode = item != null
+
+    // ✅ Inicializar campos con valores seguros
+    var nombre by remember { mutableStateOf(item?.nombreProducto ?: "") }
+    var descripcion by remember { mutableStateOf(item?.let { "Sin descripción disponible" } ?: "Sin descripción") }
+    var categoria by remember { mutableStateOf(item?.nombreCategoria ?: "") }
+    var unidad by remember { mutableStateOf(item?.unidadMedida ?: "") }
+    var stock by remember { mutableStateOf(item?.stock?.toString() ?: "0") }
+    var stockMinimo by remember { mutableStateOf(item?.stockMinimo?.toString() ?: "0") }
+
+    var showCategoriaMenu by remember { mutableStateOf(false) }
+    var showUnidadMenu by remember { mutableStateOf(false) }
+
+    val unidades = listOf("kg", "l", "unidad", "g", "ml", "caja")
+    val categoriasDisponibles = if (categorias.isEmpty()) {
+        listOf("Secos", "Líquidos", "Lácteos", "Frescos")
+    } else categorias
+
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.5f)
+                .wrapContentHeight(),
+            shape = RoundedCornerShape(12.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp)
+            ) {
+                // Título y botón cerrar
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (isEditMode) "Editar Producto" else "Nuevo Producto",
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    IconButton(onClick = onDismiss) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = "Cerrar",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // Nombre
+                    OutlinedTextField(
+                        value = nombre,
+                        onValueChange = { nombre = it },
+                        label = { Text("Nombre") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+
+                    // Descripción
+                    OutlinedTextField(
+                        value = descripcion,
+                        onValueChange = { descripcion = it },
+                        label = { Text("Descripción") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2,
+                        maxLines = 3
+                    )
+
+                    // Categoría y Unidad
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        ExposedDropdownMenuBox(
+                            expanded = showCategoriaMenu,
+                            onExpandedChange = { showCategoriaMenu = it },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            OutlinedTextField(
+                                value = categoria.ifEmpty { "Seleccione categoría" },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Categoría") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showCategoriaMenu) },
+                                modifier = Modifier.menuAnchor()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = showCategoriaMenu,
+                                onDismissRequest = { showCategoriaMenu = false }
+                            ) {
+                                categoriasDisponibles.forEach { cat ->
+                                    DropdownMenuItem(
+                                        text = { Text(cat) },
+                                        onClick = {
+                                            categoria = cat
+                                            showCategoriaMenu = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+
+                        ExposedDropdownMenuBox(
+                            expanded = showUnidadMenu,
+                            onExpandedChange = { showUnidadMenu = it },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            OutlinedTextField(
+                                value = unidad.ifEmpty { "Seleccione unidad" },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Unidad de medida") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showUnidadMenu) },
+                                modifier = Modifier.menuAnchor()
+                            )
+                            ExposedDropdownMenu(
+                                expanded = showUnidadMenu,
+                                onDismissRequest = { showUnidadMenu = false }
+                            ) {
+                                unidades.forEach { u ->
+                                    DropdownMenuItem(
+                                        text = { Text(u) },
+                                        onClick = {
+                                            unidad = u
+                                            showUnidadMenu = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
 
-                    // Información adicional
-                    Card(
+                    // Stock
+                    Row(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                        )
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Info,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Text(
-                                text = "El estado del inventario se calculará automáticamente según el stock inicial.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        OutlinedTextField(
+                            value = stock,
+                            onValueChange = { stock = it },
+                            label = { Text("Stock") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = stockMinimo,
+                            onValueChange = { stockMinimo = it },
+                            label = { Text("Stock mínimo") },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true
+                        )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = {
-                    if (isFormValid) {
-                        val productoToSave = Producto(
-                            idProducto = producto?.idProducto ?: 0,
-                            nombreProducto = nombre.trim(),
-                            categoria = categoria,
-                            unidadMedida = unidad
-                        )
+                Spacer(modifier = Modifier.height(24.dp))
 
-                        val stock = if (isEditMode) 0.0 else (stockInicial.toDoubleOrNull() ?: 0.0)
-                        val ubi = if (isEditMode) "" else ubicacion
-
-                        onSave(productoToSave, stock, ubi)
+                // Botones
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                        Text("Cancelar")
                     }
-                },
-                enabled = isFormValid
-            ) {
-                Icon(
-                    if (isEditMode) Icons.Default.Save else Icons.Default.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(if (isEditMode) "Actualizar" else "Crear Producto")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar")
+
+                    Button(
+                        onClick = {
+                            if (isEditMode && item != null) {
+                                onSave(
+                                    item.idInventario,
+                                    item.idProducto,
+                                    nombre,
+                                    descripcion,
+                                    categoria,
+                                    unidad,
+                                    stock.toDoubleOrNull() ?: 0.0,
+                                    stockMinimo.toDoubleOrNull() ?: 0.0
+                                )
+                            }
+                        },
+                        enabled = nombre.isNotBlank() && categoria.isNotBlank() && unidad.isNotBlank(),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            if (isEditMode) "Guardar Cambios" else "Crear Producto",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
-    )
+    }
 }
