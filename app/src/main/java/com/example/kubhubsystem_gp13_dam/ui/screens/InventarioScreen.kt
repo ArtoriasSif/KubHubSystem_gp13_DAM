@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -15,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,6 +24,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.kubhubsystem_gp13_dam.local.remote.RetrofitClient
 import com.example.kubhubsystem_gp13_dam.local.remote.InventarioApiService
+import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductCreateUpdateDTO
 import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductoResponseDTO
 import com.example.kubhubsystem_gp13_dam.repository.InventarioRepository
 import com.example.kubhubsystem_gp13_dam.ui.viewmodel.InventarioViewModel
@@ -293,22 +296,20 @@ fun InventarioScreen() {
         InventarioDialog(
             item = itemEditando,
             categorias = categorias,
-            onDismiss = { showDialog = false },
-            onSave = { idInv, idProd, nombre, desc, cat, unidad, stock, stockMin ->
-                viewModel.actualizarInventario(
-                    idInventario = idInv,
-                    idProducto = idProd,
-                    nombreProducto = nombre,
-                    descripcionProducto = desc,
-                    nombreCategoria = cat,
-                    unidadMedida = unidad,
-                    stock = stock,
-                    stockMinimo = stockMin
-                )
+            onDismiss = {
                 showDialog = false
+                itemEditando = null
+            },
+            onSave = { dto ->
+                // ✅ Mucho más simple y seguro
+                viewModel.guardarInventario(dto)
+                showDialog = false
+                itemEditando = null
             }
         )
     }
+
+
 }
 
 @Composable
@@ -457,29 +458,23 @@ private fun InventarioRow(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventarioDialog(
-    item: InventoryWithProductoResponseDTO?, // Si es null → crear, si no → editar
+    item: InventoryWithProductoResponseDTO?,
     categorias: List<String>,
     onDismiss: () -> Unit,
-    onSave: (
-        idInventario: Int,
-        idProducto: Int,
-        nombre: String,
-        descripcion: String,
-        categoria: String,
-        unidad: String,
-        stock: Double,
-        stockMinimo: Double
-    ) -> Unit
+    onSave: (dto: InventoryWithProductCreateUpdateDTO) -> Unit // ✅ Simplificado
 ) {
     val isEditMode = item != null
 
-    // ✅ Inicializar campos con valores seguros
     var nombre by remember { mutableStateOf(item?.nombreProducto ?: "") }
-    var descripcion by remember { mutableStateOf(item?.let { "Sin descripción disponible" } ?: "Sin descripción") }
+    var descripcion by remember { mutableStateOf(if (isEditMode) "Descripción no disponible" else "") }
     var categoria by remember { mutableStateOf(item?.nombreCategoria ?: "") }
     var unidad by remember { mutableStateOf(item?.unidadMedida ?: "") }
-    var stock by remember { mutableStateOf(item?.stock?.toString() ?: "0") }
-    var stockMinimo by remember { mutableStateOf(item?.stockMinimo?.toString() ?: "0") }
+    var stock by remember { mutableStateOf(item?.stock?.toString() ?: "0.0") }
+    var stockMinimo by remember { mutableStateOf(item?.stockMinimo?.toString() ?: "0.0") }
+
+    // ✅ Estados para errores de validación
+    var stockError by remember { mutableStateOf(false) }
+    var stockMinimoError by remember { mutableStateOf(false) }
 
     var showCategoriaMenu by remember { mutableStateOf(false) }
     var showUnidadMenu by remember { mutableStateOf(false) }
@@ -505,7 +500,6 @@ fun InventarioDialog(
                     .fillMaxWidth()
                     .padding(24.dp)
             ) {
-                // Título y botón cerrar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -534,7 +528,6 @@ fun InventarioDialog(
                         .verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Nombre
                     OutlinedTextField(
                         value = nombre,
                         onValueChange = { nombre = it },
@@ -543,7 +536,6 @@ fun InventarioDialog(
                         singleLine = true
                     )
 
-                    // Descripción
                     OutlinedTextField(
                         value = descripcion,
                         onValueChange = { descripcion = it },
@@ -553,7 +545,6 @@ fun InventarioDialog(
                         maxLines = 3
                     )
 
-                    // Categoría y Unidad
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -568,7 +559,11 @@ fun InventarioDialog(
                                 onValueChange = {},
                                 readOnly = true,
                                 label = { Text("Categoría") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showCategoriaMenu) },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(
+                                        expanded = showCategoriaMenu
+                                    )
+                                },
                                 modifier = Modifier.menuAnchor()
                             )
                             ExposedDropdownMenu(
@@ -597,7 +592,11 @@ fun InventarioDialog(
                                 onValueChange = {},
                                 readOnly = true,
                                 label = { Text("Unidad de medida") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = showUnidadMenu) },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(
+                                        expanded = showUnidadMenu
+                                    )
+                                },
                                 modifier = Modifier.menuAnchor()
                             )
                             ExposedDropdownMenu(
@@ -617,55 +616,90 @@ fun InventarioDialog(
                         }
                     }
 
-                    // Stock
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         OutlinedTextField(
                             value = stock,
-                            onValueChange = { stock = it },
+                            onValueChange = {
+                                stock = it
+                                stockError = it.toDoubleOrNull() == null && it.isNotBlank()
+                            },
                             label = { Text("Stock") },
                             modifier = Modifier.weight(1f),
-                            singleLine = true
+                            singleLine = true,
+                            isError = stockError,
+                            supportingText = if (stockError) {
+                                { Text("Ingrese un número válido", color = MaterialTheme.colorScheme.error) }
+                            } else null,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Decimal
+                            )
                         )
                         OutlinedTextField(
                             value = stockMinimo,
-                            onValueChange = { stockMinimo = it },
+                            onValueChange = {
+                                stockMinimo = it
+                                stockMinimoError = it.toDoubleOrNull() == null && it.isNotBlank()
+                            },
                             label = { Text("Stock mínimo") },
                             modifier = Modifier.weight(1f),
-                            singleLine = true
+                            singleLine = true,
+                            isError = stockMinimoError,
+                            supportingText = if (stockMinimoError) {
+                                { Text("Ingrese un número válido", color = MaterialTheme.colorScheme.error) }
+                            } else null,
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Decimal
+                            )
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                // Botones
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f)) {
+                    OutlinedButton(
+                        onClick = onDismiss,
+                        modifier = Modifier.weight(1f)
+                    ) {
                         Text("Cancelar")
                     }
 
                     Button(
                         onClick = {
-                            if (isEditMode && item != null) {
-                                onSave(
-                                    item.idInventario,
-                                    item.idProducto,
-                                    nombre,
-                                    descripcion,
-                                    categoria,
-                                    unidad,
-                                    stock.toDoubleOrNull() ?: 0.0,
-                                    stockMinimo.toDoubleOrNull() ?: 0.0
-                                )
+                            // ✅ Validación y construcción del DTO
+                            val stockDouble = stock.toDoubleOrNull()
+                            val stockMinimoDouble = stockMinimo.toDoubleOrNull()
+
+                            if (stockDouble == null || stockMinimoDouble == null) {
+                                stockError = stockDouble == null
+                                stockMinimoError = stockMinimoDouble == null
+                                return@Button
                             }
+
+                            val dto = InventoryWithProductCreateUpdateDTO(
+                                idInventario = item?.idInventario,
+                                idProducto = item?.idProducto,
+                                nombreProducto = nombre,
+                                descripcionProducto = descripcion.ifBlank { "Sin descripción" },
+                                nombreCategoria = categoria,
+                                unidadMedida = unidad,
+                                stock = stockDouble,
+                                stockMinimo = stockMinimoDouble
+                            )
+
+                            onSave(dto)
                         },
-                        enabled = nombre.isNotBlank() && categoria.isNotBlank() && unidad.isNotBlank(),
+                        enabled = nombre.isNotBlank() &&
+                                categoria.isNotBlank() &&
+                                unidad.isNotBlank() &&
+                                !stockError &&
+                                !stockMinimoError,
                         modifier = Modifier.weight(1f)
                     ) {
                         Text(

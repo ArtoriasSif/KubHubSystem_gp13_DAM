@@ -237,85 +237,32 @@ class InventarioViewModel(
     // ========== CRUD OPERATIONS ==========
 
     /**
-     * ✅ Crear nuevo producto con inventario
+     * ✅ Crear O Actualizar inventario (unificado)
      */
-    fun crearInventarioConProducto(
-        nombreProducto: String,
-        descripcionProducto: String,
-        nombreCategoria: String,
-        unidadMedida: String,
-        stockInicial: Double,
-        stockMinimo: Double
-    ) {
+    fun guardarInventario(dto: InventoryWithProductCreateUpdateDTO) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
 
-            val dto = InventoryWithProductCreateUpdateDTO(
-                idInventario = null,
-                idProducto = null,
-                nombreProducto = nombreProducto,
-                descripcionProducto = descripcionProducto,
-                nombreCategoria = nombreCategoria,
-                unidadMedida = unidadMedida,
-                stock = stockInicial,
-                stockMinimo = stockMinimo
-            )
-
-            val result = repository.createInventoryWithProduct(dto)
+            val result = if (dto.idInventario == null || dto.idProducto == null) {
+                // CREAR nuevo
+                repository.createInventoryWithProduct(dto)
+            } else {
+                // ACTUALIZAR existente
+                repository.updateInventoryWithProduct(dto)
+            }
 
             result.onSuccess {
                 _isLoading.value = false
-                _successMessage.value = "Producto '$nombreProducto' creado exitosamente"
+                val accion = if (dto.idInventario == null) "creado" else "actualizado"
+                _successMessage.value = "Producto '${dto.nombreProducto}' $accion exitosamente"
                 _errorMessage.value = null
             }.onFailure { error ->
                 _isLoading.value = false
-                _errorMessage.value = "Error al crear producto: ${error.message}"
+                _errorMessage.value = "Error: ${error.message}"
             }
         }
     }
-
-    /**
-     * ✅ Actualizar inventario existente
-     */
-    fun actualizarInventario(
-        idInventario: Int,
-        idProducto: Int,
-        nombreProducto: String,
-        descripcionProducto: String,
-        nombreCategoria: String,
-        unidadMedida: String,
-        stock: Double,
-        stockMinimo: Double
-    ) {
-        viewModelScope.launch {
-            _isLoading.value = true
-            _errorMessage.value = null
-
-            val dto = InventoryWithProductCreateUpdateDTO(
-                idInventario = idInventario,
-                idProducto = idProducto,
-                nombreProducto = nombreProducto,
-                descripcionProducto = descripcionProducto,
-                nombreCategoria = nombreCategoria,
-                unidadMedida = unidadMedida,
-                stock = stock,
-                stockMinimo = stockMinimo
-            )
-
-            val result = repository.updateInventoryWithProduct(dto)
-
-            result.onSuccess {
-                _isLoading.value = false
-                _successMessage.value = "Producto '$nombreProducto' actualizado correctamente"
-                _errorMessage.value = null
-            }.onFailure { error ->
-                _isLoading.value = false
-                _errorMessage.value = "Error al actualizar: ${error.message}"
-            }
-        }
-    }
-
     /**
      * ✅ Eliminar inventario (lógico)
      */
