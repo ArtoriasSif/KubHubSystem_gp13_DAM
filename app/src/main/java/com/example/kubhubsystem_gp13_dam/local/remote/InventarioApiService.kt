@@ -23,7 +23,6 @@ import retrofit2.http.Path
 interface InventarioApiService {
 
     // --- Endpoints que devuelven el DTO para el Frontend (USO RECOMENDADO) ---
-
     /**
      * ✅ [GET] /api/v1/inventario/find-all-inventories-active/
      * Obtiene la lista de todos los productos activos en el inventario.

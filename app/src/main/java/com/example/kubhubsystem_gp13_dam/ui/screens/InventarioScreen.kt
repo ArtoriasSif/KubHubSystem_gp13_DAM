@@ -5,10 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -35,7 +33,6 @@ import com.example.kubhubsystem_gp13_dam.repository.InventarioRepository
 import com.example.kubhubsystem_gp13_dam.repository.ProductoRepository
 import com.example.kubhubsystem_gp13_dam.ui.viewmodel.InventarioViewModel
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,7 +56,7 @@ fun InventarioScreen() {
     val viewModel: InventarioViewModel = viewModel(factory = factory)
 
     // Estados del ViewModel
-    val inventariosPaginados by viewModel.inventariosPaginados.collectAsState()
+    val inventariosPaginados by viewModel.inventoryPaginated.collectAsState()
     val categorias by viewModel.categorias.collectAsState()
     val unidadesMedida by viewModel.unidadesMedida.collectAsState()
     val estados by viewModel.estados.collectAsState()
@@ -80,7 +77,7 @@ fun InventarioScreen() {
 
     // Función para cargar item desde el caché por ID
     fun loadItemForEdit(idInventario: Int) {
-        itemToEdit = viewModel.getInventario(idInventario)
+        itemToEdit = viewModel.getInventory(idInventario)
         showDialog = true
     }
 
@@ -276,8 +273,6 @@ fun InventarioScreen() {
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // --- Suma de Pesos = 1.0f ---
-                        // 0.20 + 0.18 + 0.08 + 0.22 + 0.20 + 0.12 = 1.0f
 
                         // NOMBRE (0.20f)
                         Text(
@@ -381,7 +376,7 @@ fun InventarioScreen() {
                                 InventarioRow(
                                     item = item,
                                     onEdit = { idInventario ->
-                                        val inventario = viewModel.getInventario(idInventario)
+                                        val inventario = viewModel.getInventory(idInventario)
                                         itemToEdit = inventario
                                         showDialog = true
                                     },
@@ -390,7 +385,7 @@ fun InventarioScreen() {
                                     },
                                     onDelete = {
                                         coroutineScope.launch {
-                                            viewModel.eliminarInventario(
+                                            viewModel.deleteInventory(
                                                 item.idInventario ?: 0,
                                                 item.nombreProducto ?: "Producto"
                                             )
@@ -457,20 +452,6 @@ fun InventarioScreen() {
 }
 
 
-
-
-// Util: calcular estado (agrega en el archivo)
-private fun calcularEstadoStock(stock: Double?, stockLimitMin: Double?): String {
-    return when {
-        stockLimitMin == null || stockLimitMin == 0.0 -> "NO ASIGNADO"
-        (stock ?: 0.0) == 0.0 -> "AGOTADO"
-        (stock ?: 0.0) < (stockLimitMin ?: 0.0) -> "BAJO STOCK"
-        else -> "DISPONIBLE"
-    }
-}
-
-
-
 @Composable
 private fun RowScope.TableHeaderText(text: String, weight: Float) {
     Text(
@@ -532,7 +513,6 @@ private fun InventarioRow(
         else -> Color(0xFF9E9E9E)
     }
 
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -548,7 +528,6 @@ private fun InventarioRow(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-
         Spacer(modifier = Modifier.width(20.dp))
 
         // CATEGORÍA (15%)
@@ -560,7 +539,6 @@ private fun InventarioRow(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-
         Spacer(modifier = Modifier.width(20.dp))
 
         // STOCK (8%)
@@ -571,7 +549,6 @@ private fun InventarioRow(
             fontSize = 14.sp,
             textAlign = TextAlign.Center
         )
-
         Spacer(modifier = Modifier.width(20.dp))
 
         // UNIDAD (18%)
@@ -583,7 +560,6 @@ private fun InventarioRow(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
-
         Spacer(modifier = Modifier.width(20.dp))
 
         // ESTADO (24%)
@@ -603,7 +579,6 @@ private fun InventarioRow(
                 overflow = TextOverflow.Ellipsis
             )
         }
-
         Spacer(modifier = Modifier.width(24.dp))
 
         // ACCIONES (20%)
@@ -655,7 +630,6 @@ private fun InventarioRow(
             }
         }
     }
-
 
     // Diálogo de confirmación de eliminación
     if (showDeleteDialog) {
@@ -738,9 +712,6 @@ fun InventarioDialog(
         }
     }
 
-
-
-
     Dialog(
         onDismissRequest = { if (!isSaving) onDismiss() },
         properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -758,7 +729,6 @@ fun InventarioDialog(
                     .fillMaxWidth()
                     .padding(24.dp)
             ) {
-
                 // HEADER
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -771,7 +741,6 @@ fun InventarioDialog(
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold
                     )
-
                     IconButton(onClick = { if (!isSaving) onDismiss() }) {
                         Icon(Icons.Default.Close, contentDescription = "Cerrar")
                     }
@@ -789,7 +758,6 @@ fun InventarioDialog(
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
-
                     // DESCRIPCIÓN
                     OutlinedTextField(
                         value = descripcion,
@@ -799,14 +767,11 @@ fun InventarioDialog(
                         minLines = 3,
                         maxLines = 5
                     )
-
-
                     // CATEGORÍA + UNIDAD
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-
                         // CATEGORÍA
                         ExposedDropdownMenuBox(
                             expanded = showCategoriaMenu,
@@ -823,7 +788,6 @@ fun InventarioDialog(
                                 },
                                 modifier = Modifier.menuAnchor()
                             )
-
                             ExposedDropdownMenu(
                                 expanded = showCategoriaMenu,
                                 onDismissRequest = { showCategoriaMenu = false }
@@ -840,7 +804,6 @@ fun InventarioDialog(
                                 }
                             }
                         }
-
                         // UNIDAD
                         ExposedDropdownMenuBox(
                             expanded = showUnidadMenu,
@@ -857,7 +820,6 @@ fun InventarioDialog(
                                 },
                                 modifier = Modifier.menuAnchor()
                             )
-
                             ExposedDropdownMenu(
                                 expanded = showUnidadMenu,
                                 onDismissRequest = { showUnidadMenu = false }
@@ -896,7 +858,6 @@ fun InventarioDialog(
                             } else null,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
-
                         OutlinedTextField(
                             value = stockMinimo,
                             onValueChange = {
@@ -914,7 +875,6 @@ fun InventarioDialog(
                         )
                     }
                 }
-
                 Spacer(Modifier.height(24.dp))
 
                 // BOTONES
@@ -929,7 +889,6 @@ fun InventarioDialog(
                     ) {
                         Text("Cancelar")
                     }
-
                     Button(
                         onClick = {
                             if (isEditMode) {
@@ -955,11 +914,9 @@ fun InventarioDialog(
                                     stockLimitMin = stockMinValue,
                                     estadoStock = estado
                                 )
-
                                 onUpdate(updateDto)
                             }
                             else {
-
                                 val createDto = InventoryWithProductCreateDTO(
                                     idInventario = 0,
                                     idProducto = 0,
@@ -970,7 +927,6 @@ fun InventarioDialog(
                                     stock = stock.toDoubleOrNull() ?: 0.0,
                                     stockLimitMin = stockMinimo.toDoubleOrNull() ?: 0.0
                                 )
-
                                 onCreate(createDto)
                             }
                         },

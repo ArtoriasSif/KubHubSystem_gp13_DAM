@@ -2,10 +2,6 @@ package com.example.kubhubsystem_gp13_dam.local.remote
 import com.example.kubhubsystem_gp13_dam.model.ProductoEntityDTO
 import retrofit2.http.GET
 import retrofit2.http.Path
-import retrofit2.http.PUT
-import retrofit2.http.Body
-import retrofit2.http.POST
-import retrofit2.Response
 
 /**
  * ✅ API Retrofit para manejar los endpoints del microservicio de Producto

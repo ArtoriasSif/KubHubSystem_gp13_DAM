@@ -7,11 +7,9 @@ import com.example.kubhubsystem_gp13_dam.local.remote.InventarioApiService
 import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductCreateDTO
 import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductResponseAnswerUpdateDTO
 import com.example.kubhubsystem_gp13_dam.ui.viewmodel.InventarioViewModel
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import java.io.IOException
 
@@ -23,7 +21,7 @@ import java.io.IOException
  * - Compatible con ViewModel actual
  */
 class InventarioRepository(
-    private val apiService: InventarioApiService
+    private val inventoryApiService: InventarioApiService
 ) {
     // ========= CACHE =========
     private val cacheMutex = Mutex()
@@ -44,7 +42,6 @@ class InventarioRepository(
     private val CACHE_VALIDITY_DURATION = 30_000L // 30 segundos
 
     // ========= MÉTODOS PRINCIPALES =========
-
     /**
      * ✅ Obtener todos los inventarios activos
      */
@@ -60,7 +57,7 @@ class InventarioRepository(
             _isLoading.value = true
             _error.value = null
 
-            val response = apiService.getAllActiveInventories()
+            val response = inventoryApiService.getAllActiveInventories()
 
             cacheMutex.withLock {
                 _cachedInventarios.value = response
@@ -87,7 +84,7 @@ class InventarioRepository(
             _isLoading.value = true
             _error.value = null
 
-            apiService.createInventoryWithProduct(dtoCreate)
+            inventoryApiService.createInventoryWithProduct(dtoCreate)
             fetchAllActiveInventories(forceRefresh = true)
 
         } catch (e: HttpException) {
@@ -114,7 +111,7 @@ class InventarioRepository(
 
             // Llamada API
             Log.d("UPDATE_INV", "Llamando API: updateInventoryWithProduct()...")
-            val response = apiService.updateInventoryWithProduct(dtoAnswerUpdateDTO)
+            val response = inventoryApiService.updateInventoryWithProduct(dtoAnswerUpdateDTO)
             Log.d("UPDATE_INV", "Respuesta API: $response")
 
             // Refrescar
@@ -145,7 +142,6 @@ class InventarioRepository(
         }
     }
 
-
     /**
      * ✅ Eliminación lógica (activo = false)
      */
@@ -154,7 +150,7 @@ class InventarioRepository(
             _isLoading.value = true
             _error.value = null
 
-            val response = apiService.logicalDeleteInventoryItem(inventarioId)
+            val response = inventoryApiService.logicalDeleteInventoryItem(inventarioId)
 
             if (response.isSuccessful) {
                 cacheMutex.withLock {
@@ -181,12 +177,11 @@ class InventarioRepository(
     }
 
     // ========= 🔹 IMPLEMENTACIÓN FALTANTE =========
-
     /**
      * ✅ Actualizar manualmente la caché de inventarios
      * (se usa cuando el ViewModel obtiene nuevos datos y quiere sincronizar)
      */
-    suspend fun actualizarCache(nuevaLista: List<InventoryWithProductResponseAnswerUpdateDTO>) {
+    suspend fun updateCache(nuevaLista: List<InventoryWithProductResponseAnswerUpdateDTO>) {
         cacheMutex.withLock {
             _cachedInventarios.value = nuevaLista
             lastFetchTime = System.currentTimeMillis()
@@ -194,7 +189,6 @@ class InventarioRepository(
     }
 
     // ========= UTILIDADES =========
-
     fun clearError() {
         _error.value = null
     }

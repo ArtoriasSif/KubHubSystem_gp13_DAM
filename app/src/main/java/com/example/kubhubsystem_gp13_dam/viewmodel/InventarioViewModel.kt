@@ -3,11 +3,8 @@ package com.example.kubhubsystem_gp13_dam.ui.viewmodel
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.kubhubsystem_gp13_dam.model.InventoryForm
 import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductCreateDTO
 import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductResponseAnswerUpdateDTO
-import com.example.kubhubsystem_gp13_dam.model.toCreateDTO
-import com.example.kubhubsystem_gp13_dam.model.toUpdateDTO
 import com.example.kubhubsystem_gp13_dam.repository.InventarioRepository
 import com.example.kubhubsystem_gp13_dam.repository.ProductoRepository
 import kotlinx.coroutines.Dispatchers
@@ -34,6 +31,7 @@ class InventarioViewModel(
     // ============================================================== //
     val categorias: StateFlow<List<String>> = productoRepository.categorias
     val unidadesMedida: StateFlow<List<String>> = productoRepository.unidadesMedida
+
     val errorProducto: StateFlow<String?> = productoRepository.error
 
     fun loadCategorias(forceRefresh: Boolean = false) {
@@ -44,7 +42,8 @@ class InventarioViewModel(
         viewModelScope.launch { productoRepository.fetchUnidadesMedidaActivas(forceRefresh) }
     }
 
-    fun clearProductoError() {
+    fun clearError() {
+        _errorMessage.value = null
         productoRepository.clearError()
     }
 
@@ -90,7 +89,7 @@ class InventarioViewModel(
     val cachedInventarios: StateFlow<List<InventoryWithProductResponseAnswerUpdateDTO>> =
         _cachedInventarios.asStateFlow()
 
-    fun actualizarCache(nuevaLista: List<InventoryWithProductResponseAnswerUpdateDTO>) {
+    fun updateCache(nuevaLista: List<InventoryWithProductResponseAnswerUpdateDTO>) {
         viewModelScope.launch {
             cacheMutex.withLock { _cachedInventarios.value = nuevaLista }
         }
@@ -99,15 +98,15 @@ class InventarioViewModel(
     // ============================================================== //
     // Fuente principal de inventarios (expuesta por el repo)        //
     // ============================================================== //
-    private val allInventarios: StateFlow<List<InventoryWithProductResponseAnswerUpdateDTO>> =
+    private val allInventories: StateFlow<List<InventoryWithProductResponseAnswerUpdateDTO>> =
         inventarioRepository.inventarios.stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
 
-    // helper sincrónico y suspend para obtener item del cache
-    fun getInventario(idInventario: Int): InventoryWithProductResponseAnswerUpdateDTO? {
+    // Helper sincrónico y suspend para obtener item del cache
+    fun getInventory(idInventario: Int): InventoryWithProductResponseAnswerUpdateDTO? {
         return inventarioRepository.getInventoryFromCache(idInventario)
     }
 
@@ -117,12 +116,11 @@ class InventarioViewModel(
         }
     }
 
-
     // ============================================================== //
     // Filtrado / paginado                                            //
     // ============================================================== //
-    val inventariosFiltrados: StateFlow<List<InventoryWithProductResponseAnswerUpdateDTO>> = combine(
-        allInventarios,
+    val inventoryFiltered: StateFlow<List<InventoryWithProductResponseAnswerUpdateDTO>> = combine(
+        allInventories,
         _searchQuery,
         _selectedCategoria,
         _selectedEstado
@@ -142,8 +140,8 @@ class InventarioViewModel(
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val inventariosPaginados: StateFlow<List<InventoryWithProductResponseAnswerUpdateDTO>> = combine(
-        inventariosFiltrados,
+    val inventoryPaginated: StateFlow<List<InventoryWithProductResponseAnswerUpdateDTO>> = combine(
+        inventoryFiltered,
         _currentPage,
         _itemsPerPage
     ) { filtrados, page, perPage ->
@@ -152,19 +150,19 @@ class InventarioViewModel(
         if (startIndex >= filtrados.size) emptyList() else filtrados.subList(startIndex, endIndex)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val totalPages: StateFlow<Int> = combine(inventariosFiltrados, _itemsPerPage) { filtrados, perPage ->
+    val totalPages: StateFlow<Int> = combine(inventoryFiltered, _itemsPerPage) { filtrados, perPage ->
         if (filtrados.isEmpty()) 1 else ((filtrados.size + perPage - 1) / perPage).coerceAtLeast(1)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1)
 
-    val estados: StateFlow<List<String>> = allInventarios.map { inventarios ->
+    val estados: StateFlow<List<String>> = allInventories.map { inventarios ->
         inventarios.mapNotNull { it.estadoStock }.distinct().sorted()
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     // ============================================================== //
-    // Init                                                          //
+    // Init                                                           //
     // ============================================================== //
     init {
-        loadInventarios()
+        loadInventories()
         loadCategorias()
         loadUnidadesMedida()
     }
@@ -172,7 +170,7 @@ class InventarioViewModel(
     // ============================================================== //
     // Carga de inventarios                                          //
     // ============================================================== //
-    fun loadInventarios(forceRefresh: Boolean = false) {
+    fun loadInventories(forceRefresh: Boolean = false) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
@@ -203,7 +201,7 @@ class InventarioViewModel(
                         item.copy(estadoStock = estado)
                     }
 
-                    inventarioRepository.actualizarCache(inventariosConEstado)
+                    inventarioRepository.updateCache(inventariosConEstado)
                     Log.d("InventoryViewModel", "💾 Cache de repositorio actualizada")
 
                     cacheMutex.withLock {
@@ -232,9 +230,8 @@ class InventarioViewModel(
         }
     }
 
-
     fun refresh() {
-        loadInventarios(forceRefresh = true)
+        loadInventories(forceRefresh = true)
         loadCategorias(forceRefresh = true)
         loadUnidadesMedida(forceRefresh = true)
     }
@@ -280,46 +277,6 @@ class InventarioViewModel(
         _currentPage.value = 1
     }
 
-    // ============================================================== //
-    // CRUD: crear / actualizar / eliminar                          //
-    // ============================================================== //
-
-    /**
-     * Guardar desde formulario de UI (usa InventoryForm).
-     * Ahora delega a create/update para centralizar comportamiento.
-     */
-    fun guardarDesdeFormulario(form: InventoryForm) {
-        viewModelScope.launch {
-            _errorMessage.value = null
-
-            // Validaciones
-            if (form.nombreProducto.isNullOrBlank()) {
-                _errorMessage.value = "El nombre del producto es obligatorio"
-                return@launch
-            }
-            if (form.nombreCategoria.isNullOrBlank()) {
-                _errorMessage.value = "Debe seleccionar una categoría"
-                return@launch
-            }
-            if (form.unidadMedida.isNullOrBlank()) {
-                _errorMessage.value = "Debe seleccionar una unidad de medida"
-                return@launch
-            }
-
-            val estado = calcularEstadoStock(form.stock, form.stockLimitMin)
-
-            if (form.idInventario == null) {
-                // Crear
-                val createDto: InventoryWithProductCreateDTO = form.toCreateDTO()
-                createInventoryWithProduct(createDto)
-            } else {
-                // Actualizar
-                val updateDto: InventoryWithProductResponseAnswerUpdateDTO = form.toUpdateDTO(estado)
-                updateInventoryWithProduct(updateDto)
-            }
-        }
-    }
-
     /**
      * Crear item (usa repo suspend). Manejo consistente de isSaving / mensajes / recarga.
      */
@@ -332,7 +289,7 @@ class InventarioViewModel(
                 inventarioRepository.createInventoryWithProduct(dto)
                 _successMessage.value = "Producto '${dto.nombreProducto}' creado exitosamente"
                 // Refrescar lista (forzar refetch)
-                loadInventarios(forceRefresh = true)
+                loadInventories(forceRefresh = true)
             } catch (e: HttpException) {
                 _errorMessage.value = "Error HTTP ${e.code()}: ${e.message()}"
             } catch (e: IOException) {
@@ -416,7 +373,7 @@ class InventarioViewModel(
                 Log.d("InventoryViewModel", "✅ Llamada al repositorio completada con éxito")
 
                 _successMessage.value = "Producto '${safeDto.nombreProducto}' actualizado exitosamente"
-                loadInventarios(forceRefresh = true)
+                loadInventories(forceRefresh = true)
 
             } catch (e: HttpException) {
                 _errorMessage.value = "Error HTTP ${e.code()}: ${e.message()}"
@@ -434,12 +391,10 @@ class InventarioViewModel(
         }
     }
 
-
-
     /**
      * Eliminar lógicamente (ya tenías implementación similar)
      */
-    fun eliminarInventario(idInventario: Int, nombreProducto: String) {
+    fun deleteInventory(idInventario: Int, nombreProducto: String) {
         viewModelScope.launch {
             _isLoading.value = true
             _errorMessage.value = null
@@ -447,7 +402,7 @@ class InventarioViewModel(
             result.onSuccess {
                 _successMessage.value = "Producto '$nombreProducto' eliminado"
                 // refrescar lista
-                loadInventarios(forceRefresh = true)
+                loadInventories(forceRefresh = true)
             }.onFailure { error ->
                 _errorMessage.value = "Error al eliminar: ${error.message}"
             }
@@ -456,23 +411,10 @@ class InventarioViewModel(
     }
 
     // ============================================================== //
-    // Utilidades                                                    //
+    // Utilidades                                                     //
     // ============================================================== //
-    fun clearError() {
-        _errorMessage.value = null
-        productoRepository.clearError()
-    }
 
     fun clearSuccess() {
         _successMessage.value = null
-    }
-
-    fun calcularEstadoStock(stock: Double?, stockLimitMin: Double?): String {
-        return when {
-            stockLimitMin == null || stockLimitMin == 0.0 -> "NO ASIGNADO"
-            (stock ?: 0.0) == 0.0 -> "AGOTADO"
-            (stock ?: 0.0) < (stockLimitMin ?: 0.0) -> "BAJO STOCK"
-            else -> "DISPONIBLE"
-        }
     }
 }

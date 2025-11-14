@@ -30,7 +30,7 @@ data class InventoryWithProductCreateDTO(
 )
 
 /**
- * Data Transfer Object (DTO) para CREAR o ACTUALIZAR un item de inventario.
+ * Data Transfer Object (DTO) para LISTAR o ACTUALIZAR un item de inventario.
  *
  * ✨ SINCRONIZADO CON InventoryWithProductCreateUpdateDTO.java (11-Nov-2025) ✨
  * Basado en el DTO de Spring con 8 campos.
@@ -44,22 +44,22 @@ data class InventoryWithProductResponseAnswerUpdateDTO(
     val idProducto: Int? = null,
 
     @SerializedName("nombreProducto")
-    val nombreProducto: String? = null, // Nulable (es 'String' en Java)
+    val nombreProducto: String? = null,
 
     @SerializedName("descripcionProducto")
     val descripcionProducto: String?,
 
     @SerializedName("nombreCategoria")
-    val nombreCategoria: String? = null, // Nulable (es 'String' en Java)
+    val nombreCategoria: String? = null,
 
     @SerializedName("unidadMedida")
-    val unidadMedida: String? = null, // Nulable (es 'String' en Java)
+    val unidadMedida: String? = null,
 
     @SerializedName("stock")
-    val stock: Double? = null, // Nulable (es 'Double' en Java)
+    val stock: Double? = null,
 
     @SerializedName("stockLimitMin")
-    val stockLimitMin: Double? = null, // Nulable (es 'Double' en Java)
+    val stockLimitMin: Double? = null,
 
     @SerializedName("estadoStock")
     val estadoStock: String
@@ -137,12 +137,4 @@ fun InventoryForm.toUpdateDTO(estadoStock: String): InventoryWithProductResponse
         stockLimitMin = this.stockLimitMin,
         estadoStock = estadoStock
     )
-}
-private fun calcularEstadoStock(stock: Double?, stockLimitMin: Double?): String {
-    return when {
-        stockLimitMin == null || stockLimitMin == 0.0 -> "NO ASIGNADO"
-        (stock ?: 0.0) == 0.0 -> "AGOTADO"
-        (stock ?: 0.0) < (stockLimitMin ?: 0.0) -> "BAJO STOCK"
-        else -> "DISPONIBLE"
-    }
 }
