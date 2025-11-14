@@ -115,210 +115,223 @@ fun InventarioScreen() {
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(24.dp)
         ) {
-            // ========== ENCABEZADO ==========
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Inventario",
-                        fontSize = 28.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
-                    Text(
-                        text = "Gestione los productos del inventario, vea movimientos y actualice existencias.",
-                        fontSize = 14.sp,
-                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // ========== BARRA DE BÚSQUEDA Y FILTROS ==========
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // BUSCADOR
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { viewModel.updateSearchQuery(it) },
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Buscar productos...") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Search, contentDescription = "Buscar")
-                    },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { viewModel.updateSearchQuery("") }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Limpiar búsqueda")
-                            }
-                        }
-                    },
-                    singleLine = true,
-                    shape = RoundedCornerShape(8.dp)
-                )
-
-                // FILTRO POR CATEGORÍA
-                ExposedDropdownMenuBox(
-                    expanded = expandedCategoriaFilter,
-                    onExpandedChange = { expandedCategoriaFilter = it }
+            item {
+                // ========== ENCABEZADO ==========
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    Column {
+                        Text(
+                            text = "Inventario",
+                            fontSize = 28.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
+                        Text(
+                            text = "Gestione los productos del inventario, vea movimientos y actualice existencias.",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+            }
+            // ========== BARRA DE BÚSQUEDA Y FILTROS ==========
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // BUSCADOR
                     OutlinedTextField(
-                        value = selectedCategoria.ifEmpty { "Todas las categorías" },
-                        onValueChange = {},
-                        readOnly = true,
+                        value = searchQuery,
+                        onValueChange = { viewModel.updateSearchQuery(it) },
+                        modifier = Modifier.weight(1f),
+                        placeholder = { Text("Buscar productos...") },
                         leadingIcon = {
-                            Icon(Icons.Default.FilterList, contentDescription = "Filtrar")
+                            Icon(Icons.Default.Search, contentDescription = "Buscar")
                         },
                         trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategoriaFilter)
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                    Icon(
+                                        Icons.Default.Clear,
+                                        contentDescription = "Limpiar búsqueda"
+                                    )
+                                }
+                            }
                         },
-                        modifier = Modifier
-                            .width(240.dp)
-                            .menuAnchor(),
                         singleLine = true,
                         shape = RoundedCornerShape(8.dp)
                     )
 
-                    ExposedDropdownMenu(
+                    // FILTRO POR CATEGORÍA
+                    ExposedDropdownMenuBox(
                         expanded = expandedCategoriaFilter,
-                        onDismissRequest = { expandedCategoriaFilter = false }
+                        onExpandedChange = { expandedCategoriaFilter = it }
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("Todas las categorías") },
-                            onClick = {
-                                viewModel.updateCategoriaFilter("Todos")
-                                expandedCategoriaFilter = false
-                            }
+                        OutlinedTextField(
+                            value = selectedCategoria.ifEmpty { "Todas las categorías" },
+                            onValueChange = {},
+                            readOnly = true,
+                            leadingIcon = {
+                                Icon(Icons.Default.FilterList, contentDescription = "Filtrar")
+                            },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategoriaFilter)
+                            },
+                            modifier = Modifier
+                                .width(240.dp)
+                                .menuAnchor(),
+                            singleLine = true,
+                            shape = RoundedCornerShape(8.dp)
                         )
-                        categorias.forEach { categoria ->
+
+                        ExposedDropdownMenu(
+                            expanded = expandedCategoriaFilter,
+                            onDismissRequest = { expandedCategoriaFilter = false }
+                        ) {
                             DropdownMenuItem(
-                                text = { Text(categoria.replaceFirstChar { it.uppercase() }) },
+                                text = { Text("Todas las categorías") },
                                 onClick = {
-                                    viewModel.updateCategoriaFilter(categoria)
+                                    viewModel.updateCategoriaFilter("Todos")
                                     expandedCategoriaFilter = false
                                 }
+                            )
+                            categorias.forEach { categoria ->
+                                DropdownMenuItem(
+                                    text = { Text(categoria.replaceFirstChar { it.uppercase() }) },
+                                    onClick = {
+                                        viewModel.updateCategoriaFilter(categoria)
+                                        expandedCategoriaFilter = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    // BOTÓN REALIZAR PEDIDO
+                    OutlinedButton(
+                        onClick = { /* Acción de pedido */ },
+                        modifier = Modifier.height(56.dp)
+                    ) {
+                        Icon(Icons.Default.ShoppingCart, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Crear Inventario Por Volumes")
+                    }
+
+                    // BOTÓN NUEVO PRODUCTO
+                    Button(
+                        onClick = {
+                            itemToEdit = null
+                            showDialog = true
+                        },
+                        modifier = Modifier.height(56.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFFFFC107)
+                        )
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Nuevo Producto", color = Color.Black)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+            item {
+                // ========== TABLA DE INVENTARIOS (SCROLLEABLE) ==========
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+                    tonalElevation = 1.dp
+                ) {
+                    Column {
+                        // ========== ENCABEZADO DE TABLA CORREGIDO ==========
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "NOMBRE",
+                                modifier = Modifier.weight(0.20f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Start
+                            )
+
+                            Text(
+                                text = "CATEGORÍA",
+                                modifier = Modifier.weight(0.18f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Start
+                            )
+
+                            Text(
+                                text = "STOCK",
+                                modifier = Modifier.weight(0.08f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center  // ✅ CAMBIO: de Start a Center
+                            )
+
+                            Text(
+                                text = "UNIDAD",
+                                modifier = Modifier.weight(0.22f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center  // ✅ CAMBIO: de Start a Center
+                            )
+
+                            Text(
+                                text = "ESTADO",
+                                modifier = Modifier.weight(0.20f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.Center
+                            )
+
+                            Text(
+                                text = "ACCIONES",
+                                modifier = Modifier.weight(0.12f),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                textAlign = TextAlign.End
                             )
                         }
                     }
                 }
-
-                // BOTÓN REALIZAR PEDIDO
-                OutlinedButton(
-                    onClick = { /* Acción de pedido */ },
-                    modifier = Modifier.height(56.dp)
-                ) {
-                    Icon(Icons.Default.ShoppingCart, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Crear Inventario Por Volumes")
-                }
-
-                // BOTÓN NUEVO PRODUCTO
-                Button(
-                    onClick = {
-                        itemToEdit = null
-                        showDialog = true
-                    },
-                    modifier = Modifier.height(56.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFFFC107)
-                    )
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Nuevo Producto", color = Color.Black)
-                }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // ========== TABLA DE INVENTARIOS (SCROLLEABLE) ==========
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                color = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(8.dp),
-                tonalElevation = 1.dp
-            ) {
-                Column {
-                    // ENCABEZADO DE TABLA
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+            // LOADING STATE
+            if (isLoading) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
+                        tonalElevation = 1.dp
                     ) {
-                        Text(
-                            text = "NOMBRE",
-                            modifier = Modifier.weight(0.20f),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Start
-                        )
-
-                        Text(
-                            text = "CATEGORÍA",
-                            modifier = Modifier.weight(0.18f),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Start
-                        )
-
-                        Text(
-                            text = "STOCK",
-                            modifier = Modifier.weight(0.08f),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Start
-                        )
-
-                        Text(
-                            text = "UNIDAD",
-                            modifier = Modifier.weight(0.22f),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Start
-                        )
-
-                        Text(
-                            text = "ESTADO",
-                            modifier = Modifier.weight(0.20f),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
-                        )
-
-                        Text(
-                            text = "ACCIONES",
-                            modifier = Modifier.weight(0.12f),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.End
-                        )
-                    }
-
-                    // LOADING STATE
-                    if (isLoading) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -328,8 +341,17 @@ fun InventarioScreen() {
                             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                         }
                     }
-                    // EMPTY STATE
-                    else if (safeInventarios.isEmpty()) {
+                }
+            }
+            // EMPTY STATE
+            else if (safeInventarios.isEmpty()) {
+                item {
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surface,
+                        shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
+                        tonalElevation = 1.dp
+                    ) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -342,68 +364,83 @@ fun InventarioScreen() {
                             )
                         }
                     }
-                    // LISTA DE PRODUCTOS (SCROLLEABLE) - ✅ MIGRACIÓN INTEGRADA
-                    else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .weight(1f)
-                        ) {
-                            items(
-                                items = safeInventarios,
-                                key = { it.idInventario ?: 0 }
-                            ) { item ->
-                                InventarioRow(
-                                    item = item,
-                                    viewModel = viewModel,
-                                    coroutineScope = coroutineScope,
-                                    onEdit = { idInventario ->
-                                        val inventario = viewModel.getInventory(idInventario)
-                                        itemToEdit = inventario
-                                        showDialog = true
-                                    },
-                                    onDelete = {
-                                        coroutineScope.launch {
-                                            viewModel.deleteInventory(
-                                                item.idInventario ?: 0,
-                                                item.nombreProducto ?: "Producto"
-                                            )
-                                        }
+                }
+            }
+            // LISTA DE PRODUCTOS (SCROLLEABLE) - ✅ MIGRACIÓN INTEGRADA
+            else {
+                items(
+                    items = safeInventarios,
+                    key = { it.idInventario ?: 0 }
+                ) { item ->
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.surface,
+                        tonalElevation = 1.dp
+                    ) {
+                        Column {
+                            InventarioRow(
+                                item = item,
+                                viewModel = viewModel,
+                                coroutineScope = coroutineScope,
+                                onEdit = { idInventario ->
+                                    val inventario = viewModel.getInventory(idInventario)
+                                    itemToEdit = inventario
+                                    showDialog = true
+                                },
+                                onDelete = {
+                                    coroutineScope.launch {
+                                        viewModel.deleteInventory(
+                                            item.idInventario ?: 0,
+                                            item.nombreProducto ?: "Producto"
+                                        )
                                     }
-                                )
-                                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-                            }
+                                }
+                            )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                         }
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            // ========== CIERRE VISUAL DE LA TABLA ==========
+            item {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.surface,
+                    shape = RoundedCornerShape(bottomStart = 8.dp, bottomEnd = 8.dp),
+                    tonalElevation = 1.dp
+                ) {
+                    Spacer(modifier = Modifier.height(1.dp))
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
             // ========== PAGINACIÓN ==========
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = { viewModel.previousPage() },
-                    enabled = currentPage > 1
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(Icons.Default.ChevronLeft, contentDescription = "Página anterior")
-                }
+                    IconButton(
+                        onClick = { viewModel.previousPage() },
+                        enabled = currentPage > 1
+                    ) {
+                        Icon(Icons.Default.ChevronLeft, contentDescription = "Página anterior")
+                    }
 
-                Text(
-                    text = "Página $currentPage de $totalPages",
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                    fontWeight = FontWeight.Medium
-                )
+                    Text(
+                        text = "Página $currentPage de $totalPages",
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        fontWeight = FontWeight.Medium
+                    )
 
-                IconButton(
-                    onClick = { viewModel.nextPage() },
-                    enabled = currentPage < totalPages
-                ) {
-                    Icon(Icons.Default.ChevronRight, contentDescription = "Página siguiente")
+                    IconButton(
+                        onClick = { viewModel.nextPage() },
+                        enabled = currentPage < totalPages
+                    ) {
+                        Icon(Icons.Default.ChevronRight, contentDescription = "Página siguiente")
+                    }
                 }
             }
         }
@@ -480,6 +517,7 @@ private fun InventarioRow(
         else -> Color(0xFF9E9E9E)
     }
 
+    // ========== CUERPO DE TABLA CORREGIDO ==========
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -507,31 +545,38 @@ private fun InventarioRow(
         )
 
         // STOCK (0.08f) - Clickeable para ajustar
-        TextButton(
-            onClick = { showStockDialog = true },
+        // ✅ CAMBIO: Agregamos Box con Alignment.Center para centrar
+        Box(
             modifier = Modifier.weight(0.08f),
-            contentPadding = PaddingValues(0.dp)
+            contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = if (safeStock % 1 != 0.0) {
-                    safeStock.toString()
-                } else {
-                    safeStock.toInt().toString()
-                },
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = estadoColor
-            )
+            TextButton(
+                onClick = { showStockDialog = true },
+                contentPadding = PaddingValues(0.dp)
+            ) {
+                Text(
+                    text = if (safeStock % 1 != 0.0) {
+                        safeStock.toString()
+                    } else {
+                        safeStock.toInt().toString()
+                    },
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = estadoColor
+                )
+            }
         }
 
         // UNIDAD (0.22f)
+        // ✅ CAMBIO: Agregamos textAlign = TextAlign.Center
         Text(
             text = safeUnidad,
             modifier = Modifier.weight(0.22f),
             color = MaterialTheme.colorScheme.onSurface,
             fontSize = 14.sp,
             maxLines = 1,
-            overflow = TextOverflow.Ellipsis
+            overflow = TextOverflow.Ellipsis,
+            textAlign = TextAlign.Center
         )
 
         // ESTADO (0.20f)
@@ -558,7 +603,7 @@ private fun InventarioRow(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.fillMaxWidth()
-            ) {
+            )  {
                 // Botón Editar
                 IconButton(
                     onClick = {
@@ -646,17 +691,16 @@ private fun InventarioRow(
     }
 
     // ========== DIÁLOGOS ==========
-    /**
+
     // Diálogo de ajuste de stock
     if (showStockDialog) {
         StockAdjustDialog(
             productoNombre = safeNombre,
             stockActual = safeStock,
             unidad = safeUnidad,
-            onDismiss = { showStockDialog = false },
-            onConfirm = { nuevoStock ->
+            onDismiss = { showStockDialog = false },onConfirm = { nuevoStock ->
                 coroutineScope.launch {
-                    viewModel.updateStock(safeIdInventario, nuevoStock)
+                    TODO("Implementar updateStock en el ViewModel")
                 }
                 showStockDialog = false
             }
@@ -674,14 +718,15 @@ private fun InventarioRow(
             onConfirm = { cantidad ->
                 coroutineScope.launch {
                     when (tipoMovimiento) {
-                        "ENTRADA" -> viewModel.registrarEntrada(safeIdInventario, cantidad)
-                        "SALIDA" -> viewModel.registrarSalida(safeIdInventario, cantidad)
+                        "ENTRADA" -> TODO("Implementar registrarEntrada en el ViewModel")
+                        "SALIDA" -> TODO("Implementar registrarSalida en el ViewModel")
                     }
                 }
                 showMovimientoDialog = false
             }
         )
-    }*/
+    }
+
 
     // Diálogo de confirmación de eliminación
     if (showDeleteDialog) {
@@ -1212,4 +1257,139 @@ fun InventarioDialog(
             }
         }
     }
+}
+
+
+// ========== DIÁLOGOS AUXILIARES ==========
+
+@Composable
+private fun StockAdjustDialog(
+    productoNombre: String,
+    stockActual: Double,
+    unidad: String,
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit
+) {
+    var nuevoStock by remember {
+        mutableStateOf(
+            if (stockActual % 1 != 0.0) stockActual.toString()
+            else stockActual.toInt().toString()
+        )
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Ajustar Stock - $productoNombre") },
+        text = {
+            Column {
+                Text("Stock actual: ${if (stockActual % 1 != 0.0) stockActual else stockActual.toInt()} $unidad")
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = nuevoStock,
+                    onValueChange = {
+                        if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) {
+                            nuevoStock = it
+                        }
+                    },
+                    label = { Text("Nuevo stock") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val stock = nuevoStock.toDoubleOrNull() ?: 0.0
+                    onConfirm(stock)
+                }
+            ) {
+                Text("Actualizar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+@Composable
+private fun MovimientoDialog(
+    productoNombre: String,
+    stockActual: Double,
+    unidad: String,
+    tipoMovimiento: String,
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit
+) {
+    var cantidad by remember { mutableStateOf("") }
+    val isEntrada = tipoMovimiento == "ENTRADA"
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                "${if (isEntrada) "Registrar Entrada" else "Registrar Salida"} - $productoNombre"
+            )
+        },
+        text = {
+            Column {
+                Text("Stock actual: ${if (stockActual % 1 != 0.0) stockActual else stockActual.toInt()} $unidad")
+                Spacer(modifier = Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = cantidad,
+                    onValueChange = {
+                        if (it.isEmpty() || it.matches(Regex("^\\d*\\.?\\d*$"))) {
+                            cantidad = it
+                        }
+                    },
+                    label = { Text("Cantidad") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    supportingText = {
+                        if (!isEntrada) {
+                            val cant = cantidad.toDoubleOrNull() ?: 0.0
+                            if (cant > stockActual) {
+                                Text(
+                                    "Stock insuficiente",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+                    }
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "La fecha y hora se registrarán automáticamente",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val cant = cantidad.toDoubleOrNull() ?: 0.0
+                    if (cant > 0) {
+                        onConfirm(cant)
+                    }
+                },
+                enabled = cantidad.toDoubleOrNull()?.let {
+                    it > 0 && (isEntrada || it <= stockActual)
+                } == true,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (isEntrada) Color(0xFF4CAF50) else Color(0xFFF44336)
+                )
+            ) {
+                Text("Registrar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
