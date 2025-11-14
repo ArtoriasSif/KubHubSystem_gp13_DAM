@@ -32,27 +32,23 @@ import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductResponseAnswe
 import com.example.kubhubsystem_gp13_dam.repository.InventarioRepository
 import com.example.kubhubsystem_gp13_dam.repository.ProductoRepository
 import com.example.kubhubsystem_gp13_dam.ui.viewmodel.InventarioViewModel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventarioScreen() {
-    // --- crear una vez los servicios y repos (usar remember para no recrearlos en recomposiciones) ---
+    // --- Servicios y Repositorios ---
     val inventarioApiService = remember { RetrofitClient.createService(InventarioApiService::class.java) }
     val productoApiService = remember { RetrofitClient.createService(ProductoApiService::class.java) }
 
     val inventarioRepository = remember { InventarioRepository(inventarioApiService) }
     val productoRepository = remember { ProductoRepository(productoApiService) }
 
-    // Crear la factory usando la clase que añadimos al repo archivo
     val factory = remember {
-        // si pegaste la clase en el mismo archivo como InventarioViewModelFactory:
         InventarioRepository.InventarioViewModelFactory(inventarioRepository, productoRepository)
-        // si implementaste como anidada dentro de InventarioRepository (inner class), usar:
-        // InventarioRepository.InventarioViewModelFactory(inventarioRepository, productoRepository)
     }
 
-    // Pedimos el ViewModel al framework con la factory (esto evita el NoSuchMethodException)
     val viewModel: InventarioViewModel = viewModel(factory = factory)
 
     // Estados del ViewModel
@@ -74,12 +70,6 @@ fun InventarioScreen() {
     var showDialog by remember { mutableStateOf(false) }
     var itemToEdit by remember { mutableStateOf<InventoryWithProductResponseAnswerUpdateDTO?>(null) }
     var expandedCategoriaFilter by remember { mutableStateOf(false) }
-
-    // Función para cargar item desde el caché por ID
-    fun loadItemForEdit(idInventario: Int) {
-        itemToEdit = viewModel.getInventory(idInventario)
-        showDialog = true
-    }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -108,11 +98,10 @@ fun InventarioScreen() {
         }
         successMessage?.let {
             snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short)
-            // clearSuccess se hace en el efecto que cierra el dialogo para evitar cerrar antes
         }
     }
 
-    // Cerrar diálogo cuando hay success (evita cerrar inmediatamente en onSave)
+    // Cerrar diálogo cuando hay success
     LaunchedEffect(successMessage) {
         successMessage?.let {
             if (showDialog) {
@@ -226,7 +215,7 @@ fun InventarioScreen() {
                     }
                 }
 
-                // BOTÓN REALIZAR PEDIDO (opcional)
+                // BOTÓN REALIZAR PEDIDO
                 OutlinedButton(
                     onClick = { /* Acción de pedido */ },
                     modifier = Modifier.height(56.dp)
@@ -244,7 +233,7 @@ fun InventarioScreen() {
                     },
                     modifier = Modifier.height(56.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFFFC107) // Amarillo como en la imagen
+                        containerColor = Color(0xFFFFC107)
                     )
                 ) {
                     Icon(Icons.Default.Add, contentDescription = null)
@@ -259,7 +248,7 @@ fun InventarioScreen() {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f), // Ocupar todo el espacio disponible
+                    .weight(1f),
                 color = MaterialTheme.colorScheme.surface,
                 shape = RoundedCornerShape(8.dp),
                 tonalElevation = 1.dp
@@ -273,67 +262,58 @@ fun InventarioScreen() {
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-
-                        // NOMBRE (0.20f)
                         Text(
                             text = "NOMBRE",
                             modifier = Modifier.weight(0.20f),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Start // Alinear a la izquierda
+                            textAlign = TextAlign.Start
                         )
 
-                        // CATEGORÍA (0.18f)
                         Text(
                             text = "CATEGORÍA",
                             modifier = Modifier.weight(0.18f),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Start // Alinear a la izquierda
+                            textAlign = TextAlign.Start
                         )
 
-                        // STOCK (0.08f) - CORREGIDO
                         Text(
                             text = "STOCK",
-                            // CAMBIO: Peso reducido (números cortos)
                             modifier = Modifier.weight(0.08f),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Start // Alinear a la izquierda
+                            textAlign = TextAlign.Start
                         )
 
-                        // UNIDAD (0.22f) - CORREGIDO
                         Text(
                             text = "UNIDAD",
-                            // CAMBIO: Peso aumentado (para "CHAT MENTIEA")
                             modifier = Modifier.weight(0.22f),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Start // Alinear a la izquierda
+                            textAlign = TextAlign.Start
                         )
 
-                        // ESTADO (0.20f)
                         Text(
                             text = "ESTADO",
                             modifier = Modifier.weight(0.20f),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center // Centrado
+                            textAlign = TextAlign.Center
                         )
 
-                        // ACCIONES (0.12f)
                         Text(
                             text = "ACCIONES",
                             modifier = Modifier.weight(0.12f),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.End // Alinear al final (derecha)
+                            textAlign = TextAlign.End
                         )
                     }
 
@@ -362,7 +342,7 @@ fun InventarioScreen() {
                             )
                         }
                     }
-                    // LISTA DE PRODUCTOS (SCROLLEABLE)
+                    // LISTA DE PRODUCTOS (SCROLLEABLE) - ✅ MIGRACIÓN INTEGRADA
                     else {
                         LazyColumn(
                             modifier = Modifier
@@ -375,13 +355,12 @@ fun InventarioScreen() {
                             ) { item ->
                                 InventarioRow(
                                     item = item,
+                                    viewModel = viewModel,
+                                    coroutineScope = coroutineScope,
                                     onEdit = { idInventario ->
                                         val inventario = viewModel.getInventory(idInventario)
                                         itemToEdit = inventario
                                         showDialog = true
-                                    },
-                                    onViewDetails = {
-                                        // Acción para ver detalles
                                     },
                                     onDelete = {
                                         coroutineScope.launch {
@@ -448,6 +427,285 @@ fun InventarioScreen() {
                 }
             )
         }
+    }
+}
+
+// ========== COMPONENTE InventarioRow MIGRADO CON TODA LA LÓGICA ==========
+@Composable
+private fun InventarioRow(
+    item: InventoryWithProductResponseAnswerUpdateDTO,
+    viewModel: InventarioViewModel,
+    coroutineScope: CoroutineScope,
+    onEdit: (Int) -> Unit,
+    onDelete: () -> Unit
+) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var showMenuOptions by remember { mutableStateOf(false) }
+    var showStockDialog by remember { mutableStateOf(false) }
+    var showMovimientoDialog by remember { mutableStateOf(false) }
+    var tipoMovimiento by remember { mutableStateOf("ENTRADA") }
+
+    // ✅ Valores seguros con protección contra null y strings vacíos
+    val safeNombre = item.nombreProducto?.trim().takeIf { !it.isNullOrBlank() } ?: "Sin nombre"
+    val safeDescripcion = item.descripcionProducto
+        ?.trim()
+        ?.ifBlank { "Sin descripción" }
+        ?: "Sin descripción"
+    val safeCategoria = item.nombreCategoria
+        ?.trim()
+        ?.takeIf { it.isNotBlank() }
+        ?.replaceFirstChar { it.uppercase() }
+        ?: "Sin categoría"
+    val safeUnidad = item.unidadMedida
+        ?.trim()
+        ?.takeIf { it.isNotBlank() }
+        ?.uppercase()
+        ?: "N/A"
+    val safeStock = item.stock ?: 0.0
+    val safeStockLimitMin = item.stockLimitMin
+    val safeIdInventario = item.idInventario ?: 0
+
+    // Cálculo del estado (seguro frente a nulls)
+    val estadoCalculado = when {
+        safeStockLimitMin == null || safeStockLimitMin == 0.0 -> "NO ASIGNADO"
+        safeStock == 0.0 -> "AGOTADO"
+        safeStock < safeStockLimitMin -> "BAJO STOCK"
+        else -> "DISPONIBLE"
+    }
+
+    val estadoColor = when (estadoCalculado) {
+        "AGOTADO" -> Color(0xFFFF5252)
+        "BAJO STOCK" -> Color(0xFFFFA500)
+        "DISPONIBLE" -> Color(0xFF00C853)
+        else -> Color(0xFF9E9E9E)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // NOMBRE (0.20f)
+        Text(
+            text = safeNombre,
+            modifier = Modifier.weight(0.20f),
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 14.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        // CATEGORÍA (0.18f)
+        Text(
+            text = safeCategoria,
+            modifier = Modifier.weight(0.18f),
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 14.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        // STOCK (0.08f) - Clickeable para ajustar
+        TextButton(
+            onClick = { showStockDialog = true },
+            modifier = Modifier.weight(0.08f),
+            contentPadding = PaddingValues(0.dp)
+        ) {
+            Text(
+                text = if (safeStock % 1 != 0.0) {
+                    safeStock.toString()
+                } else {
+                    safeStock.toInt().toString()
+                },
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = estadoColor
+            )
+        }
+
+        // UNIDAD (0.22f)
+        Text(
+            text = safeUnidad,
+            modifier = Modifier.weight(0.22f),
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 14.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        // ESTADO (0.20f)
+        Surface(
+            modifier = Modifier.weight(0.20f),
+            color = estadoColor,
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text(
+                text = estadoCalculado,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
+                color = Color.Black,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        // ACCIONES (0.12f)
+        Box(modifier = Modifier.weight(0.12f)) {
+            Row(
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Botón Editar
+                IconButton(
+                    onClick = {
+                        Log.d("EDIT_BTN", "Editar inventario ID=$safeIdInventario")
+                        onEdit(safeIdInventario)
+                    },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "Editar",
+                        tint = Color(0xFFFFC107),
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                // Botón Más opciones (menú)
+                IconButton(
+                    onClick = { showMenuOptions = true },
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Default.MoreHoriz,
+                        contentDescription = "Más opciones",
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                // Menú desplegable con todas las opciones
+                DropdownMenu(
+                    expanded = showMenuOptions,
+                    onDismissRequest = { showMenuOptions = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Ajustar Stock") },
+                        onClick = {
+                            showMenuOptions = false
+                            showStockDialog = true
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Edit, contentDescription = null)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Registrar Entrada") },
+                        onClick = {
+                            showMenuOptions = false
+                            tipoMovimiento = "ENTRADA"
+                            showMovimientoDialog = true
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Add, contentDescription = null)
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Registrar Salida") },
+                        onClick = {
+                            showMenuOptions = false
+                            tipoMovimiento = "SALIDA"
+                            showMovimientoDialog = true
+                        },
+                        leadingIcon = {
+                            Icon(Icons.Default.Remove, contentDescription = null)
+                        }
+                    )
+                    HorizontalDivider()
+                    DropdownMenuItem(
+                        text = { Text("Eliminar", color = Color(0xFFF44336)) },
+                        onClick = {
+                            showMenuOptions = false
+                            showDeleteDialog = true
+                        },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = null,
+                                tint = Color(0xFFF44336)
+                            )
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    // ========== DIÁLOGOS ==========
+    /**
+    // Diálogo de ajuste de stock
+    if (showStockDialog) {
+        StockAdjustDialog(
+            productoNombre = safeNombre,
+            stockActual = safeStock,
+            unidad = safeUnidad,
+            onDismiss = { showStockDialog = false },
+            onConfirm = { nuevoStock ->
+                coroutineScope.launch {
+                    viewModel.updateStock(safeIdInventario, nuevoStock)
+                }
+                showStockDialog = false
+            }
+        )
+    }
+
+    // Diálogo de movimiento (entrada/salida)
+    if (showMovimientoDialog) {
+        MovimientoDialog(
+            productoNombre = safeNombre,
+            stockActual = safeStock,
+            unidad = safeUnidad,
+            tipoMovimiento = tipoMovimiento,
+            onDismiss = { showMovimientoDialog = false },
+            onConfirm = { cantidad ->
+                coroutineScope.launch {
+                    when (tipoMovimiento) {
+                        "ENTRADA" -> viewModel.registrarEntrada(safeIdInventario, cantidad)
+                        "SALIDA" -> viewModel.registrarSalida(safeIdInventario, cantidad)
+                    }
+                }
+                showMovimientoDialog = false
+            }
+        )
+    }*/
+
+    // Diálogo de confirmación de eliminación
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Confirmar eliminación") },
+            text = { Text("¿Está seguro de que desea eliminar '$safeNombre'?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onDelete()
+                        showDeleteDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336))
+                ) {
+                    Text("Eliminar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 }
 

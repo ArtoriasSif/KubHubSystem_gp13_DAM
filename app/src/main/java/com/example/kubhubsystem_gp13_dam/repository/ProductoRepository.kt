@@ -16,7 +16,7 @@ import retrofit2.HttpException
 import java.io.IOException
 
 class ProductoRepository(
-    private val apiService: ProductoApiService
+    private val productoApiService: ProductoApiService
 ) {
     private val cacheMutex = Mutex()
 
@@ -46,7 +46,7 @@ class ProductoRepository(
                 return Result.success(_categorias.value)
             }
 
-            val response = apiService.getCategoriasActivas()
+            val response = productoApiService.getCategoriasActivas()
 
             cacheMutex.withLock {
                 _categorias.value = response.distinct().sorted()
@@ -71,7 +71,7 @@ class ProductoRepository(
                 return Result.success(_unidadesMedida.value)
             }
 
-            val response = apiService.getUnidadesMedidaActivas()
+            val response = productoApiService.getUnidadesMedidaActivas()
 
             cacheMutex.withLock {
                 _unidadesMedida.value = response.distinct().sorted()

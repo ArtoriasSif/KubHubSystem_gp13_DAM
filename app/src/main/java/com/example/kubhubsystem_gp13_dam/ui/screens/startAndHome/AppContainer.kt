@@ -33,10 +33,10 @@ fun AppContainer() {
     // ============================================
 
     // 🔹 Repositorio de Producto conectado a microservicio
-    val productoRepository = remember { ProductoRepository(apiService = productoApi) }
+    val productoRepository = remember { ProductoRepository(productoApiService = productoApi) }
 
     // 🔹 Repositorio de Inventario conectado a microservicio
-    val inventarioRepository = remember { InventarioRepository(apiService = inventarioApi) }
+    val inventarioRepository = remember { InventarioRepository(inventoryApiService = inventarioApi) }
 
     // 🔹 Repositorios locales aún no migrados (mantener)
     val usuarioRepository = remember { UsuarioRepository(database.usuarioDao()) }
