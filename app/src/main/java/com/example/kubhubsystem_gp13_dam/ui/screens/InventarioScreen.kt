@@ -1,12 +1,15 @@
 package com.example.kubhubsystem_gp13_dam.ui.screens
 
 import android.util.Log
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -988,7 +991,6 @@ fun InventarioDialog(
     var showCategoriaMenu by rememberSaveable { mutableStateOf(false) }
     var showUnidadMenu by rememberSaveable { mutableStateOf(false) }
 
-
     // Normalizar listas
     val categoriasDisponibles = remember(categorias) {
         categorias.filter { it.isNotBlank() }
@@ -1021,59 +1023,171 @@ fun InventarioDialog(
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth(0.9f)
+                .fillMaxWidth(0.92f)
                 .wrapContentHeight(),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(24.dp),
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 8.dp
+            tonalElevation = 12.dp,
+            shadowElevation = 8.dp
         ) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(24.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                // HEADER
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                // ========== HEADER CON DISEÑO MEJORADO ==========
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            color = if (isEditMode) Color(0xFFFFA726) else Color(0xFFFFC107),
+                            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                        )
+                        .padding(24.dp)
                 ) {
-                    // TÍTULO
-                    Text(
-                        text = if (isEditMode) "Editar Producto" else "Nuevo Producto",
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                    IconButton(onClick = { if (!isSaving) onDismiss() }) {
-                        Icon(Icons.Default.Close, contentDescription = "Cerrar")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = if (isEditMode) Icons.Default.Edit else Icons.Default.Add,
+                                    contentDescription = null,
+                                    tint = Color.Black,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(Modifier.width(12.dp))
+                                Text(
+                                    text = if (isEditMode) "Editar Producto" else "Nuevo Producto",
+                                    fontSize = 26.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.Black
+                                )
+                            }
+                            Spacer(Modifier.height(4.dp))
+                            Text(
+                                text = if (isEditMode)
+                                    "Actualiza la información del producto en el inventario"
+                                else
+                                    "Agrega un nuevo producto al inventario",
+                                fontSize = 14.sp,
+                                color = Color.Black.copy(alpha = 0.7f),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+
+                        IconButton(
+                            onClick = { if (!isSaving) onDismiss() },
+                            modifier = Modifier
+                                .size(40.dp)
+                                .background(
+                                    color = Color.Black.copy(alpha = 0.1f),
+                                    shape = RoundedCornerShape(12.dp)
+                                )
+                        ) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Cerrar",
+                                tint = Color.Black,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
 
-                Spacer(Modifier.height(20.dp))
+                // ========== FORMULARIO CON MEJOR ESPACIADO ==========
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 28.dp, vertical = 24.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    // SECCIÓN: INFORMACIÓN BÁSICA
+                    Text(
+                        text = "Información del Producto",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
 
-                // FORMULARIO
-                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     // NOMBRE
                     OutlinedTextField(
                         value = nombre,
                         onValueChange = { nombre = it },
                         label = { Text("Nombre del producto") },
+                        placeholder = { Text("Ej: Harina de trigo") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.ShoppingCart,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
                     )
-                    // DESCRIPCIÓN
+
+                    // DESCRIPCIÓN CON LÍMITE DE 100 CARACTERES
                     OutlinedTextField(
                         value = descripcion,
-                        onValueChange = { descripcion = it },
+                        onValueChange = {
+                            if (it.length <= 100) {
+                                descripcion = it
+                            }
+                        },
                         label = { Text("Descripción") },
+                        placeholder = { Text("Describe las características del producto...") },
+                        leadingIcon = {
+                            Icon(
+                                Icons.Default.Description,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        },
+                        supportingText = {
+                            Text(
+                                text = "${descripcion.length}/100 caracteres",
+                                fontSize = 12.sp,
+                                color = if (descripcion.length >= 100)
+                                    MaterialTheme.colorScheme.error
+                                else
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 3,
-                        maxLines = 5
+                        maxLines = 5,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
                     )
+
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    )
+
+                    // SECCIÓN: CLASIFICACIÓN
+                    Text(
+                        text = "Clasificación",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
                     // CATEGORÍA + UNIDAD
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         // CATEGORÍA
                         ExposedDropdownMenuBox(
@@ -1083,13 +1197,26 @@ fun InventarioDialog(
                         ) {
                             OutlinedTextField(
                                 value = categoria,
-                                onValueChange = { categoria = it },   // 👈 OBLIGATORIO
+                                onValueChange = { categoria = it },
                                 readOnly = true,
                                 label = { Text("Categoría") },
+                                placeholder = { Text("Seleccionar") },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Category,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
                                 trailingIcon = {
                                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = showCategoriaMenu)
                                 },
-                                modifier = Modifier.menuAnchor()
+                                modifier = Modifier.menuAnchor(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                                )
                             )
                             ExposedDropdownMenu(
                                 expanded = showCategoriaMenu,
@@ -1099,14 +1226,22 @@ fun InventarioDialog(
                                     DropdownMenuItem(
                                         text = { Text(cat) },
                                         onClick = {
-                                            categoria = cat   // 👈 ACTUALIZA ESTADO REAL OK
+                                            categoria = cat
                                             Log.d("DIALOG_EDIT", "Categoría seleccionada: $categoria")
                                             showCategoriaMenu = false
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Default.Label,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
                                         }
                                     )
                                 }
                             }
                         }
+
                         // UNIDAD
                         ExposedDropdownMenuBox(
                             expanded = showUnidadMenu,
@@ -1115,13 +1250,26 @@ fun InventarioDialog(
                         ) {
                             OutlinedTextField(
                                 value = unidad,
-                                onValueChange = { unidad = it },   // 👈 OBLIGATORIO
+                                onValueChange = { unidad = it },
                                 readOnly = true,
-                                label = { Text("Unidad de medida") },
+                                label = { Text("Unidad") },
+                                placeholder = { Text("Seleccionar") },
+                                leadingIcon = {
+                                    Icon(
+                                        Icons.Default.Scale,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                },
                                 trailingIcon = {
                                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = showUnidadMenu)
                                 },
-                                modifier = Modifier.menuAnchor()
+                                modifier = Modifier.menuAnchor(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                                )
                             )
                             ExposedDropdownMenu(
                                 expanded = showUnidadMenu,
@@ -1131,9 +1279,16 @@ fun InventarioDialog(
                                     DropdownMenuItem(
                                         text = { Text(u) },
                                         onClick = {
-                                            unidad = u    // 👈 ACTUALIZA ESTADO REAL OK
+                                            unidad = u
                                             Log.d("DIALOG_EDIT", "Unidad seleccionada: $unidad")
                                             showUnidadMenu = false
+                                        },
+                                        leadingIcon = {
+                                            Icon(
+                                                Icons.Default.Straighten,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary
+                                            )
                                         }
                                     )
                                 }
@@ -1141,10 +1296,23 @@ fun InventarioDialog(
                         }
                     }
 
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    )
+
+                    // SECCIÓN: CANTIDADES
+                    Text(
+                        text = "Control de Stock",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
                     // STOCK + STOCK MINIMO
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         OutlinedTextField(
                             value = stock,
@@ -1152,15 +1320,30 @@ fun InventarioDialog(
                                 stock = it
                                 stockError = it.toDoubleOrNull() == null && it.isNotBlank()
                             },
-                            label = { Text("Stock") },
+                            label = { Text("Stock actual") },
+                            placeholder = { Text("0") },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Inventory,
+                                    contentDescription = null,
+                                    tint = if (stockError) MaterialTheme.colorScheme.error
+                                    else MaterialTheme.colorScheme.primary
+                                )
+                            },
                             modifier = Modifier.weight(1f),
                             singleLine = true,
                             isError = stockError,
                             supportingText = if (stockError) {
                                 { Text("Ingrese un número válido") }
                             } else null,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                            )
                         )
+
                         OutlinedTextField(
                             value = stockMinimo,
                             onValueChange = {
@@ -1168,34 +1351,90 @@ fun InventarioDialog(
                                 stockMinimoError = it.toDoubleOrNull() == null && it.isNotBlank()
                             },
                             label = { Text("Stock mínimo") },
+                            placeholder = { Text("0") },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Warning,
+                                    contentDescription = null,
+                                    tint = if (stockMinimoError) MaterialTheme.colorScheme.error
+                                    else Color(0xFFFFA726)
+                                )
+                            },
                             modifier = Modifier.weight(1f),
                             singleLine = true,
                             isError = stockMinimoError,
                             supportingText = if (stockMinimoError) {
                                 { Text("Ingrese un número válido") }
                             } else null,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                            )
                         )
                     }
-                }
-                Spacer(Modifier.height(24.dp))
 
-                // BOTONES
+                    // INFO CARD
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = "El stock mínimo se usa para alertas de reposición automática",
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                                lineHeight = 18.sp
+                            )
+                        }
+                    }
+                }
+
+                // ========== BOTONES CON MEJOR DISEÑO ==========
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
+                        .padding(horizontal = 28.dp, vertical = 20.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedButton(
                         onClick = onDismiss,
                         enabled = !isSaving,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(54.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        border = BorderStroke(1.5.dp, MaterialTheme.colorScheme.outline)
                     ) {
-                        Text("Cancelar")
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            "Cancelar",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
+
                     Button(
                         onClick = {
                             if (isEditMode) {
-
                                 val stockValue = stock.toDoubleOrNull() ?: 0.0
                                 val stockMinValue = stockMinimo.toDoubleOrNull() ?: 0.0
 
@@ -1218,8 +1457,7 @@ fun InventarioDialog(
                                     estadoStock = estado
                                 )
                                 onUpdate(updateDto)
-                            }
-                            else {
+                            } else {
                                 val createDto = InventoryWithProductCreateDTO(
                                     idInventario = 0,
                                     idProducto = 0,
@@ -1233,24 +1471,49 @@ fun InventarioDialog(
                                 onCreate(createDto)
                             }
                         },
-                        enabled =
-                            nombre.isNotBlank() &&
-                                    categoria.isNotBlank() &&
-                                    unidad.isNotBlank() &&
-                                    !stockError &&
-                                    !stockMinimoError &&
-                                    !isSaving,
-                        modifier = Modifier.weight(1f)
+                        enabled = nombre.isNotBlank() &&
+                                categoria.isNotBlank() &&
+                                unidad.isNotBlank() &&
+                                !stockError &&
+                                !stockMinimoError &&
+                                !isSaving,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(54.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isEditMode) Color(0xFFFFA726) else Color(0xFFFFC107),
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(12.dp),
+                        elevation = ButtonDefaults.buttonElevation(
+                            defaultElevation = 2.dp,
+                            pressedElevation = 6.dp
+                        )
                     ) {
                         if (isSaving) {
                             CircularProgressIndicator(
-                                modifier = Modifier.size(18.dp),
-                                strokeWidth = 2.dp
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.5.dp,
+                                color = Color.Black
+                            )
+                            Spacer(Modifier.width(10.dp))
+                            Text(
+                                "Guardando...",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        } else {
+                            Icon(
+                                if (isEditMode) Icons.Default.Save else Icons.Default.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
                             )
                             Spacer(Modifier.width(8.dp))
-                            Text("Guardando…")
-                        } else {
-                            Text(if (isEditMode) "Guardar Cambios" else "Crear Producto")
+                            Text(
+                                if (isEditMode) "Guardar Cambios" else "Crear Producto",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
                         }
                     }
                 }
@@ -1258,8 +1521,6 @@ fun InventarioDialog(
         }
     }
 }
-
-
 // ========== DIÁLOGOS AUXILIARES ==========
 
 @Composable
