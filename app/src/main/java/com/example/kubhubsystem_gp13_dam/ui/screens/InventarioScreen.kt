@@ -276,73 +276,70 @@ fun InventarioScreen() {
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // NOMBRE (15%)
+                        // --- Suma de Pesos = 1.0f ---
+                        // 0.20 + 0.18 + 0.08 + 0.22 + 0.20 + 0.12 = 1.0f
+
+                        // NOMBRE (0.20f)
                         Text(
                             text = "NOMBRE",
-                            modifier = Modifier.weight(0.15f),
+                            modifier = Modifier.weight(0.20f),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Start // Alinear a la izquierda
                         )
 
-                        Spacer(modifier = Modifier.width(20.dp))
-
-                        // CATEGORÍA (15%)
+                        // CATEGORÍA (0.18f)
                         Text(
                             text = "CATEGORÍA",
-                            modifier = Modifier.weight(0.15f),
+                            modifier = Modifier.weight(0.18f),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Start // Alinear a la izquierda
                         )
 
-                        Spacer(modifier = Modifier.width(20.dp))
-
-                        // STOCK (8%)
+                        // STOCK (0.08f) - CORREGIDO
                         Text(
                             text = "STOCK",
-                            modifier = Modifier.weight(0.10f),
+                            // CAMBIO: Peso reducido (números cortos)
+                            modifier = Modifier.weight(0.08f),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Start // Alinear a la izquierda
                         )
 
-                        Spacer(modifier = Modifier.width(20.dp))
-
-                        // UNIDAD (18%)
+                        // UNIDAD (0.22f) - CORREGIDO
                         Text(
                             text = "UNIDAD",
-                            modifier = Modifier.weight(0.13f),
+                            // CAMBIO: Peso aumentado (para "CHAT MENTIEA")
+                            modifier = Modifier.weight(0.22f),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Start // Alinear a la izquierda
                         )
 
-                        Spacer(modifier = Modifier.width(20.dp))
-
-                        // ESTADO (24%)
+                        // ESTADO (0.20f)
                         Text(
                             text = "ESTADO",
-                            modifier = Modifier.weight(0.24f),
+                            modifier = Modifier.weight(0.20f),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
+                            textAlign = TextAlign.Center // Centrado
                         )
 
-                        Spacer(modifier = Modifier.width(24.dp))
-
-                        // ACCIONES (20%)
+                        // ACCIONES (0.12f)
                         Text(
                             text = "ACCIONES",
-                            modifier = Modifier.weight(0.23f),
+                            modifier = Modifier.weight(0.12f),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.End
+                            textAlign = TextAlign.End // Alinear al final (derecha)
                         )
-                        Spacer(modifier = Modifier.width(20.dp))
                     }
 
                     // LOADING STATE
@@ -456,7 +453,6 @@ fun InventarioScreen() {
                 }
             )
         }
-
     }
 }
 
@@ -592,7 +588,7 @@ private fun InventarioRow(
 
         // ESTADO (24%)
         Surface(
-            modifier = Modifier.weight(0.24f),
+            modifier = Modifier.weight(0.18f),
             color = estadoColor,
             shape = RoundedCornerShape(12.dp)
         ) {
