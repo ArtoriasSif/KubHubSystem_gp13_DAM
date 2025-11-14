@@ -230,7 +230,7 @@ fun InventarioScreen() {
                     ) {
                         Icon(Icons.Default.ShoppingCart, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Crear Inventario Por Volumes")
+                        Text("Crear Inventarios Por Volumes")
                     }
 
                     // BOTÓN NUEVO PRODUCTO
