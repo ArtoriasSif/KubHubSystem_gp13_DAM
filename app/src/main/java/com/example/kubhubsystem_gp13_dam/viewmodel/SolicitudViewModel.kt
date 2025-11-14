@@ -83,7 +83,6 @@ class SolicitudViewModel(
 
     init {
         observarSolicitudes()
-        cargarProductos()
         cargarAsignaturas()
     }
     // ✅ NUEVOS ESTADOS
@@ -115,7 +114,7 @@ class SolicitudViewModel(
         }
     }
 
-    private fun cargarProductos() {
+    /**private fun cargarProductos() {
         viewModelScope.launch {
             productoRepository.observarProductos().collect { productos ->
                 _productosDisponibles.value = productos.map { entity ->
@@ -128,7 +127,7 @@ class SolicitudViewModel(
                 }
             }
         }
-    }
+    }*/
 
     fun actualizarBusquedaReceta(query: String) {
         _busquedaReceta.value = query

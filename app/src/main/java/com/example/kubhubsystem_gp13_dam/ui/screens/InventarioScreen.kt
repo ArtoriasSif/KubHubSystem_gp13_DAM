@@ -1,5 +1,6 @@
 package com.example.kubhubsystem_gp13_dam.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,52 +13,97 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.kubhubsystem_gp13_dam.local.remote.RetrofitClient
 import com.example.kubhubsystem_gp13_dam.local.remote.InventarioApiService
-import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductCreateUpdateDTO
-import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductoResponseDTO
+import com.example.kubhubsystem_gp13_dam.local.remote.ProductoApiService
+import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductCreateDTO
+import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductResponseAnswerUpdateDTO
 import com.example.kubhubsystem_gp13_dam.repository.InventarioRepository
+import com.example.kubhubsystem_gp13_dam.repository.ProductoRepository
 import com.example.kubhubsystem_gp13_dam.ui.viewmodel.InventarioViewModel
+import kotlinx.coroutines.launch
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventarioScreen() {
-    val viewModel = remember {
-        val apiService = RetrofitClient.createService(InventarioApiService::class.java)
-        val repository = InventarioRepository(apiService)
-        InventarioViewModel(repository)
+    // --- crear una vez los servicios y repos (usar remember para no recrearlos en recomposiciones) ---
+    val inventarioApiService = remember { RetrofitClient.createService(InventarioApiService::class.java) }
+    val productoApiService = remember { RetrofitClient.createService(ProductoApiService::class.java) }
+
+    val inventarioRepository = remember { InventarioRepository(inventarioApiService) }
+    val productoRepository = remember { ProductoRepository(productoApiService) }
+
+    // Crear la factory usando la clase que añadimos al repo archivo
+    val factory = remember {
+        // si pegaste la clase en el mismo archivo como InventarioViewModelFactory:
+        InventarioRepository.InventarioViewModelFactory(inventarioRepository, productoRepository)
+        // si implementaste como anidada dentro de InventarioRepository (inner class), usar:
+        // InventarioRepository.InventarioViewModelFactory(inventarioRepository, productoRepository)
     }
 
+    // Pedimos el ViewModel al framework con la factory (esto evita el NoSuchMethodException)
+    val viewModel: InventarioViewModel = viewModel(factory = factory)
+
+    // Estados del ViewModel
     val inventariosPaginados by viewModel.inventariosPaginados.collectAsState()
     val categorias by viewModel.categorias.collectAsState()
+    val unidadesMedida by viewModel.unidadesMedida.collectAsState()
+    val estados by viewModel.estados.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedCategoria by viewModel.selectedCategoria.collectAsState()
+    val selectedEstado by viewModel.selectedEstado.collectAsState()
     val currentPage by viewModel.currentPage.collectAsState()
     val totalPages by viewModel.totalPages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val successMessage by viewModel.successMessage.collectAsState()
+    val isSaving by viewModel.isSaving.collectAsState()
 
+    // Estados locales
     var showDialog by remember { mutableStateOf(false) }
-    var showCategoryMenu by remember { mutableStateOf(false) }
-    var itemEditando by remember { mutableStateOf<InventoryWithProductoResponseDTO?>(null) }
+    var itemToEdit by remember { mutableStateOf<InventoryWithProductResponseAnswerUpdateDTO?>(null) }
+    var expandedCategoriaFilter by remember { mutableStateOf(false) }
 
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    val categoriasConTodos by remember(categorias) {
-        derivedStateOf { listOf("Todas las categorías") + categorias }
+    // Función para cargar item desde el caché por ID
+    fun loadItemForEdit(idInventario: Int) {
+        itemToEdit = viewModel.getInventario(idInventario)
+        showDialog = true
     }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
+
+    val categoriasConTodos by remember(categorias) {
+        derivedStateOf {
+            listOf("Todas las categorías") + categorias.map { it.lowercase().replaceFirstChar { char -> char.uppercase() } }
+        }
+    }
+
+    // Normalizamos la lista para que nunca haya nulls en campos críticos
+    val safeInventarios = remember(inventariosPaginados) {
+        inventariosPaginados.map { dto ->
+            dto.copy(
+                descripcionProducto = dto.descripcionProducto ?: "",
+                estadoStock = dto.estadoStock ?: ""
+            )
+        }
+    }
+
+    // Mostrar mensajes (snackbar)
     LaunchedEffect(errorMessage, successMessage) {
         errorMessage?.let {
             snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short)
@@ -65,189 +111,296 @@ fun InventarioScreen() {
         }
         successMessage?.let {
             snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short)
+            // clearSuccess se hace en el efecto que cierra el dialogo para evitar cerrar antes
+        }
+    }
+
+    // Cerrar diálogo cuando hay success (evita cerrar inmediatamente en onSave)
+    LaunchedEffect(successMessage) {
+        successMessage?.let {
+            if (showDialog) {
+                showDialog = false
+                itemToEdit = null
+            }
             viewModel.clearSuccess()
         }
     }
 
     Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        containerColor = MaterialTheme.colorScheme.background
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .padding(24.dp)
-                .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                text = "Inventario",
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-            Text(
-                text = "Gestione los productos del inventario, vea movimientos y actualice existencias.",
-                fontSize = 14.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
-            )
+            // ========== ENCABEZADO ==========
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text(
+                        text = "Inventario",
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = "Gestione los productos del inventario, vea movimientos y actualice existencias.",
+                        fontSize = 14.sp,
+                        color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.6f)
+                    )
+                }
+            }
 
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // ========== BARRA DE BÚSQUEDA Y FILTROS ==========
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                // BUSCADOR
                 OutlinedTextField(
                     value = searchQuery,
-                    onValueChange = viewModel::updateSearchQuery,
+                    onValueChange = { viewModel.updateSearchQuery(it) },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Buscar productos...", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                    placeholder = { Text("Buscar productos...") },
                     leadingIcon = {
-                        Icon(Icons.Default.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Default.Search, contentDescription = "Buscar")
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.updateSearchQuery("") }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpiar búsqueda")
+                            }
+                        }
                     },
                     singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface
-                    ),
                     shape = RoundedCornerShape(8.dp)
                 )
 
+                // FILTRO POR CATEGORÍA
                 ExposedDropdownMenuBox(
-                    expanded = showCategoryMenu,
-                    onExpandedChange = { showCategoryMenu = it }
+                    expanded = expandedCategoriaFilter,
+                    onExpandedChange = { expandedCategoriaFilter = it }
                 ) {
                     OutlinedTextField(
-                        value = selectedCategoria,
+                        value = selectedCategoria.ifEmpty { "Todas las categorías" },
                         onValueChange = {},
                         readOnly = true,
                         leadingIcon = {
-                            Icon(Icons.Default.FilterList, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Icon(Icons.Default.FilterList, contentDescription = "Filtrar")
                         },
                         trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = showCategoryMenu)
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedCategoriaFilter)
                         },
                         modifier = Modifier
-                            .width(220.dp)
+                            .width(240.dp)
                             .menuAnchor(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline,
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
-                            focusedTextColor = MaterialTheme.colorScheme.onSurface
-                        ),
+                        singleLine = true,
                         shape = RoundedCornerShape(8.dp)
                     )
+
                     ExposedDropdownMenu(
-                        expanded = showCategoryMenu,
-                        onDismissRequest = { showCategoryMenu = false }
+                        expanded = expandedCategoriaFilter,
+                        onDismissRequest = { expandedCategoriaFilter = false }
                     ) {
-                        categoriasConTodos.forEach { cat ->
+                        DropdownMenuItem(
+                            text = { Text("Todas las categorías") },
+                            onClick = {
+                                viewModel.updateCategoriaFilter("Todos")
+                                expandedCategoriaFilter = false
+                            }
+                        )
+                        categorias.forEach { categoria ->
                             DropdownMenuItem(
-                                text = { Text(cat) },
+                                text = { Text(categoria.replaceFirstChar { it.uppercase() }) },
                                 onClick = {
-                                    viewModel.updateSelectedCategoria(cat)
-                                    showCategoryMenu = false
+                                    viewModel.updateCategoriaFilter(categoria)
+                                    expandedCategoriaFilter = false
                                 }
                             )
                         }
                     }
                 }
 
+                // BOTÓN REALIZAR PEDIDO (opcional)
                 OutlinedButton(
-                    onClick = { },
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = Color.Transparent,
-                        contentColor = MaterialTheme.colorScheme.onSurface
-                    ),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(width = 1.dp),
-                    shape = RoundedCornerShape(8.dp),
+                    onClick = { /* Acción de pedido */ },
                     modifier = Modifier.height(56.dp)
                 ) {
-                    Icon(Icons.Default.ShoppingCart, null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.ShoppingCart, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Realizar Pedido")
+                    Text("Crear Inventario Por Volumes")
                 }
 
+                // BOTÓN NUEVO PRODUCTO
                 Button(
                     onClick = {
-                        itemEditando = null
+                        itemToEdit = null
                         showDialog = true
                     },
+                    modifier = Modifier.height(56.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFFFA500)
-                    ),
-                    shape = RoundedCornerShape(8.dp),
-                    modifier = Modifier.height(56.dp)
+                        containerColor = Color(0xFFFFC107) // Amarillo como en la imagen
+                    )
                 ) {
-                    Icon(Icons.Default.Add, null, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.Add, contentDescription = null)
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Nuevo Producto", color = Color.Black, fontWeight = FontWeight.Bold)
+                    Text("Nuevo Producto", color = Color.Black)
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
+            // ========== TABLA DE INVENTARIOS (SCROLLEABLE) ==========
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(500.dp),
+                    .weight(1f), // Ocupar todo el espacio disponible
                 color = MaterialTheme.colorScheme.surface,
-                shape = RoundedCornerShape(8.dp)
+                shape = RoundedCornerShape(8.dp),
+                tonalElevation = 1.dp
             ) {
                 Column {
+                    // ENCABEZADO DE TABLA
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(MaterialTheme.colorScheme.surfaceVariant)
                             .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        TableHeaderText("NOMBRE", 0.25f)
-                        TableHeaderText("CATEGORÍA", 0.15f)
-                        TableHeaderText("STOCK", 0.12f)
-                        TableHeaderText("UNIDAD", 0.12f)
-                        TableHeaderText("ESTADO", 0.15f)
-                        TableHeaderText("ACCIONES", 0.15f)
+                        // NOMBRE (15%)
+                        Text(
+                            text = "NOMBRE",
+                            modifier = Modifier.weight(0.15f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(modifier = Modifier.width(20.dp))
+
+                        // CATEGORÍA (15%)
+                        Text(
+                            text = "CATEGORÍA",
+                            modifier = Modifier.weight(0.15f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(modifier = Modifier.width(20.dp))
+
+                        // STOCK (8%)
+                        Text(
+                            text = "STOCK",
+                            modifier = Modifier.weight(0.10f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.width(20.dp))
+
+                        // UNIDAD (18%)
+                        Text(
+                            text = "UNIDAD",
+                            modifier = Modifier.weight(0.13f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
+                        Spacer(modifier = Modifier.width(20.dp))
+
+                        // ESTADO (24%)
+                        Text(
+                            text = "ESTADO",
+                            modifier = Modifier.weight(0.24f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.width(24.dp))
+
+                        // ACCIONES (20%)
+                        Text(
+                            text = "ACCIONES",
+                            modifier = Modifier.weight(0.23f),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.End
+                        )
+                        Spacer(modifier = Modifier.width(20.dp))
                     }
 
+                    // LOADING STATE
                     if (isLoading) {
                         Box(
-                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
                         }
-                    } else if (inventariosPaginados.isEmpty()) {
+                    }
+                    // EMPTY STATE
+                    else if (safeInventarios.isEmpty()) {
                         Box(
-                            modifier = Modifier.fillMaxWidth().padding(32.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(32.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("No hay productos disponibles", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(
+                                text = "No hay productos en el inventario",
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
                         }
-                    } else {
-                        LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                            items(inventariosPaginados) { item ->
+                    }
+                    // LISTA DE PRODUCTOS (SCROLLEABLE)
+                    else {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                        ) {
+                            items(
+                                items = safeInventarios,
+                                key = { it.idInventario ?: 0 }
+                            ) { item ->
                                 InventarioRow(
                                     item = item,
-                                    onEdit = {
-                                        itemEditando = item
+                                    onEdit = { idInventario ->
+                                        val inventario = viewModel.getInventario(idInventario)
+                                        itemToEdit = inventario
                                         showDialog = true
                                     },
+                                    onViewDetails = {
+                                        // Acción para ver detalles
+                                    },
                                     onDelete = {
-                                        viewModel.eliminarInventario(item.idInventario, item.nombreProducto)
+                                        coroutineScope.launch {
+                                            viewModel.eliminarInventario(
+                                                item.idInventario ?: 0,
+                                                item.nombreProducto ?: "Producto"
+                                            )
+                                        }
                                     }
                                 )
-                                if (item != inventariosPaginados.last()) {
-                                    Divider(color = MaterialTheme.colorScheme.outlineVariant, thickness = 1.dp)
-                                }
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
                             }
                         }
                     }
@@ -256,6 +409,7 @@ fun InventarioScreen() {
 
             Spacer(modifier = Modifier.height(16.dp))
 
+            // ========== PAGINACIÓN ==========
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.Center,
@@ -265,52 +419,61 @@ fun InventarioScreen() {
                     onClick = { viewModel.previousPage() },
                     enabled = currentPage > 1
                 ) {
-                    Icon(
-                        Icons.Default.ChevronLeft,
-                        contentDescription = null,
-                        tint = if (currentPage > 1) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
-                    )
+                    Icon(Icons.Default.ChevronLeft, contentDescription = "Página anterior")
                 }
 
                 Text(
-                    text = currentPage.toString(),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(horizontal = 24.dp)
+                    text = "Página $currentPage de $totalPages",
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    fontWeight = FontWeight.Medium
                 )
 
                 IconButton(
                     onClick = { viewModel.nextPage() },
                     enabled = currentPage < totalPages
                 ) {
-                    Icon(
-                        Icons.Default.ChevronRight,
-                        contentDescription = null,
-                        tint = if (currentPage < totalPages) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.outline
-                    )
+                    Icon(Icons.Default.ChevronRight, contentDescription = "Página siguiente")
                 }
             }
         }
+
+        // ========== DIÁLOGO DE CREAR/EDITAR ==========
+        if (showDialog) {
+            InventarioDialog(
+                item = itemToEdit,
+                categorias = categorias,
+                unidadesMedida = unidadesMedida,
+                isSaving = isSaving,
+                onDismiss = {
+                    showDialog = false
+                    itemToEdit = null
+                },
+                onCreate = { dto ->
+                    viewModel.createInventoryWithProduct(dto)
+                },
+                onUpdate = { dto ->
+                    viewModel.updateInventoryWithProduct(dto)
+                }
+            )
+        }
+
     }
-
-    if (showDialog) {
-        InventarioDialog(
-            item = itemEditando,
-            categorias = categorias,
-            onDismiss = {
-                showDialog = false
-                itemEditando = null
-            },
-            onSave = { dto ->
-                // ✅ Mucho más simple y seguro
-                viewModel.guardarInventario(dto)
-                showDialog = false
-                itemEditando = null
-            }
-        )
-    }
-
-
 }
+
+
+
+
+// Util: calcular estado (agrega en el archivo)
+private fun calcularEstadoStock(stock: Double?, stockLimitMin: Double?): String {
+    return when {
+        stockLimitMin == null || stockLimitMin == 0.0 -> "NO ASIGNADO"
+        (stock ?: 0.0) == 0.0 -> "AGOTADO"
+        (stock ?: 0.0) < (stockLimitMin ?: 0.0) -> "BAJO STOCK"
+        else -> "DISPONIBLE"
+    }
+}
+
+
 
 @Composable
 private fun RowScope.TableHeaderText(text: String, weight: Float) {
@@ -327,30 +490,62 @@ private fun RowScope.TableHeaderText(text: String, weight: Float) {
 
 @Composable
 private fun InventarioRow(
-    item: InventoryWithProductoResponseDTO,
-    onEdit: () -> Unit,
+    item: InventoryWithProductResponseAnswerUpdateDTO,
+    onEdit: (Int) -> Unit,   // 👈 ahora recibe el ID del inventario
+    onViewDetails: () -> Unit,
     onDelete: () -> Unit
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
+
+    // ✅ Valores seguros con protección contra null y strings vacíos
+    val safeNombre = item.nombreProducto?.trim().takeIf { !it.isNullOrBlank() } ?: "Sin nombre"
+
+    // IMPORTANT: proteger trim() con ?.
+    val safeDescripcion = item.descripcionProducto
+        ?.trim()
+        ?.ifBlank { "Sin descripción" }
+        ?: "Sin descripción"
+
+    val safeCategoria = item.nombreCategoria
+        ?.trim()
+        ?.takeIf { it.isNotBlank() }
+        ?.replaceFirstChar { it.uppercase() }
+        ?: "Sin categoría"
+
+    val safeUnidad = item.unidadMedida
+        ?.trim()
+        ?.takeIf { it.isNotBlank() }
+        ?.uppercase()
+        ?: "N/A"
+
+    val safeStock = item.stock ?: 0.0
+    val safeStockLimitMin = item.stockLimitMin // lo tratamos abajo
+
+    // Cálculo del estado (seguro frente a nulls)
+    val estadoCalculado = when {
+        safeStockLimitMin == null || safeStockLimitMin == 0.0 -> "NO ASIGNADO"
+        safeStock == 0.0 -> "AGOTADO"
+        safeStock < safeStockLimitMin -> "BAJO STOCK"
+        else -> "DISPONIBLE"
+    }
+
+    val estadoColor = when (estadoCalculado) {
+        "AGOTADO" -> Color(0xFFFF5252)
+        "BAJO STOCK" -> Color(0xFFFFA500)
+        "DISPONIBLE" -> Color(0xFF00C853)
+        else -> Color(0xFF9E9E9E)
+    }
+
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
+        // NOMBRE (15%)
         Text(
-            text = item.nombreProducto,
-            modifier = Modifier.weight(0.25f),
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 14.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-
-        Text(
-            text = item.nombreCategoria,
+            text = safeNombre,
             modifier = Modifier.weight(0.15f),
             color = MaterialTheme.colorScheme.onSurface,
             fontSize = 14.sp,
@@ -358,62 +553,99 @@ private fun InventarioRow(
             overflow = TextOverflow.Ellipsis
         )
 
+        Spacer(modifier = Modifier.width(20.dp))
+
+        // CATEGORÍA (15%)
         Text(
-            text = item.stock.toInt().toString(),
-            modifier = Modifier.weight(0.12f),
+            text = safeCategoria,
+            modifier = Modifier.weight(0.15f),
             color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 14.sp
+            fontSize = 14.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
 
+        Spacer(modifier = Modifier.width(20.dp))
+
+        // STOCK (8%)
         Text(
-            text = item.unidadMedida,
-            modifier = Modifier.weight(0.12f),
+            text = safeStock.toInt().toString(),
+            modifier = Modifier.weight(0.08f),
             color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 14.sp
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center
         )
 
+        Spacer(modifier = Modifier.width(20.dp))
+
+        // UNIDAD (18%)
+        Text(
+            text = safeUnidad,
+            modifier = Modifier.weight(0.18f),
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 14.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+
+        Spacer(modifier = Modifier.width(20.dp))
+
+        // ESTADO (24%)
         Surface(
-            modifier = Modifier.weight(0.15f),
-            color = Color(0xFF00C853),
+            modifier = Modifier.weight(0.24f),
+            color = estadoColor,
             shape = RoundedCornerShape(12.dp)
         ) {
             Text(
-                text = "Disponible",
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp),
+                text = estadoCalculado,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
                 color = Color.Black,
                 fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
 
+        Spacer(modifier = Modifier.width(24.dp))
+
+        // ACCIONES (20%)
         Row(
-            modifier = Modifier.weight(0.15f),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.weight(0.20f),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // Botón Editar
             IconButton(
-                onClick = onEdit,
+                onClick = {
+                    Log.d("EDIT_BTN", "Editar inventario ID=${item.idInventario}")
+                    onEdit(item.idInventario!!)
+                },
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(
                     Icons.Default.Edit,
                     contentDescription = "Editar",
-                    tint = Color(0xFFFFA500),
-                    modifier = Modifier.size(18.dp)
+                    tint = Color(0xFFFFC107),
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
+            // Botón Ver detalles
             IconButton(
-                onClick = { },
+                onClick = onViewDetails,
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(
-                    Icons.Default.Menu,
-                    contentDescription = "Detalles",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp)
+                    Icons.Default.MoreHoriz,
+                    contentDescription = "Ver detalles",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
+            // Botón Eliminar
             IconButton(
                 onClick = { showDeleteDialog = true },
                 modifier = Modifier.size(32.dp)
@@ -421,27 +653,27 @@ private fun InventarioRow(
                 Icon(
                     Icons.Default.Delete,
                     contentDescription = "Eliminar",
-                    tint = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.size(18.dp)
+                    tint = Color(0xFFF44336),
+                    modifier = Modifier.size(20.dp)
                 )
             }
         }
     }
 
+
+    // Diálogo de confirmación de eliminación
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("Confirmar eliminación") },
-            text = { Text("¿Está seguro que desea eliminar '${item.nombreProducto}'?") },
+            text = { Text("¿Está seguro de que desea eliminar '${item.nombreProducto}'?") },
             confirmButton = {
                 Button(
                     onClick = {
                         onDelete()
                         showDeleteDialog = false
                     },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336))
                 ) {
                     Text("Eliminar")
                 }
@@ -455,117 +687,147 @@ private fun InventarioRow(
     }
 }
 
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InventarioDialog(
-    item: InventoryWithProductoResponseDTO?,
+    item: InventoryWithProductResponseAnswerUpdateDTO?,
     categorias: List<String>,
+    unidadesMedida: List<String>,
+    isSaving: Boolean,
     onDismiss: () -> Unit,
-    onSave: (dto: InventoryWithProductCreateUpdateDTO) -> Unit // ✅ Simplificado
+    onCreate: (dto: InventoryWithProductCreateDTO) -> Unit,
+    onUpdate: (dto: InventoryWithProductResponseAnswerUpdateDTO) -> Unit
 ) {
     val isEditMode = item != null
 
-    var nombre by remember { mutableStateOf(item?.nombreProducto ?: "") }
-    var descripcion by remember { mutableStateOf(if (isEditMode) "Descripción no disponible" else "") }
-    var categoria by remember { mutableStateOf(item?.nombreCategoria ?: "") }
-    var unidad by remember { mutableStateOf(item?.unidadMedida ?: "") }
-    var stock by remember { mutableStateOf(item?.stock?.toString() ?: "0.0") }
-    var stockMinimo by remember { mutableStateOf(item?.stockMinimo?.toString() ?: "0.0") }
+    // Campos del formulario (rememberSaveable para sobrevivir rotaciones)
+    var nombre by rememberSaveable { mutableStateOf("") }
+    var descripcion by rememberSaveable { mutableStateOf("") }
+    var categoria by rememberSaveable { mutableStateOf("") }
+    var unidad by rememberSaveable { mutableStateOf("") }
+    var stock by rememberSaveable { mutableStateOf("") }
+    var stockMinimo by rememberSaveable { mutableStateOf("") }
 
-    // ✅ Estados para errores de validación
-    var stockError by remember { mutableStateOf(false) }
-    var stockMinimoError by remember { mutableStateOf(false) }
+    var stockError by rememberSaveable { mutableStateOf(false) }
+    var stockMinimoError by rememberSaveable { mutableStateOf(false) }
 
-    var showCategoriaMenu by remember { mutableStateOf(false) }
-    var showUnidadMenu by remember { mutableStateOf(false) }
+    var showCategoriaMenu by rememberSaveable { mutableStateOf(false) }
+    var showUnidadMenu by rememberSaveable { mutableStateOf(false) }
 
-    val unidades = listOf("kg", "l", "unidad", "g", "ml", "caja")
-    val categoriasDisponibles = if (categorias.isEmpty()) {
-        listOf("Secos", "Líquidos", "Lácteos", "Frescos")
-    } else categorias
+
+    // Normalizar listas
+    val categoriasDisponibles = remember(categorias) {
+        categorias.filter { it.isNotBlank() }
+            .map { it.trim().lowercase().replaceFirstChar { c -> c.uppercase() } }
+            .distinct()
+    }
+
+    val unidadesDisponibles = remember(unidadesMedida) {
+        unidadesMedida.filter { it.isNotBlank() }
+            .map { it.trim().uppercase() }
+            .distinct()
+    }
+
+    // Poblar campos cuando cambie el item
+    LaunchedEffect(item?.idInventario) {
+        if (isEditMode && categoria.isBlank() && unidad.isBlank()) {
+            val data = item
+            nombre = data?.nombreProducto ?: ""
+            descripcion = data?.descripcionProducto ?: ""
+            categoria = data?.nombreCategoria ?: ""
+            unidad = data?.unidadMedida ?: ""
+            stock = data?.stock?.toString() ?: ""
+            stockMinimo = data?.stockLimitMin?.toString() ?: ""
+        }
+    }
+
+
+
 
     Dialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isSaving) onDismiss() },
         properties = DialogProperties(usePlatformDefaultWidth = false)
     ) {
         Surface(
             modifier = Modifier
-                .fillMaxWidth(0.5f)
+                .fillMaxWidth(0.9f)
                 .wrapContentHeight(),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surface
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.surface,
+            tonalElevation = 8.dp
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(24.dp)
             ) {
+
+                // HEADER
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    // TÍTULO
                     Text(
                         text = if (isEditMode) "Editar Producto" else "Nuevo Producto",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold
                     )
-                    IconButton(onClick = onDismiss) {
-                        Icon(
-                            Icons.Default.Close,
-                            contentDescription = "Cerrar",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+
+                    IconButton(onClick = { if (!isSaving) onDismiss() }) {
+                        Icon(Icons.Default.Close, contentDescription = "Cerrar")
                     }
                 }
 
-                Spacer(modifier = Modifier.height(20.dp))
+                Spacer(Modifier.height(20.dp))
 
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
+                // FORMULARIO
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    // NOMBRE
                     OutlinedTextField(
                         value = nombre,
                         onValueChange = { nombre = it },
-                        label = { Text("Nombre") },
+                        label = { Text("Nombre del producto") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
 
+                    // DESCRIPCIÓN
                     OutlinedTextField(
                         value = descripcion,
                         onValueChange = { descripcion = it },
                         label = { Text("Descripción") },
                         modifier = Modifier.fillMaxWidth(),
-                        minLines = 2,
-                        maxLines = 3
+                        minLines = 3,
+                        maxLines = 5
                     )
 
+
+                    // CATEGORÍA + UNIDAD
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
+
+                        // CATEGORÍA
                         ExposedDropdownMenuBox(
                             expanded = showCategoriaMenu,
                             onExpandedChange = { showCategoriaMenu = it },
                             modifier = Modifier.weight(1f)
                         ) {
                             OutlinedTextField(
-                                value = categoria.ifEmpty { "Seleccione categoría" },
-                                onValueChange = {},
+                                value = categoria,
+                                onValueChange = { categoria = it },   // 👈 OBLIGATORIO
                                 readOnly = true,
                                 label = { Text("Categoría") },
                                 trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(
-                                        expanded = showCategoriaMenu
-                                    )
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = showCategoriaMenu)
                                 },
                                 modifier = Modifier.menuAnchor()
                             )
+
                             ExposedDropdownMenu(
                                 expanded = showCategoriaMenu,
                                 onDismissRequest = { showCategoriaMenu = false }
@@ -574,7 +836,8 @@ fun InventarioDialog(
                                     DropdownMenuItem(
                                         text = { Text(cat) },
                                         onClick = {
-                                            categoria = cat
+                                            categoria = cat   // 👈 ACTUALIZA ESTADO REAL OK
+                                            Log.d("DIALOG_EDIT", "Categoría seleccionada: $categoria")
                                             showCategoriaMenu = false
                                         }
                                     )
@@ -582,32 +845,33 @@ fun InventarioDialog(
                             }
                         }
 
+                        // UNIDAD
                         ExposedDropdownMenuBox(
                             expanded = showUnidadMenu,
                             onExpandedChange = { showUnidadMenu = it },
                             modifier = Modifier.weight(1f)
                         ) {
                             OutlinedTextField(
-                                value = unidad.ifEmpty { "Seleccione unidad" },
-                                onValueChange = {},
+                                value = unidad,
+                                onValueChange = { unidad = it },   // 👈 OBLIGATORIO
                                 readOnly = true,
                                 label = { Text("Unidad de medida") },
                                 trailingIcon = {
-                                    ExposedDropdownMenuDefaults.TrailingIcon(
-                                        expanded = showUnidadMenu
-                                    )
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = showUnidadMenu)
                                 },
                                 modifier = Modifier.menuAnchor()
                             )
+
                             ExposedDropdownMenu(
                                 expanded = showUnidadMenu,
                                 onDismissRequest = { showUnidadMenu = false }
                             ) {
-                                unidades.forEach { u ->
+                                unidadesDisponibles.forEach { u ->
                                     DropdownMenuItem(
                                         text = { Text(u) },
                                         onClick = {
-                                            unidad = u
+                                            unidad = u    // 👈 ACTUALIZA ESTADO REAL OK
+                                            Log.d("DIALOG_EDIT", "Unidad seleccionada: $unidad")
                                             showUnidadMenu = false
                                         }
                                     )
@@ -616,6 +880,7 @@ fun InventarioDialog(
                         }
                     }
 
+                    // STOCK + STOCK MINIMO
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -631,12 +896,11 @@ fun InventarioDialog(
                             singleLine = true,
                             isError = stockError,
                             supportingText = if (stockError) {
-                                { Text("Ingrese un número válido", color = MaterialTheme.colorScheme.error) }
+                                { Text("Ingrese un número válido") }
                             } else null,
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Decimal
-                            )
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
+
                         OutlinedTextField(
                             value = stockMinimo,
                             onValueChange = {
@@ -648,23 +912,23 @@ fun InventarioDialog(
                             singleLine = true,
                             isError = stockMinimoError,
                             supportingText = if (stockMinimoError) {
-                                { Text("Ingrese un número válido", color = MaterialTheme.colorScheme.error) }
+                                { Text("Ingrese un número válido") }
                             } else null,
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Decimal
-                            )
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(24.dp))
+                Spacer(Modifier.height(24.dp))
 
+                // BOTONES
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     OutlinedButton(
                         onClick = onDismiss,
+                        enabled = !isSaving,
                         modifier = Modifier.weight(1f)
                     ) {
                         Text("Cancelar")
@@ -672,40 +936,67 @@ fun InventarioDialog(
 
                     Button(
                         onClick = {
-                            // ✅ Validación y construcción del DTO
-                            val stockDouble = stock.toDoubleOrNull()
-                            val stockMinimoDouble = stockMinimo.toDoubleOrNull()
+                            if (isEditMode) {
 
-                            if (stockDouble == null || stockMinimoDouble == null) {
-                                stockError = stockDouble == null
-                                stockMinimoError = stockMinimoDouble == null
-                                return@Button
+                                val stockValue = stock.toDoubleOrNull() ?: 0.0
+                                val stockMinValue = stockMinimo.toDoubleOrNull() ?: 0.0
+
+                                val estado = when {
+                                    stockMinValue == 0.0 -> "NO ASIGNADO"
+                                    stockValue == 0.0 -> "AGOTADO"
+                                    stockValue < stockMinValue -> "BAJO STOCK"
+                                    else -> "DISPONIBLE"
+                                }
+
+                                val updateDto = InventoryWithProductResponseAnswerUpdateDTO(
+                                    idInventario = item!!.idInventario,
+                                    idProducto = item.idProducto,
+                                    nombreProducto = nombre,
+                                    descripcionProducto = descripcion,
+                                    nombreCategoria = categoria,
+                                    unidadMedida = unidad,
+                                    stock = stockValue,
+                                    stockLimitMin = stockMinValue,
+                                    estadoStock = estado
+                                )
+
+                                onUpdate(updateDto)
                             }
+                            else {
 
-                            val dto = InventoryWithProductCreateUpdateDTO(
-                                idInventario = item?.idInventario,
-                                idProducto = item?.idProducto,
-                                nombreProducto = nombre,
-                                descripcionProducto = descripcion.ifBlank { "Sin descripción" },
-                                nombreCategoria = categoria,
-                                unidadMedida = unidad,
-                                stock = stockDouble,
-                                stockMinimo = stockMinimoDouble
-                            )
+                                val createDto = InventoryWithProductCreateDTO(
+                                    idInventario = 0,
+                                    idProducto = 0,
+                                    nombreProducto = nombre,
+                                    descripcionProducto = descripcion,
+                                    nombreCategoria = categoria,
+                                    unidadMedida = unidad,
+                                    stock = stock.toDoubleOrNull() ?: 0.0,
+                                    stockLimitMin = stockMinimo.toDoubleOrNull() ?: 0.0
+                                )
 
-                            onSave(dto)
+                                onCreate(createDto)
+                            }
                         },
-                        enabled = nombre.isNotBlank() &&
-                                categoria.isNotBlank() &&
-                                unidad.isNotBlank() &&
-                                !stockError &&
-                                !stockMinimoError,
+                        enabled =
+                            nombre.isNotBlank() &&
+                                    categoria.isNotBlank() &&
+                                    unidad.isNotBlank() &&
+                                    !stockError &&
+                                    !stockMinimoError &&
+                                    !isSaving,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(
-                            if (isEditMode) "Guardar Cambios" else "Crear Producto",
-                            fontWeight = FontWeight.Bold
-                        )
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Guardando…")
+                        } else {
+                            Text(if (isEditMode) "Guardar Cambios" else "Crear Producto")
+                        }
                     }
                 }
             }

@@ -2,94 +2,111 @@ package com.example.kubhubsystem_gp13_dam.repository
 
 import com.example.kubhubsystem_gp13_dam.local.dao.ProductoDAO
 import com.example.kubhubsystem_gp13_dam.local.entities.ProductoEntity
+import com.example.kubhubsystem_gp13_dam.local.remote.ProductoApiService
 import com.example.kubhubsystem_gp13_dam.model.Producto
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import retrofit2.HttpException
+import java.io.IOException
 
-class ProductoRepository(private val dao: ProductoDAO) {
+class ProductoRepository(
+    private val apiService: ProductoApiService
+) {
+    private val cacheMutex = Mutex()
 
-    suspend fun inicializarProductos() {
-        val listaInicial = listOf(
-            Producto(1, "Harina", "Secos", "kg"),
-            Producto(2, "Aceite de Oliva", "Líquidos", "l"),
-            Producto(3, "Azúcar", "Secos", "kg"),
-            Producto(4, "Leche", "Lácteos", "l"),
-            Producto(5, "Huevos", "Frescos", "unidad"),
-            Producto(6, "Sal", "Secos", "kg"),
-            Producto(7, "Mantequilla", "Lácteos", "kg"),
-            Producto(8, "Tomates", "Frescos", "kg")
-        )
+    // ✅ Flujos observables
+    private val _categorias = MutableStateFlow<List<String>>(emptyList())
+    val categorias: StateFlow<List<String>> = _categorias.asStateFlow()
 
-        listaInicial.forEach { producto ->
-            val existe = dao.existeProducto(producto.idProducto)
-            if (existe == 0) {
-                dao.insertar(
-                    ProductoEntity(
-                        idProducto = producto.idProducto,
-                        nombreProducto = producto.nombreProducto,
-                        categoria = producto.categoria,
-                        unidad = producto.unidadMedida.uppercase()
-                    )
-                )
+    private val _unidadesMedida = MutableStateFlow<List<String>>(emptyList())
+    val unidadesMedida: StateFlow<List<String>> = _unidadesMedida.asStateFlow()
+
+    private val _error = MutableStateFlow<String?>(null)
+    val error: StateFlow<String?> = _error.asStateFlow()
+
+    private var lastFetchCategorias = 0L
+    private var lastFetchUnidades = 0L
+    private val CACHE_VALIDITY_DURATION = 30_000L // 30 segundos
+
+    /**
+     * ✅ Obtener categorías activas
+     */
+    suspend fun fetchCategoriasActivas(forceRefresh: Boolean = false): Result<List<String>> {
+        return try {
+            val currentTime = System.currentTimeMillis()
+            val isCacheValid = (currentTime - lastFetchCategorias) < CACHE_VALIDITY_DURATION
+
+            if (!forceRefresh && isCacheValid && _categorias.value.isNotEmpty()) {
+                return Result.success(_categorias.value)
             }
-        }
-    }
 
-    fun observarProductos(): Flow<List<ProductoEntity>> = dao.observarTodos()
+            val response = apiService.getCategoriasActivas()
 
-    suspend fun obtenerProducto(idProducto: Int) = dao.obtenerPorId(idProducto)
-
-    suspend fun guardarProducto(
-        idProducto: Int?,
-        nombreProducto: String,
-        categoria: String,
-        unidadMedida: String
-    ): Long { // Cambiar el tipo de retorno a Long (ID generado)
-        return withContext(Dispatchers.IO) {
-            if (idProducto == null) {
-                // Insertar nuevo producto y retornar el ID generado
-                dao.insertar(
-                    ProductoEntity(
-                        idProducto = 0,
-                        nombreProducto = nombreProducto,
-                        categoria = categoria,
-                        unidad = unidadMedida
-                    )
-                )
-            } else {
-                // Actualizar producto existente
-                dao.actualizar(
-                    ProductoEntity(
-                        idProducto = idProducto,
-                        nombreProducto = nombreProducto,
-                        categoria = categoria,
-                        unidad = unidadMedida
-                    )
-                )
-                idProducto.toLong() // Retornar el ID existente
+            cacheMutex.withLock {
+                _categorias.value = response.distinct().sorted()
+                lastFetchCategorias = currentTime
             }
-        }
-    }
-    suspend fun actualizarProducto (producto: ProductoEntity) = dao.actualizar(producto)
 
-    suspend fun actualizarNombreProducto(nuevoNombre: String,id: Int) = dao.actualizarNombreProducto(id, nuevoNombre)
-
-
-    fun filtrarPorCategoria(categoria: String): Flow<List<ProductoEntity>> {
-        return if (categoria == "Todos") {
-            dao.observarTodos()
-        } else {
-            dao.obtenerPorCategoria(categoria)
+            Result.success(_categorias.value)
+        } catch (e: Exception) {
+            handleError(e)
         }
     }
 
-    fun categorias(): Flow<List<String>> = dao.obtenerCategorias()
+    /**
+     * ✅ Obtener unidades de medida activas
+     */
+    suspend fun fetchUnidadesMedidaActivas(forceRefresh: Boolean = false): Result<List<String>> {
+        return try {
+            val currentTime = System.currentTimeMillis()
+            val isCacheValid = (currentTime - lastFetchUnidades) < CACHE_VALIDITY_DURATION
 
-    suspend fun eliminarProducto(producto: ProductoEntity) = dao.eliminar(producto)
-    suspend fun eliminarTodosProductos() = dao.eliminarTodos()
+            if (!forceRefresh && isCacheValid && _unidadesMedida.value.isNotEmpty()) {
+                return Result.success(_unidadesMedida.value)
+            }
 
-    companion object
+            val response = apiService.getUnidadesMedidaActivas()
 
+            cacheMutex.withLock {
+                _unidadesMedida.value = response.distinct().sorted()
+                lastFetchUnidades = currentTime
+            }
 
+            Result.success(_unidadesMedida.value)
+        } catch (e: Exception) {
+            handleError(e)
+        }
+    }
+
+    /**
+     * ✅ Manejo centralizado de errores
+     */
+    private fun handleError(e: Exception): Result<List<String>> {
+        val msg = when (e) {
+            is HttpException -> "Error HTTP ${e.code()}: ${e.message()}"
+            is IOException -> "Error de conexión: ${e.message}"
+            else -> "Error inesperado: ${e.message}"
+        }
+        _error.value = msg
+        return Result.failure(e)
+    }
+
+    fun clearError() {
+        _error.value = null
+    }
+
+    suspend fun invalidateCache() {
+        cacheMutex.withLock {
+            _categorias.value = emptyList()
+            _unidadesMedida.value = emptyList()
+            lastFetchCategorias = 0
+            lastFetchUnidades = 0
+        }
+    }
 }

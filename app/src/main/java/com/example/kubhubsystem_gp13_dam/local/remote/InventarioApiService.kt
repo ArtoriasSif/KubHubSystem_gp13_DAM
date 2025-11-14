@@ -1,7 +1,7 @@
 package com.example.kubhubsystem_gp13_dam.local.remote
 
-import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductCreateUpdateDTO
-import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductoResponseDTO
+import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductCreateDTO
+import com.example.kubhubsystem_gp13_dam.model.InventoryWithProductResponseAnswerUpdateDTO
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -30,7 +30,7 @@ interface InventarioApiService {
      * (Equivalente a 'findAllActiveInventoryOrderedByName' en el Controller)
      */
     @GET("api/v1/inventario/find-all-inventories-active/")
-    suspend fun getAllActiveInventories(): List<InventoryWithProductoResponseDTO>
+    suspend fun getAllActiveInventories(): List<InventoryWithProductResponseAnswerUpdateDTO>
 
     /**
      * ✅ [POST] /api/v1/inventario/create-inventory-with-product/
@@ -39,8 +39,8 @@ interface InventarioApiService {
      */
     @POST("api/v1/inventario/create-inventory-with-product/")
     suspend fun createInventoryWithProduct(
-        @Body inventarioRequest: InventoryWithProductCreateUpdateDTO
-    ): InventoryWithProductCreateUpdateDTO
+        @Body inventarioRequest: InventoryWithProductCreateDTO
+    ): InventoryWithProductCreateDTO
 
     /**
      * ✅ [PUT] /api/v1/inventario/update-inventory-with-product/
@@ -49,8 +49,8 @@ interface InventarioApiService {
      */
     @PUT("api/v1/inventario/update-inventory-with-product/")
     suspend fun updateInventoryWithProduct(
-        @Body inventarioRequest: InventoryWithProductCreateUpdateDTO
-    ): InventoryWithProductCreateUpdateDTO
+        @Body inventarioRequest: InventoryWithProductResponseAnswerUpdateDTO
+    ): InventoryWithProductResponseAnswerUpdateDTO
 
     /**
      * ✅ [PUT] /api/v1/inventario/update-active-value-product-false/{id_inventario}

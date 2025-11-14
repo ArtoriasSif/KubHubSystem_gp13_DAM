@@ -32,12 +32,7 @@ class AppInitializer(private val db: AppDatabase) {
         val docenteRepository = DocenteRepository(db.docenteDao())
         docenteRepository.inicializarDocentes(usuarioRepository.obtenerTodos())
         Log.d(tag, "✅ Docentes registrados")
-
-        onProgress("Inicializando productos")
-        val productoRepository = ProductoRepository(db.productoDao())
-        productoRepository.inicializarProductos()
-        Log.d(tag, "✅ Productos inicializados")
-
+ 
 
         onProgress("Cargando recetas")
         val recetaRepository = RecetaRepository(

@@ -5,56 +5,43 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.kubhubsystem_gp13_dam.data.repository.AsignaturaRepository
 import com.example.kubhubsystem_gp13_dam.local.AppDatabase
-import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
+import com.example.kubhubsystem_gp13_dam.local.remote.InventarioApiService
+import com.example.kubhubsystem_gp13_dam.local.remote.ProductoApiService
+import com.example.kubhubsystem_gp13_dam.local.remote.RetrofitClient
 import com.example.kubhubsystem_gp13_dam.repository.*
-import com.example.kubhubsystem_gp13_dam.data.repository.AsignaturaRepository  // ✅ AGREGAR
 import com.example.kubhubsystem_gp13_dam.ui.navigation.MenuRoutes
-import com.example.kubhubsystem_gp13_dam.ui.screens.LoginScreen
-import com.example.kubhubsystem_gp13_dam.ui.screens.MainMenuScreen
-
+import com.example.kubhubsystem_gp13_dam.ui.screens.*
 import com.example.kubhubsystem_gp13_dam.ui.viewmodel.SolicitudViewModel
 import com.example.kubhubsystem_gp13_dam.viewmodel.PedidoViewModel
 
 @Composable
 fun AppContainer() {
     val navController = rememberNavController()
-
-    // Obtener contexto y base de datos
     val context = LocalContext.current
-    val database = remember { AppDatabase.obtener(context) }
+    val database = remember { AppDatabase.obtener(context) } // 🔹 Mantén esto hasta migrar todo
 
     // ============================================
-    // REPOSITORIOS
+    // 🔌 NUEVAS APIs desde Retrofit
+    // ============================================
+    val productoApi = remember { RetrofitClient.createService(ProductoApiService::class.java) }
+    val inventarioApi = remember { RetrofitClient.createService(InventarioApiService::class.java) }
+
+    // ============================================
+    // 🧱 REPOSITORIOS
     // ============================================
 
-    // Usuario Repository
-    val usuarioRepository = remember {
-        UsuarioRepository(database.usuarioDao())
-    }
+    // 🔹 Repositorio de Producto conectado a microservicio
+    val productoRepository = remember { ProductoRepository(apiService = productoApi) }
 
-    // Producto Repository
-    val productoRepository = remember {
-        ProductoRepository(
-            dao = database.productoDao()
-        )
-    }
+    // 🔹 Repositorio de Inventario conectado a microservicio
+    val inventarioRepository = remember { InventarioRepository(apiService = inventarioApi) }
 
-    // ✅ NUEVO: Asignatura Repository
-    val asignaturaRepository = remember {
-        AsignaturaRepository(
-            asignaturaDAO = database.asignaturaDao()
-        )
-    }
-
-    // ✅ NUEVO: Sección Repository
-    val seccionRepository = remember {
-        SeccionRepository(
-            seccionDAO = database.seccionDao()
-        )
-    }
-
-    // Solicitud Repository
+    // 🔹 Repositorios locales aún no migrados (mantener)
+    val usuarioRepository = remember { UsuarioRepository(database.usuarioDao()) }
+    val asignaturaRepository = remember { AsignaturaRepository(database.asignaturaDao()) }
+    val seccionRepository = remember { SeccionRepository(database.seccionDao()) }
     val solicitudRepository = remember {
         SolicitudRepository(
             solicitudDao = database.solicitudDao(),
@@ -67,8 +54,6 @@ fun AppContainer() {
             salaDao = database.salaDao()
         )
     }
-
-    // Receta Repository
     val recetaRepository = remember {
         com.example.kubhubsystem_gp13_dam.data.repository.RecetaRepository(
             recetaDAO = database.recetaDao(),
@@ -77,7 +62,6 @@ fun AppContainer() {
             inventarioDAO = database.inventarioDao()
         )
     }
-
     val reservaSalaRepository = remember {
         ReservaSalaRepository(
             reservaSalaDAO = database.reservaSalaDao(),
@@ -85,8 +69,6 @@ fun AppContainer() {
             asignaturaDAO = database.asignaturaDao()
         )
     }
-
-    // Pedido Repository
     val pedidoRepository = remember {
         PedidoRepository(
             pedidoDao = database.pedidoDao(),
@@ -101,10 +83,8 @@ fun AppContainer() {
     }
 
     // ============================================
-    // VIEW MODELS
+    // 🧠 VIEWMODELS
     // ============================================
-
-    // ✅ ACTUALIZADO: SolicitudViewModel con todos los repositorios
     val solicitudViewModel = remember {
         SolicitudViewModel(
             solicitudRepository = solicitudRepository,
@@ -113,11 +93,9 @@ fun AppContainer() {
             asignaturaRepository = asignaturaRepository,
             seccionRepository = seccionRepository,
             usuarioRepository = usuarioRepository,
-            reservaSalaRepository = reservaSalaRepository  // ✅ NUEVO
+            reservaSalaRepository = reservaSalaRepository
         )
     }
-
-
 
     val pedidoViewModel = remember {
         PedidoViewModel(
@@ -127,14 +105,12 @@ fun AppContainer() {
     }
 
     // ============================================
-    // NAVEGACIÓN
+    // 🧭 NAVEGACIÓN
     // ============================================
-
     NavHost(
         navController = navController,
         startDestination = MenuRoutes.Home.route
     ) {
-        // Pantalla de inicio/splash
         composable(MenuRoutes.Home.route) {
             HomeScreen(
                 onNavigateToLogin = {
@@ -145,7 +121,6 @@ fun AppContainer() {
             )
         }
 
-        // Pantalla de login
         composable(MenuRoutes.Login.route) {
             LoginScreen(
                 usuarioRepository = usuarioRepository,
@@ -157,16 +132,15 @@ fun AppContainer() {
             )
         }
 
-        // Pantalla principal con menú lateral
         composable(MenuRoutes.MainMenu.route) {
             MainMenuScreen(
+                solicitudViewModel = solicitudViewModel,
+                pedidoViewModel = pedidoViewModel,
                 onLogout = {
                     navController.navigate(MenuRoutes.Login.route) {
                         popUpTo(0) { inclusive = true }
                     }
-                },
-                solicitudViewModel = solicitudViewModel,
-                pedidoViewModel = pedidoViewModel
+                }
             )
         }
     }
