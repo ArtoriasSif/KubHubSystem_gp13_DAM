@@ -6,8 +6,6 @@ import com.example.kubhubsystem_gp13_dam.data.repository.RecetaRepository
 import com.example.kubhubsystem_gp13_dam.data.repository.SalaRepository
 import com.example.kubhubsystem_gp13_dam.local.AppDatabase
 import com.example.kubhubsystem_gp13_dam.repository.DocenteRepository
-import com.example.kubhubsystem_gp13_dam.repository.InventarioRepository
-import com.example.kubhubsystem_gp13_dam.repository.ProductoRepository
 import com.example.kubhubsystem_gp13_dam.repository.ReservaSalaRepository
 import com.example.kubhubsystem_gp13_dam.repository.RolRepository
 import com.example.kubhubsystem_gp13_dam.repository.SeccionRepository

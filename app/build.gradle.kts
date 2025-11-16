@@ -18,7 +18,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // ✅ Genera la constante BASE_URL dentro de BuildConfig
-        buildConfigField("String", "BASE_URL", "\"http://54.242.76.7/\"")
+        buildConfigField("String", "BASE_URL", "\"http://3.82.22.17/\"")
     }
 
     buildTypes {
@@ -57,6 +57,7 @@ android {
 dependencies {
     implementation(libs.androidx.material3)
     implementation(libs.androidx.runtime)
+    implementation(libs.androidx.ui.text)
 
     // ✅ ROOM
     val roomVersion = "2.6.1"
@@ -93,12 +94,17 @@ dependencies {
     // ✅ GOOGLE PLAY SERVICES - LOCATION
     implementation("com.google.android.gms:play-services-location:21.3.0")
 
-    // ✅ RETROFIT & OKHTTP
-    val retrofitVersion = "2.11.0"
-    val okhttpVersion = "4.12.0"
-    implementation("com.squareup.retrofit2:retrofit:$retrofitVersion")
-    implementation("com.squareup.retrofit2:converter-gson:$retrofitVersion")
-    implementation("com.squareup.okhttp3:okhttp:$okhttpVersion")
+    // Retrofit + Gson
+    implementation("com.squareup.retrofit2:retrofit:2.11.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.11.0")
+
+    // OkHttp
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Logging Interceptor
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+
 
     // ✅ TESTING
     testImplementation("junit:junit:4.13.2")

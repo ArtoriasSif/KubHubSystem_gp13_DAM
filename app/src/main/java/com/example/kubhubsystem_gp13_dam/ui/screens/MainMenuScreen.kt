@@ -316,7 +316,7 @@ fun MainMenuScreen(
                     GestionAcademicaScreen()
                 }
                 composable("recetas") {
-                    RecetasScreen()
+                    RecetasScreen2()
                 }
 
 

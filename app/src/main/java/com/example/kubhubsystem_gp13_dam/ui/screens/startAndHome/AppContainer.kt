@@ -88,7 +88,7 @@ fun AppContainer() {
     val solicitudViewModel = remember {
         SolicitudViewModel(
             solicitudRepository = solicitudRepository,
-            recetaRepository = recetaRepository,
+            `recetaRepository` = recetaRepository,
             productoRepository = productoRepository,
             asignaturaRepository = asignaturaRepository,
             seccionRepository = seccionRepository,
