@@ -41,7 +41,7 @@ fun RecetasScreen() {
     }
     val viewModel = remember {
         RecetasViewModel(
-            recetaRepository = repository,
+            `recetaRepository` = repository,
             productoDAO = database.productoDao()
         )
     }
