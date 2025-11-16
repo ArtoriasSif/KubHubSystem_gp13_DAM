@@ -16,32 +16,31 @@ import com.example.kubhubsystem_gp13_dam.ui.screens.*
 import com.example.kubhubsystem_gp13_dam.ui.viewmodel.SolicitudViewModel
 import com.example.kubhubsystem_gp13_dam.viewmodel.PedidoViewModel
 
+/**
+ * AppContainer - Contenedor principal
+ * ✅ LoginScreen sin parámetros
+ * ✅ MainMenuScreen sin UsuarioRepository
+ * ⚠️ Módulos pendientes aún usan ROOM (migrar gradualmente)
+ */
 @Composable
 fun AppContainer() {
     val navController = rememberNavController()
     val context = LocalContext.current
-    val database = remember { AppDatabase.obtener(context) } // 🔹 Mantén esto hasta migrar todo
+    val database = remember { AppDatabase.obtener(context) }
 
-    // ============================================
-    // 🔌 NUEVAS APIs desde Retrofit
-    // ============================================
+    // APIs de microservicios
     val productoApi = remember { RetrofitClient.createService(ProductoApiService::class.java) }
     val inventarioApi = remember { RetrofitClient.createService(InventarioApiService::class.java) }
 
-    // ============================================
-    // 🧱 REPOSITORIOS
-    // ============================================
-
-    // 🔹 Repositorio de Producto conectado a microservicio
+    // Repositorios migrados
     val productoRepository = remember { ProductoRepository(productoApiService = productoApi) }
-
-    // 🔹 Repositorio de Inventario conectado a microservicio
     val inventarioRepository = remember { InventarioRepository(inventoryApiService = inventarioApi) }
 
-    // 🔹 Repositorios locales aún no migrados (mantener)
-    val usuarioRepository = remember { UsuarioRepository(database.usuarioDao()) }
+    // ⚠️ Repositorios ROOM temporales (SOLO para Solicitud/Pedido)
+    // ✅ ELIMINADO: usuarioRepository ya no se usa aquí
     val asignaturaRepository = remember { AsignaturaRepository(database.asignaturaDao()) }
     val seccionRepository = remember { SeccionRepository(database.seccionDao()) }
+
     val solicitudRepository = remember {
         SolicitudRepository(
             solicitudDao = database.solicitudDao(),
@@ -54,6 +53,7 @@ fun AppContainer() {
             salaDao = database.salaDao()
         )
     }
+
     val recetaRepository = remember {
         com.example.kubhubsystem_gp13_dam.data.repository.RecetaRepository(
             recetaDAO = database.recetaDao(),
@@ -62,6 +62,7 @@ fun AppContainer() {
             inventarioDAO = database.inventarioDao()
         )
     }
+
     val reservaSalaRepository = remember {
         ReservaSalaRepository(
             reservaSalaDAO = database.reservaSalaDao(),
@@ -69,6 +70,7 @@ fun AppContainer() {
             asignaturaDAO = database.asignaturaDao()
         )
     }
+
     val pedidoRepository = remember {
         PedidoRepository(
             pedidoDao = database.pedidoDao(),
@@ -82,9 +84,8 @@ fun AppContainer() {
         )
     }
 
-    // ============================================
-    // 🧠 VIEWMODELS
-    // ============================================
+    // ViewModels
+    // ✅ CORREGIDO: SolicitudViewModel ya no recibe usuarioRepository
     val solicitudViewModel = remember {
         SolicitudViewModel(
             solicitudRepository = solicitudRepository,
@@ -92,7 +93,6 @@ fun AppContainer() {
             productoRepository = productoRepository,
             asignaturaRepository = asignaturaRepository,
             seccionRepository = seccionRepository,
-            usuarioRepository = usuarioRepository,
             reservaSalaRepository = reservaSalaRepository
         )
     }
@@ -104,13 +104,7 @@ fun AppContainer() {
         )
     }
 
-    // ============================================
-    // 🧭 NAVEGACIÓN
-    // ============================================
-    NavHost(
-        navController = navController,
-        startDestination = MenuRoutes.Home.route
-    ) {
+    NavHost(navController, startDestination = MenuRoutes.Home.route) {
         composable(MenuRoutes.Home.route) {
             HomeScreen(
                 onNavigateToLogin = {
@@ -122,8 +116,8 @@ fun AppContainer() {
         }
 
         composable(MenuRoutes.Login.route) {
+            // ✅ Sin parámetros
             LoginScreen(
-                usuarioRepository = usuarioRepository,
                 onLoginSuccess = {
                     navController.navigate(MenuRoutes.MainMenu.route) {
                         popUpTo(MenuRoutes.Login.route) { inclusive = true }
