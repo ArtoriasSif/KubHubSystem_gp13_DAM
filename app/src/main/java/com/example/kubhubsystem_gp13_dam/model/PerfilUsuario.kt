@@ -1,12 +1,11 @@
 package com.example.kubhubsystem_gp13_dam.model
 
-
-
 import android.net.Uri
 
 /**
  * Data class para representar el perfil de un usuario
  * NO se persiste en la base de datos - solo existe en memoria
+ * ✅ ACTUALIZADO: Los nombres de atributos coinciden con Usuario del backend
  */
 data class PerfilUsuario(
     val idUsuario: Int,
@@ -42,14 +41,14 @@ object PerfilHelper {
 
     /**
      * Genera las iniciales de un usuario basado en su nombre y apellido
-     * Toma la primera letra del primer nombre y la primera del apellido paterno
+     * ✅ CORREGIDO: Usa primerNombre y apellidoPaterno (backend)
      *
      * @param usuario Usuario del cual generar iniciales
      * @return String con 2 letras en mayúsculas (ej: "AK")
      */
     fun generarIniciales(usuario: Usuario): String {
-        val primerLetra = usuario.primeroNombre.firstOrNull()?.uppercaseChar() ?: 'U'
-        val segundaLetra = usuario.apellidoPaterno.firstOrNull()?.uppercaseChar() ?: 'S'
+        val primerLetra = usuario.primerNombre.firstOrNull()?.uppercaseChar() ?: 'U'
+        val segundaLetra = (usuario.apellidoPaterno?.firstOrNull() ?: usuario.primerNombre.getOrNull(1))?.uppercaseChar() ?: 'S'
         return "$primerLetra$segundaLetra"
     }
 
@@ -57,12 +56,12 @@ object PerfilHelper {
      * Genera iniciales desde strings individuales (alternativa)
      *
      * @param primerNombre Primer nombre del usuario
-     * @param apellidoPaterno Apellido paterno del usuario
+     * @param apellidoPaterno Apellido paterno del usuario (nullable)
      * @return String con 2 letras en mayúsculas
      */
-    fun generarIniciales(primerNombre: String, apellidoPaterno: String): String {
+    fun generarIniciales(primerNombre: String, apellidoPaterno: String?): String {
         val primerLetra = primerNombre.firstOrNull()?.uppercaseChar() ?: 'U'
-        val segundaLetra = apellidoPaterno.firstOrNull()?.uppercaseChar() ?: 'S'
+        val segundaLetra = (apellidoPaterno?.firstOrNull() ?: primerNombre.getOrNull(1))?.uppercaseChar() ?: 'S'
         return "$primerLetra$segundaLetra"
     }
 

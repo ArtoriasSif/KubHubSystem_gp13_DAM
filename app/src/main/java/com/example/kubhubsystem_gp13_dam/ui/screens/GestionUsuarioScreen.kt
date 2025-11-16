@@ -27,46 +27,32 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.kubhubsystem_gp13_dam.local.AppDatabase
 import com.example.kubhubsystem_gp13_dam.manager.PerfilUsuarioManager
 import com.example.kubhubsystem_gp13_dam.model.Rol
 import com.example.kubhubsystem_gp13_dam.model.Usuario
-import com.example.kubhubsystem_gp13_dam.repository.DocenteRepository
-import com.example.kubhubsystem_gp13_dam.repository.RolRepository
-import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 import com.example.kubhubsystem_gp13_dam.ui.components.AvatarUsuario
 import com.example.kubhubsystem_gp13_dam.viewmodel.GestionUsuariosEstado
 import com.example.kubhubsystem_gp13_dam.viewmodel.GestionUsuariosViewModel
 import kotlinx.coroutines.launch
 
+/**
+ * Pantalla de Gestión de Usuarios
+ * ✅ ACTUALIZADO: Ahora usa el nuevo GestionUsuariosViewModel que se conecta al backend
+ * ✅ MANTENIDO: Todo el estilo visual y componentes originales
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GestionUsuariosScreen(
     onNavigateToDetalleUsuario: (Int) -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
-    val context = LocalContext.current
-    val database = remember { AppDatabase.obtener(context.applicationContext) }
+    // ✅ CAMBIO PRINCIPAL: Ya no necesita database ni factory
+    val viewModel: GestionUsuariosViewModel = viewModel()
 
     // 🆕 Obtener el manager de perfiles
     val perfilManager = remember { PerfilUsuarioManager.getInstance() }
     val perfiles by perfilManager.perfiles.collectAsState()
-
-    val viewModel: GestionUsuariosViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                @Suppress("UNCHECKED_CAST")
-                return GestionUsuariosViewModel(
-                    usuarioRepository = UsuarioRepository(database.usuarioDao()),
-                    rolRepository = RolRepository(database.rolDao()),
-                    docenteRepository = DocenteRepository(database.docenteDao())
-                ) as T
-            }
-        }
-    )
 
     val estado by viewModel.estado.collectAsState()
     val scope = rememberCoroutineScope()
@@ -78,11 +64,6 @@ fun GestionUsuariosScreen(
         if (estado.usuarios.isNotEmpty()) {
             perfilManager.inicializarPerfiles(estado.usuarios)
         }
-    }
-
-    // Inicializar datos si es necesario (solo una vez)
-    LaunchedEffect(Unit) {
-        viewModel.inicializarDatosSiEsNecesario()
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -113,13 +94,11 @@ fun GestionUsuariosScreen(
     Scaffold(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            // ✅ TopAppBar del archivo 1 (priorizado)
             TopAppBar(
                 title = { Text("Gestión de Usuarios") }
             )
         },
         floatingActionButton = {
-            // ✅ FAB que ABRE el diálogo
             if (!estado.cargando) {
                 ExtendedFloatingActionButton(
                     onClick = { showNuevoUsuarioDialog = true },
@@ -143,10 +122,7 @@ fun GestionUsuariosScreen(
                         CircularProgressIndicator()
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = if (estado.inicializando)
-                                "Inicializando sistema..."
-                            else
-                                "Cargando usuarios...",
+                            text = "Cargando usuarios...",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -154,41 +130,64 @@ fun GestionUsuariosScreen(
             }
 
             estado.usuarios.isEmpty() && !estado.cargando -> {
-                PantallaInicial(
-                    onInicializar = { viewModel.inicializarDatos() },
-                    modifier = Modifier.padding(padding)
-                )
+                // ✅ CAMBIO: Ya no mostramos pantalla de inicialización
+                // porque los datos vienen del backend
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(
+                            Icons.Default.People,
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "No hay usuarios registrados",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { showNuevoUsuarioDialog = true }
+                        ) {
+                            Text("Crear Primer Usuario")
+                        }
+                    }
+                }
             }
 
             else -> {
                 ContenidoPrincipal(
                     viewModel = viewModel,
                     estado = estado,
-                    perfiles = perfiles, // 🆕 Del archivo 2
+                    perfiles = perfiles,
                     onFiltroRolChange = { viewModel.onFiltroRolChange(it) },
                     onBuscarTextoChange = { viewModel.onBuscarTextoChange(it) },
                     onEditarUsuario = onNavigateToDetalleUsuario,
-                    onEliminarUsuario = { showDeleteDialog = it }, // Del archivo 1
+                    onEliminarUsuario = { showDeleteDialog = it },
                     modifier = Modifier.padding(padding)
                 )
             }
         }
     }
 
-    // ✅ Diálogo de confirmación de eliminación (del archivo 1 - priorizado)
+    // Diálogo de confirmación de eliminación
     showDeleteDialog?.let { usuario ->
         AlertDialog(
             onDismissRequest = { showDeleteDialog = null },
             icon = { Icon(Icons.Default.Warning, contentDescription = null) },
             title = { Text("Eliminar Usuario") },
             text = {
-                Text("¿Está seguro que desea eliminar a ${usuario.primeroNombre} ${usuario.apellidoPaterno}? Esta acción no se puede deshacer.")
+                Text("¿Está seguro que desea eliminar a ${usuario.obtenerNombreCompleto()}? Esta acción no se puede deshacer.")
             },
             confirmButton = {
                 Button(
                     onClick = {
                         viewModel.eliminarUsuario(usuario)
-                        // 🆕 AGREGADO: También eliminar del manager de perfiles (del archivo 2)
                         perfilManager.eliminarPerfil(usuario.idUsuario)
                         showDeleteDialog = null
                     },
@@ -207,382 +206,12 @@ fun GestionUsuariosScreen(
         )
     }
 
-    // ✅ AGREGADO: NuevoUsuarioDialog del archivo 2
+    // Diálogo de nuevo usuario
     if (showNuevoUsuarioDialog) {
-        NuevoUsuarioDialog(
-            onDismiss = { showNuevoUsuarioDialog = false },
-            onCrear = { primeroNombre, segundoNombre, apellidoPaterno, apellidoMaterno, email, username, password, rol ->
-                viewModel.crearUsuario(
-                    primeroNombre = primeroNombre,
-                    segundoNombre = segundoNombre,
-                    apellidoPaterno = apellidoPaterno,
-                    apellidoMaterno = apellidoMaterno,
-                    email = email,
-                    username = username,
-                    password = password,
-                    rol = rol
-                )
-                showNuevoUsuarioDialog = false
-            }
+        DialogoNuevoUsuario(
+            viewModel = viewModel,
+            onDismiss = { showNuevoUsuarioDialog = false }
         )
-    }
-}
-
-// ✅ DIÁLOGO DE NUEVO USUARIO (del archivo 2)
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun NuevoUsuarioDialog(
-    onDismiss: () -> Unit,
-    onCrear: (String, String, String, String, String, String, String, Rol) -> Unit
-) {
-    var primeroNombre by remember { mutableStateOf("") }
-    var segundoNombre by remember { mutableStateOf("") }
-    var apellidoPaterno by remember { mutableStateOf("") }
-    var apellidoMaterno by remember { mutableStateOf("") }
-    var email by remember { mutableStateOf("") }
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var rolSeleccionado by remember { mutableStateOf(Rol.DOCENTE) }
-    var mostrarPassword by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight(0.9f),
-            shape = RoundedCornerShape(16.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-            ) {
-                // Header
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(MaterialTheme.colorScheme.primaryContainer)
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Nuevo Usuario",
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Cerrar")
-                    }
-                }
-
-                // Contenido scrolleable
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .verticalScroll(rememberScrollState())
-                        .padding(24.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    // Error message
-                    errorMessage?.let { error ->
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            color = MaterialTheme.colorScheme.errorContainer,
-                            shape = RoundedCornerShape(8.dp)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    Icons.Default.Warning,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.error
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    text = error,
-                                    color = MaterialTheme.colorScheme.onErrorContainer,
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
-                    }
-
-                    Text(
-                        text = "Información Personal",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    OutlinedTextField(
-                        value = primeroNombre,
-                        onValueChange = { primeroNombre = it },
-                        label = { Text("Primer Nombre *") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = segundoNombre,
-                        onValueChange = { segundoNombre = it },
-                        label = { Text("Segundo Nombre") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = apellidoPaterno,
-                        onValueChange = { apellidoPaterno = it },
-                        label = { Text("Apellido Paterno *") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = apellidoMaterno,
-                        onValueChange = { apellidoMaterno = it },
-                        label = { Text("Apellido Materno") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    HorizontalDivider()
-
-                    Text(
-                        text = "Credenciales",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = { email = it },
-                        label = { Text("Email *") },
-                        leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = username,
-                        onValueChange = { username = it },
-                        label = { Text("Username *") },
-                        leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it },
-                        label = { Text("Contraseña *") },
-                        leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) },
-                        trailingIcon = {
-                            IconButton(onClick = { mostrarPassword = !mostrarPassword }) {
-                                Icon(
-                                    if (mostrarPassword) Icons.Default.Visibility
-                                    else Icons.Default.VisibilityOff,
-                                    contentDescription = "Mostrar contraseña"
-                                )
-                            }
-                        },
-                        visualTransformation = if (mostrarPassword)
-                            VisualTransformation.None
-                        else
-                            PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-
-                    HorizontalDivider()
-
-                    Text(
-                        text = "Rol del Usuario",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-
-                    // Selector de rol
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Rol.values().forEach { rol ->
-                            RolSelectionCard(
-                                rol = rol,
-                                selected = rolSeleccionado == rol,
-                                onClick = { rolSeleccionado = rol }
-                            )
-                        }
-                    }
-                }
-
-                // Botones de acción
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = onDismiss,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text("Cancelar")
-                    }
-
-                    Button(
-                        onClick = {
-                            when {
-                                primeroNombre.isBlank() -> errorMessage = "El primer nombre es obligatorio"
-                                apellidoPaterno.isBlank() -> errorMessage = "El apellido paterno es obligatorio"
-                                email.isBlank() -> errorMessage = "El email es obligatorio"
-                                !email.contains("@") -> errorMessage = "Email inválido"
-                                username.isBlank() -> errorMessage = "El username es obligatorio"
-                                password.isBlank() -> errorMessage = "La contraseña es obligatoria"
-                                password.length < 6 -> errorMessage = "La contraseña debe tener al menos 6 caracteres"
-                                else -> {
-                                    onCrear(
-                                        primeroNombre.trim(),
-                                        segundoNombre.trim(),
-                                        apellidoPaterno.trim(),
-                                        apellidoMaterno.trim(),
-                                        email.trim().lowercase(),
-                                        username.trim().lowercase(),
-                                        password,
-                                        rolSeleccionado
-                                    )
-                                }
-                            }
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.Save, contentDescription = null)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Crear Usuario")
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun RolSelectionCard(
-    rol: Rol,
-    selected: Boolean,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        colors = CardDefaults.cardColors(
-            containerColor = if (selected)
-                obtenerColorRol(rol).copy(alpha = 0.2f)
-            else
-                MaterialTheme.colorScheme.surface
-        ),
-        border = if (selected) {
-            BorderStroke(2.dp, obtenerColorRol(rol))
-        } else null
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(
-                    imageVector = obtenerIconoRol(rol),
-                    contentDescription = null,
-                    tint = obtenerColorRol(rol),
-                    modifier = Modifier.size(32.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = rol.obtenerNombre(),
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
-                    )
-                    Text(
-                        text = rol.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-
-            if (selected) {
-                Icon(
-                    Icons.Default.CheckCircle,
-                    contentDescription = "Seleccionado",
-                    tint = obtenerColorRol(rol)
-                )
-            }
-        }
-    }
-}
-
-// ✅ Pantalla inicial cuando no hay usuarios
-@Composable
-private fun PantallaInicial(
-    onInicializar: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Icon(
-                Icons.Default.People,
-                contentDescription = null,
-                modifier = Modifier.size(120.dp),
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = "Bienvenido al Sistema",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Text(
-                text = "No hay usuarios en el sistema.\nInicialice los datos para comenzar.",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Button(
-                onClick = onInicializar,
-                modifier = Modifier.fillMaxWidth(0.7f)
-            ) {
-                Icon(Icons.Default.PlayArrow, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Inicializar Datos del Sistema")
-            }
-        }
     }
 }
 
@@ -590,163 +219,147 @@ private fun PantallaInicial(
 private fun ContenidoPrincipal(
     viewModel: GestionUsuariosViewModel,
     estado: GestionUsuariosEstado,
-    perfiles: Map<Int, com.example.kubhubsystem_gp13_dam.model.PerfilUsuario>, // 🆕 Del archivo 2
+    perfiles: Map<Int, com.example.kubhubsystem_gp13_dam.model.PerfilUsuario>,
     onFiltroRolChange: (String) -> Unit,
     onBuscarTextoChange: (String) -> Unit,
     onEditarUsuario: (Int) -> Unit,
     onEliminarUsuario: (Usuario) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    LazyColumn(modifier = modifier) {
-        // Header con estadísticas
-        item {
-            HeaderEstadisticas(
-                totalUsuarios = estado.usuarios.size,
-                totalDocentes = estado.totalDocentes,
-                totalRoles = estado.totalRoles
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+        // Estadísticas
+        if (estado.estadisticas != null) {
+            TarjetasEstadisticas(
+                totalUsuarios = estado.estadisticas.totalUsuarios.toInt(),
+                usuariosActivos = estado.estadisticas.usuariosActivos.toInt(),
+                usuariosInactivos = estado.estadisticas.usuariosInactivos.toInt(),
+                totalRoles = estado.estadisticas.totalRoles.toInt()
             )
+            Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Filtros
-        item {
-            FiltrosUsuarios(
-                filtroRol = estado.filtroRol,
-                onFiltroRolChange = onFiltroRolChange,
-                buscarTexto = estado.buscarTexto,
-                onBuscarTextoChange = onBuscarTextoChange
-            )
-        }
+        // Búsqueda y filtros
+        SeccionBusquedaYFiltros(
+            buscarTexto = estado.buscarTexto,
+            filtroRol = estado.filtroRol,
+            onFiltroRolChange = onFiltroRolChange,
+            onBuscarTextoChange = onBuscarTextoChange
+        )
 
-        // Contador de resultados
-        item {
-            Text(
-                text = "${estado.usuariosFiltrados.size} usuario(s) encontrado(s)",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-        }
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Lista de usuarios
         if (estado.usuariosFiltrados.isEmpty()) {
-            item {
-                EmptyStateView(modifier = Modifier.padding(32.dp))
-            }
+            EmptyStateView()
         } else {
-            items(estado.usuariosFiltrados) { usuario ->
-                TarjetaUsuario(
-                    usuario = usuario,
-                    perfil = perfiles[usuario.idUsuario], // 🆕 AGREGADO del archivo 2
-                    esDocente = viewModel.esUsuarioDocente(usuario.idUsuario),
-                    onClick = { onEditarUsuario(usuario.idUsuario) },
-                    onEliminar = { onEliminarUsuario(usuario) },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
-                )
-            }
-
-            item {
-                Spacer(modifier = Modifier.height(80.dp))
+            LazyColumn(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(
+                    items = estado.usuariosFiltrados,
+                    key = { it.idUsuario }
+                ) { usuario ->
+                    TarjetaUsuario(
+                        usuario = usuario,
+                        perfil = perfiles[usuario.idUsuario],
+                        esDocente = usuario.rol == Rol.DOCENTE,
+                        onClick = { onEditarUsuario(usuario.idUsuario) },
+                        onEliminar = { onEliminarUsuario(usuario) }
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun HeaderEstadisticas(
+private fun TarjetasEstadisticas(
     totalUsuarios: Int,
-    totalDocentes: Int,
+    usuariosActivos: Int,
+    usuariosInactivos: Int,
     totalRoles: Int
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = Color(0xFFFFC107)
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(20.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            EstadisticaChip(
-                icon = Icons.Default.People,
-                valor = totalUsuarios.toString(),
-                etiqueta = "Usuarios",
-                color = Color(0xFF6B4E00)
-            )
-
-            EstadisticaChip(
-                icon = Icons.Default.School,
-                valor = totalDocentes.toString(),
-                etiqueta = "Docentes",
-                color = Color(0xFF6B4E00)
-            )
-
-            EstadisticaChip(
-                icon = Icons.Default.Security,
-                valor = totalRoles.toString(),
-                etiqueta = "Roles",
-                color = Color(0xFF6B4E00)
-            )
-        }
+        TarjetaEstadistica(
+            titulo = "Total",
+            valor = totalUsuarios.toString(),
+            icono = Icons.Default.People,
+            color = Color(0xFF2196F3),
+            modifier = Modifier.weight(1f)
+        )
+        TarjetaEstadistica(
+            titulo = "Activos",
+            valor = usuariosActivos.toString(),
+            icono = Icons.Default.CheckCircle,
+            color = Color(0xFF4CAF50),
+            modifier = Modifier.weight(1f)
+        )
+        TarjetaEstadistica(
+            titulo = "Inactivos",
+            valor = usuariosInactivos.toString(),
+            icono = Icons.Default.Cancel,
+            color = Color(0xFFF44336),
+            modifier = Modifier.weight(1f)
+        )
     }
 }
 
 @Composable
-private fun EstadisticaChip(
-    icon: ImageVector,
+private fun TarjetaEstadistica(
+    titulo: String,
     valor: String,
-    etiqueta: String,
-    color: Color
+    icono: ImageVector,
+    color: Color,
+    modifier: Modifier = Modifier
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(
+            containerColor = color.copy(alpha = 0.1f)
+        ),
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(color.copy(alpha = 0.2f), shape = CircleShape),
-            contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
-                imageVector = icon,
+                imageVector = icono,
                 contentDescription = null,
                 tint = color,
                 modifier = Modifier.size(24.dp)
             )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = valor,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                color = color
+            )
+            Text(
+                text = titulo,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = valor,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = color
-        )
-        Text(
-            text = etiqueta,
-            style = MaterialTheme.typography.bodySmall,
-            color = color.copy(alpha = 0.7f)
-        )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun FiltrosUsuarios(
+private fun SeccionBusquedaYFiltros(
+    buscarTexto: String,
     filtroRol: String,
     onFiltroRolChange: (String) -> Unit,
-    buscarTexto: String,
     onBuscarTextoChange: (String) -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
+    Column {
         OutlinedTextField(
             value = buscarTexto,
             onValueChange = onBuscarTextoChange,
@@ -776,7 +389,18 @@ private fun FiltrosUsuarios(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        val roles = listOf("Todos", "Admin", "Co-Admin", "Gestor de pedidos", "Docente", "Bodega", "Asistente")
+        // ✅ ACTUALIZADO: Ahora con los 7 roles del backend
+        val roles = listOf(
+            "Todos",
+            "Administrador",
+            "Co-Administrador",
+            "Gestor de Pedidos",
+            "Profesor a Cargo",
+            "Docente",
+            "Encargado de Bodega",
+            "Asistente de Bodega"
+        )
+
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -797,7 +421,7 @@ private fun FiltrosUsuarios(
 @Composable
 private fun TarjetaUsuario(
     usuario: Usuario,
-    perfil: com.example.kubhubsystem_gp13_dam.model.PerfilUsuario?, // 🆕 AGREGADO del archivo 2
+    perfil: com.example.kubhubsystem_gp13_dam.model.PerfilUsuario?,
     esDocente: Boolean,
     onClick: () -> Unit,
     onEliminar: () -> Unit,
@@ -821,7 +445,6 @@ private fun TarjetaUsuario(
                 modifier = Modifier.weight(1f),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // 🆕 MODIFICADO: Usar AvatarUsuario del archivo 2
                 AvatarUsuario(
                     perfil = perfil,
                     size = 56.dp,
@@ -833,7 +456,7 @@ private fun TarjetaUsuario(
 
                 Column {
                     Text(
-                        text = "${usuario.primeroNombre} ${usuario.apellidoPaterno}",
+                        text = usuario.obtenerNombreCompleto(),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -905,26 +528,29 @@ private fun BadgeRol(rol: Rol, esDocente: Boolean) {
     }
 }
 
+// ✅ ACTUALIZADO: Ahora con los 7 roles
 private fun obtenerColorRol(rol: Rol): Color {
-    // Usar colores del archivo 1 (más consistente con el tema)
     return when (rol) {
-        Rol.ADMIN -> Color(0xFFF44336)
-        Rol.CO_ADMIN -> Color(0xFFFF9800)
+        Rol.ADMINISTRADOR -> Color(0xFFF44336)
+        Rol.CO_ADMINISTRADOR -> Color(0xFFFF9800)
         Rol.GESTOR_PEDIDOS -> Color(0xFF4CAF50)
+        Rol.PROFESOR_A_CARGO -> Color(0xFF3F51B5)
         Rol.DOCENTE -> Color(0xFF2196F3)
-        Rol.BODEGA -> Color(0xFF9C27B0)
-        Rol.ASISTENTE -> Color(0xFF00BCD4)
+        Rol.ENCARGADO_BODEGA -> Color(0xFF9C27B0)
+        Rol.ASISTENTE_BODEGA -> Color(0xFF00BCD4)
     }
 }
 
+// ✅ ACTUALIZADO: Ahora con los 7 roles
 private fun obtenerIconoRol(rol: Rol): ImageVector {
     return when (rol) {
-        Rol.ADMIN -> Icons.Default.Security
-        Rol.CO_ADMIN -> Icons.Default.SupervisorAccount
+        Rol.ADMINISTRADOR -> Icons.Default.Security
+        Rol.CO_ADMINISTRADOR -> Icons.Default.SupervisorAccount
         Rol.GESTOR_PEDIDOS -> Icons.Default.Assignment
+        Rol.PROFESOR_A_CARGO -> Icons.Default.ManageAccounts
         Rol.DOCENTE -> Icons.Default.School
-        Rol.BODEGA -> Icons.Default.Inventory
-        Rol.ASISTENTE -> Icons.Default.Person
+        Rol.ENCARGADO_BODEGA -> Icons.Default.Inventory
+        Rol.ASISTENTE_BODEGA -> Icons.Default.Person
     }
 }
 
@@ -953,6 +579,184 @@ private fun EmptyStateView(modifier: Modifier = Modifier) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun DialogoNuevoUsuario(
+    viewModel: GestionUsuariosViewModel,
+    onDismiss: () -> Unit
+) {
+    var primerNombre by remember { mutableStateOf("") }
+    var segundoNombre by remember { mutableStateOf("") }
+    var apellidoPaterno by remember { mutableStateOf("") }
+    var apellidoMaterno by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var username by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var rolSeleccionado by remember { mutableStateOf(Rol.DOCENTE) }
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp)
+            ) {
+                Text(
+                    text = "Nuevo Usuario",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = primerNombre,
+                    onValueChange = { primerNombre = it },
+                    label = { Text("Primer Nombre *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = segundoNombre,
+                    onValueChange = { segundoNombre = it },
+                    label = { Text("Segundo Nombre") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = apellidoPaterno,
+                    onValueChange = { apellidoPaterno = it },
+                    label = { Text("Apellido Paterno") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = apellidoMaterno,
+                    onValueChange = { apellidoMaterno = it },
+                    label = { Text("Apellido Materno") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("Username") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Contraseña *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    visualTransformation = if (passwordVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = "Toggle password visibility"
+                            )
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Rol *",
+                    style = MaterialTheme.typography.labelLarge
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Selector de roles
+                Rol.obtenerTodos().forEach { rol ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { rolSeleccionado = rol }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = rolSeleccionado == rol,
+                            onClick = { rolSeleccionado = rol }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        BadgeRol(rol = rol, esDocente = rol == Rol.DOCENTE)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancelar")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            if (primerNombre.isNotBlank() && email.isNotBlank() && password.isNotBlank()) {
+                                viewModel.crearUsuario(
+                                    primerNombre = primerNombre,
+                                    segundoNombre = segundoNombre.ifBlank { null },
+                                    apellidoPaterno = apellidoPaterno.ifBlank { null },
+                                    apellidoMaterno = apellidoMaterno.ifBlank { null },
+                                    email = email,
+                                    username = username.ifBlank { null },
+                                    password = password,
+                                    rol = rolSeleccionado
+                                )
+                                onDismiss()
+                            }
+                        },
+                        enabled = primerNombre.isNotBlank() && email.isNotBlank() && password.isNotBlank()
+                    ) {
+                        Text("Crear")
+                    }
+                }
+            }
         }
     }
 }
