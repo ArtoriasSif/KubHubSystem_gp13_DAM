@@ -100,6 +100,9 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:$retrofitVersion")
     implementation("com.squareup.okhttp3:okhttp:$okhttpVersion")
 
+
+    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
     // ✅ TESTING
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.2.1")

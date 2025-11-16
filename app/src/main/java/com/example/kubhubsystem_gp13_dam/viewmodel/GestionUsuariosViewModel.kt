@@ -2,11 +2,10 @@ package com.example.kubhubsystem_gp13_dam.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.kubhubsystem_gp13_dam.local.entities.DocenteEntity
-import com.example.kubhubsystem_gp13_dam.local.entities.UsuarioEntity
 import com.example.kubhubsystem_gp13_dam.model.Rol
 import com.example.kubhubsystem_gp13_dam.model.Usuario
-import com.example.kubhubsystem_gp13_dam.repository.DocenteRepository
+import com.example.kubhubsystem_gp13_dam.local.dto.RolResponseDTO
+import com.example.kubhubsystem_gp13_dam.local.dto.UsuarioEstadisticasDTO
 import com.example.kubhubsystem_gp13_dam.repository.RolRepository
 import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,82 +14,58 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class GestionUsuariosViewModel(
-    private val usuarioRepository: UsuarioRepository,
-    private val rolRepository: RolRepository,
-    private val docenteRepository: DocenteRepository
-) : ViewModel() {
+/**
+ * ViewModel para Gestión de Usuarios
+ * ✅ ACTUALIZADO: Ahora usa los nuevos repositorios que se conectan al backend
+ * ❌ ELIMINADO: Ya no maneja DocenteRepository ni inicialización de datos locales
+ */
+data class GestionUsuariosEstado(
+    val usuarios: List<Usuario> = emptyList(),
+    val usuariosFiltrados: List<Usuario> = emptyList(),
+    val roles: List<RolResponseDTO> = emptyList(),
+    val estadisticas: UsuarioEstadisticasDTO? = null,
+    val cargando: Boolean = false,
+    val error: String? = null,
+    val mensajeExito: String? = null,
+    val buscarTexto: String = "",
+    val filtroRol: String = "Todos"
+)
+
+class GestionUsuariosViewModel : ViewModel() {
+
+    private val usuarioRepository = UsuarioRepository()
+    private val rolRepository = RolRepository()
 
     private val _estado = MutableStateFlow(GestionUsuariosEstado())
     val estado: StateFlow<GestionUsuariosEstado> = _estado.asStateFlow()
-
-    private var datosInicializados = false
 
     init {
         cargarDatosCompletos()
     }
 
-    fun inicializarDatosSiEsNecesario() {
-        if (!datosInicializados) {
-            inicializarDatos()
-        }
-    }
-
-    fun inicializarDatos() {
-        viewModelScope.launch {
-            _estado.update { it.copy(
-                cargando = true,
-                inicializando = true,
-                error = null
-            ) }
-
-            try {
-                // 1. Inicializar roles en la base de datos
-                rolRepository.inicializarRoles()
-
-                // 2. Inicializar usuarios en la base de datos
-                usuarioRepository.inicializarUsuarios()
-
-                // 3. Obtener todos los usuarios y derivar docentes automáticamente
-                val usuariosEntities = usuarioRepository.obtenerTodos()
-                docenteRepository.inicializarDocentes(usuariosEntities)
-
-                // 4. Cargar datos completos para la UI
-                cargarDatosCompletos()
-
-                datosInicializados = true
-
-                _estado.update { it.copy(
-                    inicializando = false,
-                    mensajeExito = "Datos inicializados correctamente"
-                ) }
-
-            } catch (e: Exception) {
-                _estado.update { it.copy(
-                    error = "Error al inicializar datos: ${e.message}",
-                    cargando = false,
-                    inicializando = false
-                ) }
-            }
-        }
-    }
-
+    /**
+     * Carga todos los datos necesarios para la pantalla
+     * ✅ ACTUALIZADO: Ahora consulta el backend
+     */
     fun cargarDatosCompletos() {
         viewModelScope.launch {
             _estado.update { it.copy(cargando = true, error = null) }
+
             try {
-                val usuariosEntities = usuarioRepository.obtenerTodos()
-                val usuarios = convertirAUsuarios(usuariosEntities)
+                // Cargar usuarios
+                val usuarios = usuarioRepository.obtenerTodos()
+
+                // Cargar roles
                 val roles = rolRepository.obtenerTodos()
-                val docentes = docenteRepository.obtenerTodos()
+
+                // Cargar estadísticas
+                val estadisticas = usuarioRepository.obtenerEstadisticas()
 
                 _estado.update { it.copy(
                     usuarios = usuarios,
                     usuariosFiltrados = aplicarFiltros(usuarios),
                     roles = roles,
-                    docentes = docentes,
-                    totalRoles = roles.size,
-                    totalDocentes = docentes.size,
+                    estadisticas = estadisticas,
                     cargando = false
                 ) }
             } catch (e: Exception) {
@@ -102,12 +77,15 @@ class GestionUsuariosViewModel(
         }
     }
 
+    /**
+     * Carga solo la lista de usuarios
+     */
     fun cargarUsuarios() {
         viewModelScope.launch {
             _estado.update { it.copy(cargando = true, error = null) }
+
             try {
-                val usuariosEntities = usuarioRepository.obtenerTodos()
-                val usuarios = convertirAUsuarios(usuariosEntities)
+                val usuarios = usuarioRepository.obtenerTodos()
                 _estado.update { it.copy(
                     usuarios = usuarios,
                     usuariosFiltrados = aplicarFiltros(usuarios),
@@ -115,74 +93,48 @@ class GestionUsuariosViewModel(
                 ) }
             } catch (e: Exception) {
                 _estado.update { it.copy(
-                    error = e.message ?: "Error desconocido al cargar usuarios",
+                    error = "Error al cargar usuarios: ${e.message}",
                     cargando = false
                 ) }
             }
         }
     }
 
-    // Función para convertir UsuarioEntity a Usuario
-    private fun convertirAUsuarios(entities: List<UsuarioEntity>): List<Usuario> {
-        return entities.map { entity ->
-            Usuario(
-                idUsuario = entity.idUsuario,
-                rol = Rol.desdeId(entity.idRol) ?: Rol.DOCENTE, // Valor por defecto si es null
-                primeroNombre = entity.primeroNombre,
-                segundoNombre = entity.segundoNombre,
-                apellidoMaterno = entity.apellidoMaterno,
-                apellidoPaterno = entity.apellidoPaterno,
-                email = entity.email,
-                username = entity.username,
-                password = entity.password
-            )
-        }
-    }
-
-    // Función para convertir Usuario a UsuarioEntity
-    private fun convertirAUsuarioEntity(usuario: Usuario): UsuarioEntity {
-        return UsuarioEntity(
-            idUsuario = usuario.idUsuario,
-            idRol = usuario.rol.obtenerIdRol(), // Convertir enum a id numérico
-            primeroNombre = usuario.primeroNombre,
-            segundoNombre = usuario.segundoNombre,
-            apellidoMaterno = usuario.apellidoMaterno,
-            apellidoPaterno = usuario.apellidoPaterno,
-            email = usuario.email,
-            username = usuario.username,
-            password = usuario.password
-        )
-    }
-
+    /**
+     * Actualiza el filtro por rol
+     */
     fun onFiltroRolChange(filtroRol: String) {
         _estado.update { it.copy(filtroRol = filtroRol) }
         aplicarFiltros()
     }
 
+    /**
+     * Actualiza el texto de búsqueda
+     */
     fun onBuscarTextoChange(buscarTexto: String) {
         _estado.update { it.copy(buscarTexto = buscarTexto) }
         aplicarFiltros()
     }
 
+    /**
+     * Elimina un usuario
+     * ✅ ACTUALIZADO: Ahora elimina vía API
+     */
     fun eliminarUsuario(usuario: Usuario) {
         viewModelScope.launch {
             try {
-                // Primero verificar si es docente y eliminar también esa relación
-                val docente = docenteRepository.obtenerPorIdUsuario(usuario.idUsuario)
-                if (docente != null) {
-                    docenteRepository.eliminar(docente)
+                val exitoso = usuarioRepository.eliminar(usuario.idUsuario)
+
+                if (exitoso) {
+                    cargarDatosCompletos()
+                    _estado.update { it.copy(
+                        mensajeExito = "Usuario eliminado correctamente"
+                    ) }
+                } else {
+                    _estado.update { it.copy(
+                        error = "No se pudo eliminar el usuario"
+                    ) }
                 }
-
-                // Luego eliminar el usuario
-                usuarioRepository.eliminarPorId(usuario.idUsuario)
-
-                // Recargar datos
-                cargarDatosCompletos()
-
-                _estado.update { it.copy(
-                    mensajeExito = "Usuario eliminado correctamente"
-                ) }
-
             } catch (e: Exception) {
                 _estado.update { it.copy(
                     error = "Error al eliminar usuario: ${e.message}"
@@ -191,22 +143,26 @@ class GestionUsuariosViewModel(
         }
     }
 
+    /**
+     * Crea un nuevo usuario
+     * ✅ ACTUALIZADO: Ahora crea vía API
+     */
     fun crearUsuario(
-        primeroNombre: String,
-        segundoNombre: String,
-        apellidoPaterno: String,
-        apellidoMaterno: String,
+        primerNombre: String,
+        segundoNombre: String?,
+        apellidoPaterno: String?,
+        apellidoMaterno: String?,
         email: String,
-        username: String,
+        username: String?,
         password: String,
         rol: Rol
     ) {
         viewModelScope.launch {
             try {
-                val nuevoUsuario = UsuarioEntity(
+                val nuevoUsuario = Usuario(
                     idUsuario = 0,
-                    idRol = rol.obtenerIdRol(), // Convertir enum a id
-                    primeroNombre = primeroNombre,
+                    rol = rol,
+                    primerNombre = primerNombre,
                     segundoNombre = segundoNombre,
                     apellidoPaterno = apellidoPaterno,
                     apellidoMaterno = apellidoMaterno,
@@ -215,25 +171,18 @@ class GestionUsuariosViewModel(
                     password = password
                 )
 
-                val usuarioId = usuarioRepository.insertar(nuevoUsuario)
+                val usuarioCreado = usuarioRepository.crear(nuevoUsuario)
 
-                // Si el rol es DOCENTE, crear automáticamente el docente
-                if (rol == Rol.DOCENTE) {
-                    val nuevoDocente = DocenteEntity(
-                        idDocente = 0,
-                        idUsuario = usuarioId.toInt(),
-                        seccionesIds = emptyList()
-                    )
-                    docenteRepository.insertar(nuevoDocente)
+                if (usuarioCreado != null) {
+                    cargarDatosCompletos()
+                    _estado.update { it.copy(
+                        mensajeExito = "Usuario creado correctamente"
+                    ) }
+                } else {
+                    _estado.update { it.copy(
+                        error = "No se pudo crear el usuario"
+                    ) }
                 }
-
-                // Recargar datos
-                cargarDatosCompletos()
-
-                _estado.update { it.copy(
-                    mensajeExito = "Usuario creado correctamente"
-                ) }
-
             } catch (e: Exception) {
                 _estado.update { it.copy(
                     error = "Error al crear usuario: ${e.message}"
@@ -242,36 +191,25 @@ class GestionUsuariosViewModel(
         }
     }
 
+    /**
+     * Actualiza un usuario existente
+     * ✅ ACTUALIZADO: Ahora actualiza vía API
+     */
     fun actualizarUsuario(usuario: Usuario) {
         viewModelScope.launch {
             try {
-                val usuarioEntity = convertirAUsuarioEntity(usuario)
-                usuarioRepository.actualizar(usuarioEntity)
+                val usuarioActualizado = usuarioRepository.actualizar(usuario.idUsuario, usuario)
 
-                // Si cambió el rol, actualizar la relación docente
-                val docenteExistente = docenteRepository.obtenerPorIdUsuario(usuario.idUsuario)
-                val esDocente = usuario.rol == Rol.DOCENTE
-
-                if (esDocente && docenteExistente == null) {
-                    // Crear docente si no existe
-                    val nuevoDocente = DocenteEntity(
-                        idDocente = 0,
-                        idUsuario = usuario.idUsuario,
-                        seccionesIds = emptyList()
-                    )
-                    docenteRepository.insertar(nuevoDocente)
-                } else if (!esDocente && docenteExistente != null) {
-                    // Eliminar docente si ya no es docente
-                    docenteRepository.eliminar(docenteExistente)
+                if (usuarioActualizado != null) {
+                    cargarDatosCompletos()
+                    _estado.update { it.copy(
+                        mensajeExito = "Usuario actualizado correctamente"
+                    ) }
+                } else {
+                    _estado.update { it.copy(
+                        error = "No se pudo actualizar el usuario"
+                    ) }
                 }
-
-                // Recargar datos
-                cargarDatosCompletos()
-
-                _estado.update { it.copy(
-                    mensajeExito = "Usuario actualizado correctamente"
-                ) }
-
             } catch (e: Exception) {
                 _estado.update { it.copy(
                     error = "Error al actualizar usuario: ${e.message}"
@@ -280,6 +218,59 @@ class GestionUsuariosViewModel(
         }
     }
 
+    /**
+     * Desactiva un usuario
+     */
+    fun desactivarUsuario(id: Int) {
+        viewModelScope.launch {
+            try {
+                val exitoso = usuarioRepository.desactivar(id)
+                if (exitoso) {
+                    cargarDatosCompletos()
+                    _estado.update { it.copy(
+                        mensajeExito = "Usuario desactivado correctamente"
+                    ) }
+                } else {
+                    _estado.update { it.copy(
+                        error = "No se pudo desactivar el usuario"
+                    ) }
+                }
+            } catch (e: Exception) {
+                _estado.update { it.copy(
+                    error = "Error al desactivar usuario: ${e.message}"
+                ) }
+            }
+        }
+    }
+
+    /**
+     * Activa un usuario
+     */
+    fun activarUsuario(id: Int) {
+        viewModelScope.launch {
+            try {
+                val exitoso = usuarioRepository.activar(id)
+                if (exitoso) {
+                    cargarDatosCompletos()
+                    _estado.update { it.copy(
+                        mensajeExito = "Usuario activado correctamente"
+                    ) }
+                } else {
+                    _estado.update { it.copy(
+                        error = "No se pudo activar el usuario"
+                    ) }
+                }
+            } catch (e: Exception) {
+                _estado.update { it.copy(
+                    error = "Error al activar usuario: ${e.message}"
+                ) }
+            }
+        }
+    }
+
+    /**
+     * Limpia los mensajes de error y éxito
+     */
     fun limpiarMensajes() {
         _estado.update { it.copy(
             error = null,
@@ -287,15 +278,24 @@ class GestionUsuariosViewModel(
         ) }
     }
 
+    /**
+     * Obtiene un usuario por su ID
+     */
     fun obtenerUsuarioPorId(id: Int): Usuario? {
         return estado.value.usuarios.find { it.idUsuario == id }
     }
 
+    /**
+     * Verifica si un usuario es docente
+     */
     fun esUsuarioDocente(idUsuario: Int): Boolean {
         val usuario = estado.value.usuarios.find { it.idUsuario == idUsuario }
         return usuario?.rol == Rol.DOCENTE
     }
 
+    /**
+     * Aplica los filtros actuales y actualiza la lista filtrada
+     */
     private fun aplicarFiltros() {
         _estado.value.let { estadoActual ->
             val usuariosFiltrados = aplicarFiltros(estadoActual.usuarios)
@@ -303,13 +303,16 @@ class GestionUsuariosViewModel(
         }
     }
 
+    /**
+     * Aplica filtros a una lista de usuarios
+     */
     private fun aplicarFiltros(usuarios: List<Usuario>): List<Usuario> {
         return usuarios.filter { usuario ->
             val coincideBusqueda = estado.value.buscarTexto.isEmpty() ||
-                    usuario.primeroNombre.contains(estado.value.buscarTexto, ignoreCase = true) ||
-                    usuario.apellidoPaterno.contains(estado.value.buscarTexto, ignoreCase = true) ||
+                    usuario.primerNombre.contains(estado.value.buscarTexto, ignoreCase = true) ||
+                    usuario.apellidoPaterno?.contains(estado.value.buscarTexto, ignoreCase = true) == true ||
                     usuario.email.contains(estado.value.buscarTexto, ignoreCase = true) ||
-                    usuario.username.contains(estado.value.buscarTexto, ignoreCase = true)
+                    usuario.username?.contains(estado.value.buscarTexto, ignoreCase = true) == true
 
             val coincideRol = when (estado.value.filtroRol) {
                 "Todos" -> true
@@ -317,21 +320,6 @@ class GestionUsuariosViewModel(
             }
 
             coincideBusqueda && coincideRol
-        }.sortedBy { it.primeroNombre }
+        }.sortedBy { it.primerNombre }
     }
 }
-
-data class GestionUsuariosEstado(
-    val usuarios: List<Usuario> = emptyList(),
-    val usuariosFiltrados: List<Usuario> = emptyList(),
-    val roles: List<com.example.kubhubsystem_gp13_dam.local.entities.RolEntity> = emptyList(),
-    val docentes: List<DocenteEntity> = emptyList(),
-    val cargando: Boolean = false,
-    val inicializando: Boolean = false,
-    val error: String? = null,
-    val mensajeExito: String? = null,
-    val buscarTexto: String = "",
-    val filtroRol: String = "Todos",
-    val totalRoles: Int = 0,
-    val totalDocentes: Int = 0
-)
