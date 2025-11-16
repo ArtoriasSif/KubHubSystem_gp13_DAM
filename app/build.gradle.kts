@@ -18,7 +18,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // ✅ Genera la constante BASE_URL dentro de BuildConfig
-        buildConfigField("String", "BASE_URL", "\"http://54.242.76.7/\"")
+        buildConfigField("String", "BASE_URL", "\"http://3.95.206.182/\"")
     }
 
     buildTypes {

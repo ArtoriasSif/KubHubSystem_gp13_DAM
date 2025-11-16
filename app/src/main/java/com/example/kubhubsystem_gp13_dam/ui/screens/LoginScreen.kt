@@ -24,6 +24,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.kubhubsystem_gp13_dam.model.Rol
 import com.example.kubhubsystem_gp13_dam.model.UserRole
@@ -38,7 +40,17 @@ fun LoginScreen(
     onLoginSuccess: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val loginViewModel: LoginViewModel = viewModel()
+
+    // ✅ CORRECCIÓN: LoginViewModel requiere Context en su constructor
+    val loginViewModel: LoginViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                @Suppress("UNCHECKED_CAST")
+                return LoginViewModel(context) as T
+            }
+        }
+    )
+
     val locationViewModel: LocationViewModel = remember { LocationViewModel(context) }
 
     val uiState by loginViewModel.uiState.collectAsState()
