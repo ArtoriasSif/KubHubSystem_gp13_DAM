@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -40,6 +41,11 @@ import kotlinx.coroutines.launch
  * Pantalla de Gestión de Usuarios
  * ✅ ACTUALIZADO: Ahora usa el nuevo GestionUsuariosViewModel que se conecta al backend
  * ✅ MANTENIDO: Todo el estilo visual y componentes originales
+ * 🆕 NUEVO: Confirmación de eliminación con texto "ELIMINAR"
+ * 🆕 NUEVO: Botón activar/desactivar usuario
+ * 🆕 NUEVO: Filtro por estado activo/inactivo
+ * 🆕 NUEVO: Scroll mejorado con estado
+ * 🆕 NUEVO: Diálogo de edición de usuario
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,10 +53,8 @@ fun GestionUsuariosScreen(
     onNavigateToDetalleUsuario: (Int) -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
-    // ✅ CAMBIO PRINCIPAL: Ya no necesita database ni factory
     val viewModel: GestionUsuariosViewModel = viewModel()
 
-    // 🆕 Obtener el manager de perfiles
     val perfilManager = remember { PerfilUsuarioManager.getInstance() }
     val perfiles by perfilManager.perfiles.collectAsState()
 
@@ -58,8 +62,8 @@ fun GestionUsuariosScreen(
     val scope = rememberCoroutineScope()
     var showDeleteDialog by remember { mutableStateOf<Usuario?>(null) }
     var showNuevoUsuarioDialog by remember { mutableStateOf(false) }
+    var showEditarUsuarioDialog by remember { mutableStateOf<Usuario?>(null) }
 
-    // 🆕 Sincronizar perfiles cuando cambien los usuarios
     LaunchedEffect(estado.usuarios) {
         if (estado.usuarios.isNotEmpty()) {
             perfilManager.inicializarPerfiles(estado.usuarios)
@@ -130,8 +134,6 @@ fun GestionUsuariosScreen(
             }
 
             estado.usuarios.isEmpty() && !estado.cargando -> {
-                // ✅ CAMBIO: Ya no mostramos pantalla de inicialización
-                // porque los datos vienen del backend
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -166,43 +168,36 @@ fun GestionUsuariosScreen(
                     estado = estado,
                     perfiles = perfiles,
                     onFiltroRolChange = { viewModel.onFiltroRolChange(it) },
+                    onFiltroEstadoChange = { viewModel.onFiltroEstadoChange(it) },
                     onBuscarTextoChange = { viewModel.onBuscarTextoChange(it) },
-                    onEditarUsuario = onNavigateToDetalleUsuario,
+                    onEditarUsuario = { usuarioId ->
+                        val usuario = viewModel.obtenerUsuarioPorId(usuarioId)
+                        showEditarUsuarioDialog = usuario
+                    },
                     onEliminarUsuario = { showDeleteDialog = it },
+                    onToggleEstadoUsuario = { usuario ->
+                        if (usuario.activo) {
+                            viewModel.desactivarUsuario(usuario.idUsuario)
+                        } else {
+                            viewModel.activarUsuario(usuario.idUsuario)
+                        }
+                    },
                     modifier = Modifier.padding(padding)
                 )
             }
         }
     }
 
-    // Diálogo de confirmación de eliminación
+    // 🆕 Diálogo de confirmación de eliminación con validación de texto
     showDeleteDialog?.let { usuario ->
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = null },
-            icon = { Icon(Icons.Default.Warning, contentDescription = null) },
-            title = { Text("Eliminar Usuario") },
-            text = {
-                Text("¿Está seguro que desea eliminar a ${usuario.obtenerNombreCompleto()}? Esta acción no se puede deshacer.")
+        DialogoConfirmarEliminacion(
+            usuario = usuario,
+            onConfirmar = {
+                viewModel.eliminarUsuario(usuario)
+                perfilManager.eliminarPerfil(usuario.idUsuario)
+                showDeleteDialog = null
             },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.eliminarUsuario(usuario)
-                        perfilManager.eliminarPerfil(usuario.idUsuario)
-                        showDeleteDialog = null
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text("Eliminar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = null }) {
-                    Text("Cancelar")
-                }
-            }
+            onDismiss = { showDeleteDialog = null }
         )
     }
 
@@ -213,6 +208,15 @@ fun GestionUsuariosScreen(
             onDismiss = { showNuevoUsuarioDialog = false }
         )
     }
+
+    // 🆕 Diálogo de editar usuario
+    showEditarUsuarioDialog?.let { usuario ->
+        DialogoEditarUsuario(
+            viewModel = viewModel,
+            usuario = usuario,
+            onDismiss = { showEditarUsuarioDialog = null }
+        )
+    }
 }
 
 @Composable
@@ -221,11 +225,17 @@ private fun ContenidoPrincipal(
     estado: GestionUsuariosEstado,
     perfiles: Map<Int, com.example.kubhubsystem_gp13_dam.model.PerfilUsuario>,
     onFiltroRolChange: (String) -> Unit,
+    onFiltroEstadoChange: (String) -> Unit,
     onBuscarTextoChange: (String) -> Unit,
     onEditarUsuario: (Int) -> Unit,
     onEliminarUsuario: (Usuario) -> Unit,
+    onToggleEstadoUsuario: (Usuario) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // 🆕 Estado del scroll para mejor navegación
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -246,30 +256,54 @@ private fun ContenidoPrincipal(
         SeccionBusquedaYFiltros(
             buscarTexto = estado.buscarTexto,
             filtroRol = estado.filtroRol,
+            filtroEstado = estado.filtroEstado,
             onFiltroRolChange = onFiltroRolChange,
+            onFiltroEstadoChange = onFiltroEstadoChange,
             onBuscarTextoChange = onBuscarTextoChange
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Lista de usuarios
+        // Lista de usuarios con scroll mejorado
         if (estado.usuariosFiltrados.isEmpty()) {
             EmptyStateView()
         } else {
-            LazyColumn(
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(
-                    items = estado.usuariosFiltrados,
-                    key = { it.idUsuario }
-                ) { usuario ->
-                    TarjetaUsuario(
-                        usuario = usuario,
-                        perfil = perfiles[usuario.idUsuario],
-                        esDocente = usuario.rol == Rol.DOCENTE,
-                        onClick = { onEditarUsuario(usuario.idUsuario) },
-                        onEliminar = { onEliminarUsuario(usuario) }
-                    )
+            Box(modifier = Modifier.weight(1f)) {
+                LazyColumn(
+                    state = listState,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(
+                        items = estado.usuariosFiltrados,
+                        key = { it.idUsuario }
+                    ) { usuario ->
+                        TarjetaUsuario(
+                            usuario = usuario,
+                            perfil = perfiles[usuario.idUsuario],
+                            esDocente = usuario.rol == Rol.DOCENTE,
+                            onClick = { onEditarUsuario(usuario.idUsuario) },
+                            onEliminar = { onEliminarUsuario(usuario) },
+                            onToggleEstado = { onToggleEstadoUsuario(usuario) }
+                        )
+                    }
+                }
+
+                // 🆕 Botón de scroll rápido al inicio
+                if (listState.firstVisibleItemIndex > 3) {
+                    FloatingActionButton(
+                        onClick = {
+                            scope.launch {
+                                listState.animateScrollToItem(0)
+                            }
+                        },
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(16.dp),
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ) {
+                        Icon(Icons.Default.ArrowUpward, contentDescription = "Ir al inicio")
+                    }
                 }
             }
         }
@@ -356,7 +390,9 @@ private fun TarjetaEstadistica(
 private fun SeccionBusquedaYFiltros(
     buscarTexto: String,
     filtroRol: String,
+    filtroEstado: String,
     onFiltroRolChange: (String) -> Unit,
+    onFiltroEstadoChange: (String) -> Unit,
     onBuscarTextoChange: (String) -> Unit
 ) {
     Column {
@@ -382,6 +418,7 @@ private fun SeccionBusquedaYFiltros(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        // Filtro por rol
         Text(
             text = "Filtrar por rol:",
             style = MaterialTheme.typography.labelLarge,
@@ -389,7 +426,6 @@ private fun SeccionBusquedaYFiltros(
             modifier = Modifier.padding(bottom = 8.dp)
         )
 
-        // ✅ ACTUALIZADO: Ahora con los 7 roles del backend
         val roles = listOf(
             "Todos",
             "Administrador",
@@ -415,6 +451,33 @@ private fun SeccionBusquedaYFiltros(
                 )
             }
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 🆕 Filtro por estado activo/inactivo
+        Text(
+            text = "Filtrar por estado:",
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        val estados = listOf("Todos", "Activos", "Inactivos")
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(estados) { estado ->
+                FilterChip(
+                    selected = filtroEstado == estado,
+                    onClick = { onFiltroEstadoChange(estado) },
+                    label = { Text(estado) },
+                    leadingIcon = if (filtroEstado == estado) {
+                        { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
+                    } else null
+                )
+            }
+        }
     }
 }
 
@@ -425,12 +488,11 @@ private fun TarjetaUsuario(
     esDocente: Boolean,
     onClick: () -> Unit,
     onEliminar: () -> Unit,
+    onToggleEstado: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
+        modifier = modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -455,13 +517,23 @@ private fun TarjetaUsuario(
                 Spacer(modifier = Modifier.width(16.dp))
 
                 Column {
-                    Text(
-                        text = usuario.obtenerNombreCompleto(),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = usuario.obtenerNombreCompleto(),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        // 🆕 Indicador de estado activo/inactivo
+                        Icon(
+                            imageVector = if (usuario.activo) Icons.Default.CheckCircle else Icons.Default.Cancel,
+                            contentDescription = if (usuario.activo) "Activo" else "Inactivo",
+                            tint = if (usuario.activo) Color(0xFF4CAF50) else Color(0xFFF44336),
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
 
                     Spacer(modifier = Modifier.height(4.dp))
 
@@ -488,12 +560,44 @@ private fun TarjetaUsuario(
                 }
             }
 
-            IconButton(onClick = onEliminar) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Eliminar",
-                    tint = MaterialTheme.colorScheme.error
-                )
+            // 🆕 Botones de acción
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                // Botón editar
+                IconButton(
+                    onClick = onClick,
+                    colors = IconButtonDefaults.iconButtonColors(
+                        contentColor = Color(0xFF2196F3)
+                    )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Edit,
+                        contentDescription = "Editar"
+                    )
+                }
+
+                // Botón activar/desactivar
+                IconButton(
+                    onClick = onToggleEstado,
+                    colors = IconButtonDefaults.iconButtonColors(
+                        contentColor = if (usuario.activo) Color(0xFFF44336) else Color(0xFF4CAF50)
+                    )
+                ) {
+                    Icon(
+                        imageVector = if (usuario.activo) Icons.Default.Block else Icons.Default.CheckCircle,
+                        contentDescription = if (usuario.activo) "Desactivar" else "Activar"
+                    )
+                }
+
+                // Botón eliminar
+                IconButton(onClick = onEliminar) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "Eliminar",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
     }
@@ -528,7 +632,6 @@ private fun BadgeRol(rol: Rol, esDocente: Boolean) {
     }
 }
 
-// ✅ ACTUALIZADO: Ahora con los 7 roles
 private fun obtenerColorRol(rol: Rol): Color {
     return when (rol) {
         Rol.ADMINISTRADOR -> Color(0xFFF44336)
@@ -541,7 +644,6 @@ private fun obtenerColorRol(rol: Rol): Color {
     }
 }
 
-// ✅ ACTUALIZADO: Ahora con los 7 roles
 private fun obtenerIconoRol(rol: Rol): ImageVector {
     return when (rol) {
         Rol.ADMINISTRADOR -> Icons.Default.Security
@@ -581,6 +683,75 @@ private fun EmptyStateView(modifier: Modifier = Modifier) {
             )
         }
     }
+}
+
+// 🆕 Diálogo de confirmación de eliminación con validación de texto
+@Composable
+private fun DialogoConfirmarEliminacion(
+    usuario: Usuario,
+    onConfirmar: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    var textoConfirmacion by remember { mutableStateOf("") }
+    val textoRequerido = "ELIMINAR"
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+        title = {
+            Text(
+                "Eliminar Usuario",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    "¿Está seguro que desea eliminar a ${usuario.obtenerNombreCompleto()}?",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "Esta acción no se puede deshacer.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    "Para confirmar, escriba \"$textoRequerido\":",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = textoConfirmacion,
+                    onValueChange = { textoConfirmacion = it },
+                    placeholder = { Text(textoRequerido) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = textoConfirmacion.isNotEmpty() && textoConfirmacion != textoRequerido
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirmar,
+                enabled = textoConfirmacion == textoRequerido,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                    disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+                )
+            ) {
+                Text("Eliminar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
 
 @Composable
@@ -754,6 +925,199 @@ private fun DialogoNuevoUsuario(
                         enabled = primerNombre.isNotBlank() && email.isNotBlank() && password.isNotBlank()
                     ) {
                         Text("Crear")
+                    }
+                }
+            }
+        }
+    }
+}
+
+// 🆕 Diálogo de editar usuario
+@Composable
+private fun DialogoEditarUsuario(
+    viewModel: GestionUsuariosViewModel,
+    usuario: Usuario,
+    onDismiss: () -> Unit
+) {
+    var primerNombre by remember { mutableStateOf(usuario.primerNombre) }
+    var segundoNombre by remember { mutableStateOf(usuario.segundoNombre ?: "") }
+    var apellidoPaterno by remember { mutableStateOf(usuario.apellidoPaterno ?: "") }
+    var apellidoMaterno by remember { mutableStateOf(usuario.apellidoMaterno ?: "") }
+    var email by remember { mutableStateOf(usuario.email) }
+    var username by remember { mutableStateOf(usuario.username ?: "") }
+    var password by remember { mutableStateOf("") }
+    var rolSeleccionado by remember { mutableStateOf(usuario.rol) }
+    var passwordVisible by remember { mutableStateOf(false) }
+
+    // Detectar si hubo cambios
+    val huboAlgunCambio = remember(primerNombre, segundoNombre, apellidoPaterno, apellidoMaterno, email, username, password, rolSeleccionado) {
+        primerNombre != usuario.primerNombre ||
+                segundoNombre != (usuario.segundoNombre ?: "") ||
+                apellidoPaterno != (usuario.apellidoPaterno ?: "") ||
+                apellidoMaterno != (usuario.apellidoMaterno ?: "") ||
+                email != usuario.email ||
+                username != (usuario.username ?: "") ||
+                password.isNotBlank() ||
+                rolSeleccionado != usuario.rol
+    }
+
+    Dialog(onDismissRequest = onDismiss) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp)
+            ) {
+                Text(
+                    text = "Editar Usuario",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = primerNombre,
+                    onValueChange = { primerNombre = it },
+                    label = { Text("Primer Nombre *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = segundoNombre,
+                    onValueChange = { segundoNombre = it },
+                    label = { Text("Segundo Nombre") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = apellidoPaterno,
+                    onValueChange = { apellidoPaterno = it },
+                    label = { Text("Apellido Paterno") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = apellidoMaterno,
+                    onValueChange = { apellidoMaterno = it },
+                    label = { Text("Apellido Materno") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = { email = it },
+                    label = { Text("Email *") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("Username") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Nueva Contraseña (dejar vacío si no cambia)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
+                    visualTransformation = if (passwordVisible)
+                        VisualTransformation.None
+                    else
+                        PasswordVisualTransformation(),
+                    trailingIcon = {
+                        IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                            Icon(
+                                if (passwordVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff,
+                                contentDescription = "Toggle password visibility"
+                            )
+                        }
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = "Rol *",
+                    style = MaterialTheme.typography.labelLarge
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                // Selector de roles
+                Rol.obtenerTodos().forEach { rol ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { rolSeleccionado = rol }
+                            .padding(vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = rolSeleccionado == rol,
+                            onClick = { rolSeleccionado = rol }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        BadgeRol(rol = rol, esDocente = rol == Rol.DOCENTE)
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancelar")
+                    }
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Button(
+                        onClick = {
+                            if (primerNombre.isNotBlank() && email.isNotBlank()) {
+                                val usuarioActualizado = usuario.copy(
+                                    primerNombre = primerNombre,
+                                    segundoNombre = segundoNombre.ifBlank { null },
+                                    apellidoPaterno = apellidoPaterno.ifBlank { null },
+                                    apellidoMaterno = apellidoMaterno.ifBlank { null },
+                                    email = email,
+                                    username = username.ifBlank { null },
+                                    password = password,
+                                    rol = rolSeleccionado
+                                )
+                                viewModel.actualizarUsuario(usuarioActualizado)
+                                onDismiss()
+                            }
+                        },
+                        enabled = huboAlgunCambio && primerNombre.isNotBlank() && email.isNotBlank()
+                    ) {
+                        Text("Actualizar")
                     }
                 }
             }

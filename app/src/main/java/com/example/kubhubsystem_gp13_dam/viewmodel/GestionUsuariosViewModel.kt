@@ -17,7 +17,7 @@ import kotlinx.coroutines.launch
 /**
  * ViewModel para Gestión de Usuarios
  * ✅ ACTUALIZADO: Ahora usa los nuevos repositorios que se conectan al backend
- * ❌ ELIMINADO: Ya no maneja DocenteRepository ni inicialización de datos locales
+ * ⛔ ELIMINADO: Ya no maneja DocenteRepository ni inicialización de datos locales
  */
 data class GestionUsuariosEstado(
     val usuarios: List<Usuario> = emptyList(),
@@ -28,7 +28,8 @@ data class GestionUsuariosEstado(
     val error: String? = null,
     val mensajeExito: String? = null,
     val buscarTexto: String = "",
-    val filtroRol: String = "Todos"
+    val filtroRol: String = "Todos",
+    val filtroEstado: String = "Todos" // 🆕 Nuevo filtro para Activo/Inactivo
 )
 
 class GestionUsuariosViewModel : ViewModel() {
@@ -105,6 +106,14 @@ class GestionUsuariosViewModel : ViewModel() {
      */
     fun onFiltroRolChange(filtroRol: String) {
         _estado.update { it.copy(filtroRol = filtroRol) }
+        aplicarFiltros()
+    }
+
+    /**
+     * 🆕 Actualiza el filtro por estado (Activo/Inactivo)
+     */
+    fun onFiltroEstadoChange(filtroEstado: String) {
+        _estado.update { it.copy(filtroEstado = filtroEstado) }
         aplicarFiltros()
     }
 
@@ -305,6 +314,7 @@ class GestionUsuariosViewModel : ViewModel() {
 
     /**
      * Aplica filtros a una lista de usuarios
+     * 🆕 ACTUALIZADO: Ahora incluye filtro por estado activo/inactivo
      */
     private fun aplicarFiltros(usuarios: List<Usuario>): List<Usuario> {
         return usuarios.filter { usuario ->
@@ -319,7 +329,15 @@ class GestionUsuariosViewModel : ViewModel() {
                 else -> usuario.rol.obtenerNombre() == estado.value.filtroRol
             }
 
-            coincideBusqueda && coincideRol
+            // 🆕 Filtro por estado activo/inactivo
+            val coincideEstado = when (estado.value.filtroEstado) {
+                "Todos" -> true
+                "Activos" -> usuario.activo
+                "Inactivos" -> !usuario.activo
+                else -> true
+            }
+
+            coincideBusqueda && coincideRol && coincideEstado
         }.sortedBy { it.primerNombre }
     }
 }
