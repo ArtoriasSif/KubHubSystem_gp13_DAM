@@ -7,6 +7,11 @@ import com.example.kubhubsystem_gp13_dam.model.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
+/**
+ * Repositorio para gestión de Solicitudes
+ * ✅ ACTUALIZADO: Compatible con modelo Usuario del backend
+ * ⚠️ TEMPORAL: Aún usa DAOs locales (migrar gradualmente al backend)
+ */
 class SolicitudRepository(
     private val solicitudDao: SolicitudDAO,
     private val detalleSolicitudDao: DetalleSolicitudDAO,
@@ -22,31 +27,37 @@ class SolicitudRepository(
     // MAPPERS: Entity -> Domain
     // ============================================
 
+    /**
+     * Convierte SolicitudEntity a Solicitud (modelo de dominio)
+     * ✅ ACTUALIZADO: Usa atributos correctos del modelo Usuario del backend
+     */
     private suspend fun SolicitudEntity.toDomain(): Solicitud {
         // Obtener usuario gestor
         val usuarioEntity = usuarioDao.obtenerPorId(idUsuario)
         val gestorPedidos = usuarioEntity?.let {
             Usuario(
                 idUsuario = it.idUsuario,
-                rol = Rol.desdeId(it.idRol) ?: Rol.GESTOR_PEDIDOS,  // ✅ Usar directamente it.idRol
-                primeroNombre = it.primeroNombre,
-                segundoNombre = it.segundoNombre,
-                apellidoMaterno = it.apellidoMaterno,
-                apellidoPaterno = it.apellidoPaterno,
+                rol = Rol.desdeId(it.idRol) ?: Rol.GESTOR_PEDIDOS,
+                primerNombre = it.primeroNombre,      // ✅ Corregido
+                segundoNombre = it.segundoNombre,     // ✅ Nullable
+                apellidoPaterno = it.apellidoPaterno, // ✅ Nullable
+                apellidoMaterno = it.apellidoMaterno, // ✅ Nullable
                 email = it.email,
-                username = it.username,
-                password = it.password
+                username = it.username,               // ✅ Nullable
+                password = it.password ?: "",
+                activo = true                         // ✅ Agregado
             )
         } ?: Usuario(
             idUsuario = 0,
             rol = Rol.GESTOR_PEDIDOS,
-            primeroNombre = "Desconocido",
-            segundoNombre = "",
-            apellidoMaterno = "",
-            apellidoPaterno = "",
+            primerNombre = "Desconocido",             // ✅ Corregido
+            segundoNombre = null,                     // ✅ Nullable
+            apellidoPaterno = null,                   // ✅ Nullable
+            apellidoMaterno = null,                   // ✅ Nullable
             email = "",
-            username = "",
-            password = ""
+            username = null,                          // ✅ Nullable
+            password = "",
+            activo = false                            // ✅ Agregado
         )
 
         // Obtener sección
@@ -57,7 +68,9 @@ class SolicitudRepository(
                 idSeccion = it.idSeccion,
                 nombreSeccion = it.nombreSeccion,
                 idDocente = it.idDocente,
-                nombreDocente = docenteEntity?.let { d -> "${d.primeroNombre} ${d.apellidoPaterno}" } ?: ""
+                nombreDocente = docenteEntity?.let { d ->
+                    "${d.primeroNombre} ${d.apellidoPaterno ?: ""}"  // ✅ Corregido
+                } ?: ""
             )
         } ?: Seccion(idSeccion = 0, nombreSeccion = "Sin sección")
 
@@ -65,25 +78,27 @@ class SolicitudRepository(
         val docenteSeccion = docenteEntity?.let {
             Usuario(
                 idUsuario = it.idUsuario,
-                rol = Rol.desdeId(it.idRol) ?: Rol.DOCENTE,  // ✅ Usar directamente it.idRol
-                primeroNombre = it.primeroNombre,
-                segundoNombre = it.segundoNombre,
-                apellidoMaterno = it.apellidoMaterno,
-                apellidoPaterno = it.apellidoPaterno,
+                rol = Rol.desdeId(it.idRol) ?: Rol.DOCENTE,
+                primerNombre = it.primeroNombre,       // ✅ Corregido
+                segundoNombre = it.segundoNombre,     // ✅ Nullable
+                apellidoPaterno = it.apellidoPaterno, // ✅ Nullable
+                apellidoMaterno = it.apellidoMaterno, // ✅ Nullable
                 email = it.email,
-                username = it.username,
-                password = it.password
+                username = it.username,               // ✅ Nullable
+                password = it.password ?: "",
+                activo = true                         // ✅ Agregado
             )
         } ?: Usuario(
             idUsuario = 0,
             rol = Rol.DOCENTE,
-            primeroNombre = "Sin",
-            segundoNombre = "",
-            apellidoMaterno = "",
-            apellidoPaterno = "Docente",
+            primerNombre = "Sin",                     // ✅ Corregido
+            segundoNombre = null,                     // ✅ Nullable
+            apellidoPaterno = "Docente",              // ✅ Nullable
+            apellidoMaterno = null,                   // ✅ Nullable
             email = "",
-            username = "",
-            password = ""
+            username = null,                          // ✅ Nullable
+            password = "",
+            activo = false                            // ✅ Agregado
         )
 
         // Obtener reserva de sala
@@ -146,10 +161,13 @@ class SolicitudRepository(
             cantidadPersonas = cantidadPersonas,
             fechaSolicitud = fechaSolicitudPlanificada,
             fechaCreacion = fechaCreacion,
-            estado = estadoSolicitud  // ✅ AGREGAR ESTA LÍNEA
+            estado = estadoSolicitud
         )
     }
 
+    /**
+     * Convierte Solicitud (modelo de dominio) a SolicitudEntity
+     */
     private fun Solicitud.toEntity(): SolicitudEntity {
         return SolicitudEntity(
             idSolicitud = idSolicitud,
@@ -157,7 +175,7 @@ class SolicitudRepository(
             idSeccion = seccion.idSeccion,
             idReservaSala = reservaSala.idReservaSala,
             cantidadPersonas = cantidadPersonas,
-            estadoSolicitud = estado,  // ✅ CAMBIAR de "Pendiente" a estado
+            estadoSolicitud = estado,
             fechaSolicitudPlanificada = fechaSolicitud,
             fechaCreacion = fechaCreacion
         )
@@ -167,6 +185,9 @@ class SolicitudRepository(
     // OPERACIONES CRUD
     // ============================================
 
+    /**
+     * Crea una nueva solicitud con sus detalles
+     */
     suspend fun crearSolicitud(solicitud: Solicitud): Long {
         val idSolicitud = solicitudDao.insertar(solicitud.toEntity())
 
@@ -184,31 +205,46 @@ class SolicitudRepository(
         return idSolicitud
     }
 
+    /**
+     * Obtiene una solicitud por su ID
+     */
     suspend fun obtenerSolicitud(idSolicitud: Int): Solicitud? {
         val entity = solicitudDao.obtenerPorId(idSolicitud) ?: return null
         return entity.toDomain()
     }
 
+    /**
+     * Observa todas las solicitudes (Flow reactivo)
+     */
     fun observarTodasSolicitudes(): Flow<List<Solicitud>> {
         return solicitudDao.observarTodas().map { entities ->
             entities.map { it.toDomain() }
         }
     }
 
+    /**
+     * Observa solicitudes por estado (Flow reactivo)
+     */
     fun observarSolicitudesPorEstado(estado: String): Flow<List<Solicitud>> {
         return solicitudDao.observarPorEstado(estado).map { entities ->
             entities.map { it.toDomain() }
         }
     }
 
+    /**
+     * Actualiza el estado de una solicitud
+     */
     suspend fun actualizarEstadoSolicitud(idSolicitud: Int, nuevoEstado: String) {
         solicitudDao.actualizarEstado(idSolicitud, nuevoEstado)
     }
 
+    /**
+     * Actualiza una solicitud completa con sus detalles
+     */
     suspend fun actualizarSolicitud(solicitud: Solicitud) {
         solicitudDao.actualizar(solicitud.toEntity())
 
-        // Actualizar detalles
+        // Actualizar detalles (eliminar y reinsertar)
         detalleSolicitudDao.eliminarPorSolicitud(solicitud.idSolicitud)
         val detalles = solicitud.detalleSolicitud.map { detalle ->
             DetalleSolicitudEntity(
@@ -221,11 +257,17 @@ class SolicitudRepository(
         detalleSolicitudDao.insertarVarios(detalles)
     }
 
+    /**
+     * Elimina una solicitud y sus detalles
+     */
     suspend fun eliminarSolicitud(solicitud: Solicitud) {
         detalleSolicitudDao.eliminarPorSolicitud(solicitud.idSolicitud)
         solicitudDao.eliminar(solicitud.toEntity())
     }
 
+    /**
+     * Cuenta solicitudes por estado
+     */
     suspend fun contarSolicitudesPorEstado(estado: String): Int {
         return solicitudDao.contarPorEstado(estado)
     }

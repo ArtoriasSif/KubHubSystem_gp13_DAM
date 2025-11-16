@@ -126,7 +126,7 @@ class PerfilUsuarioViewModel(
             try {
                 perfilManager.agregarPerfil(usuario)
                 _estado.update { it.copy(
-                    mensajeExito = "Perfil creado para ${usuario.primeroNombre}"
+                    mensajeExito = "Perfil creado para ${usuario.primerNombre}"
                 ) }
             } catch (e: Exception) {
                 _estado.update { it.copy(
