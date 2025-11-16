@@ -643,7 +643,7 @@ fun SolicitudCard(
                     )
                     // Información del docente
                     Text(
-                        text = "Docente: ${solicitud.docenteSeccion.primeroNombre} ${solicitud.docenteSeccion.apellidoPaterno}",
+                        text = "Docente: ${solicitud.docenteSeccion.primerNombre} ${solicitud.docenteSeccion.apellidoPaterno}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )

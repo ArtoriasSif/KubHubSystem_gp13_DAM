@@ -152,7 +152,7 @@ fun PerfilUsuarioScreenSimple(
 
             // Nombre completo del usuario
             Text(
-                text = "${usuario.primeroNombre} ${usuario.segundoNombre} ${usuario.apellidoPaterno} ${usuario.apellidoMaterno}".trim(),
+                text = "${usuario.primerNombre} ${usuario.segundoNombre} ${usuario.apellidoPaterno} ${usuario.apellidoMaterno}".trim(),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
@@ -218,7 +218,8 @@ fun PerfilUsuarioScreenSimple(
                 Column(modifier = Modifier.padding(16.dp)) {
                     InfoRow("Email", usuario.email, Icons.Default.Email)
                     Spacer(modifier = Modifier.height(16.dp))
-                    InfoRow("Username", usuario.username, Icons.Default.Person)
+                    //TODO(REVISAR EN CASO DE NULL EXCEPTION)
+                    InfoRow("Username", usuario.username ?: "No asignado", Icons.Default.Person)
                     Spacer(modifier = Modifier.height(16.dp))
                     InfoRow("Rol", usuario.rol.obtenerNombre(), Icons.Default.Security)
                 }
@@ -414,7 +415,7 @@ fun PerfilUsuarioScreenSimple(
  * Fila de información con icono, etiqueta y valor.
  *
  * @param label Etiqueta (ej: "Email")
- * @param value Valor (ej: "admin@kubhub.com")
+ * @param value Valor (ej: "admin@kuhub.cl")
  * @param icon Icono opcional para mostrar a la izquierda
  */
 @Composable

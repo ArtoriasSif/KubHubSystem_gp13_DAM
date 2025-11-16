@@ -387,7 +387,7 @@ private fun SeccionFotoPerfil(
 
         // Nombre completo del usuario
         Text(
-            text = "${usuario.primeroNombre} ${usuario.segundoNombre} ${usuario.apellidoPaterno} ${usuario.apellidoMaterno}".trim(),
+            text = "${usuario.primerNombre} ${usuario.segundoNombre} ${usuario.apellidoPaterno} ${usuario.apellidoMaterno}".trim(),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
@@ -476,7 +476,7 @@ private fun SeccionInformacionUsuario(usuario: Usuario) {
         ItemInformacion(
             icono = Icons.Default.Person,
             etiqueta = "Username",
-            valor = usuario.username
+            valor = usuario.primerNombre
         )
 
         Spacer(modifier = Modifier.height(12.dp))

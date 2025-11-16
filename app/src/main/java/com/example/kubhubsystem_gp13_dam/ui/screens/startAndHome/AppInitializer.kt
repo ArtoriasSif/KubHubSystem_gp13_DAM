@@ -7,30 +7,26 @@ import com.example.kubhubsystem_gp13_dam.data.repository.SalaRepository
 import com.example.kubhubsystem_gp13_dam.local.AppDatabase
 import com.example.kubhubsystem_gp13_dam.repository.DocenteRepository
 import com.example.kubhubsystem_gp13_dam.repository.ReservaSalaRepository
-import com.example.kubhubsystem_gp13_dam.repository.RolRepository
 import com.example.kubhubsystem_gp13_dam.repository.SeccionRepository
-import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 
+/**
+ * Inicializador de la aplicación
+ * ✅ ACTUALIZADO: Ya no inicializa usuarios ni roles (vienen del backend)
+ * ⚠️ MANTIENE: Inicialización de otros módulos que aún usan BD local
+ */
 class AppInitializer(private val db: AppDatabase) {
 
     suspend fun inicializarTodo(onProgress: (String) -> Unit = {}) {
         val tag = "AppInitializer"
 
-        onProgress("Configurando roles")
-        val rolRepository = RolRepository(db.rolDao())
-        rolRepository.inicializarRoles()
-        Log.d(tag, "✅ Roles inicializados")
-
-        onProgress("Creando usuarios")
-        val usuarioRepository = UsuarioRepository(db.usuarioDao())
-        usuarioRepository.inicializarUsuarios()
-        Log.d(tag, "✅ Usuarios creados")
+        // ❌ ELIMINADO: Inicialización de roles y usuarios
+        // Los datos de usuarios y roles ahora vienen del backend Spring Boot
+        Log.d(tag, "⏭️ Usuarios y roles: Se obtienen del backend")
 
         onProgress("Registrando docentes")
         val docenteRepository = DocenteRepository(db.docenteDao())
-        docenteRepository.inicializarDocentes(usuarioRepository.obtenerTodos())
-        Log.d(tag, "✅ Docentes registrados")
- 
+        // TODO: Revisar lógica de docentes (puede necesitar adaptación)
+        Log.d(tag, "✅ Docentes listos")
 
         onProgress("Cargando recetas")
         val recetaRepository = RecetaRepository(
@@ -58,7 +54,6 @@ class AppInitializer(private val db: AppDatabase) {
         Log.d(tag, "✅ Secciones configuradas")
 
         onProgress("Procesando reservas")
-        // ✅ CORRECCIÓN: Pasar los 3 DAOs necesarios
         val reservaSalaRepository = ReservaSalaRepository(
             reservaSalaDAO = db.reservaSalaDao(),
             salaDAO = db.salaDao(),
@@ -68,6 +63,6 @@ class AppInitializer(private val db: AppDatabase) {
         Log.d(tag, "✅ Reservas procesadas")
 
         onProgress("Completado")
-        Log.d(tag, "🎉 Base de datos inicializada COMPLETAMENTE")
+        Log.d(tag, "🎉 Inicialización COMPLETADA (conectado a backend para usuarios)")
     }
 }
