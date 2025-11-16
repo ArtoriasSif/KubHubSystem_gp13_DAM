@@ -141,13 +141,13 @@ class LoginRepository private constructor(
      */
     fun getDemoCredentials(rol: Rol): Pair<String, String>? {
         return when (rol) {
-            Rol.ADMINISTRADOR -> "admin@kubhub.com" to "admin123"
-            Rol.CO_ADMINISTRADOR -> "coadmin@kubhub.com" to "coadmin123"
-            Rol.GESTOR_PEDIDOS -> "gestor@kubhub.com" to "gestor123"
-            Rol.PROFESOR_A_CARGO -> "profesor@kubhub.com" to "profesor123"
-            Rol.DOCENTE -> "docente@kubhub.com" to "docente123"
-            Rol.ENCARGADO_BODEGA -> "bodega@kubhub.com" to "bodega123"
-            Rol.ASISTENTE_BODEGA -> "asistente@kubhub.com" to "asistente123"
+            Rol.ADMINISTRADOR -> "admin@kuhub.cl" to "admin123"
+            Rol.CO_ADMINISTRADOR -> "coadmin@kuhub.cl" to "coadmin123"
+            Rol.GESTOR_PEDIDOS -> "gestor@kuhub.cl" to "gestor123"
+            Rol.PROFESOR_A_CARGO -> "profesor@kuhub.cl" to "profesor123"
+            Rol.DOCENTE -> "docente@kuhub.cl" to "docente123"
+            Rol.ENCARGADO_BODEGA -> "bodega@kuhub.cl" to "bodega123"
+            Rol.ASISTENTE_BODEGA -> "asistente@kuhub.cl" to "asistente123"
         }
     }
 

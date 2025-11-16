@@ -415,7 +415,7 @@ fun PerfilUsuarioScreenSimple(
  * Fila de información con icono, etiqueta y valor.
  *
  * @param label Etiqueta (ej: "Email")
- * @param value Valor (ej: "admin@kubhub.com")
+ * @param value Valor (ej: "admin@kuhub.cl")
  * @param icon Icono opcional para mostrar a la izquierda
  */
 @Composable
