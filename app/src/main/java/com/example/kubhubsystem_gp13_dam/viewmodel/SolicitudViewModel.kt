@@ -3,7 +3,7 @@ package com.example.kubhubsystem_gp13_dam.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.kubhubsystem_gp13_dam.data.repository.AsignaturaRepository
-import com.example.kubhubsystem_gp13_dam.data.repository.RecetaRepository
+import com.example.kubhubsystem_gp13_dam.data.repository.RecetaRepositoryNotDelete
 import com.example.kubhubsystem_gp13_dam.model.*
 import com.example.kubhubsystem_gp13_dam.repository.SolicitudRepository
 import com.example.kubhubsystem_gp13_dam.repository.ProductoRepository
@@ -21,7 +21,7 @@ import java.time.LocalDateTime
  */
 class SolicitudViewModel(
     private val solicitudRepository: SolicitudRepository,
-    private val recetaRepository: RecetaRepository,
+    private val recetaRepositoryNotDelete: RecetaRepositoryNotDelete,
     private val productoRepository: ProductoRepository,
     private val asignaturaRepository: AsignaturaRepository,
     private val seccionRepository: SeccionRepository,
@@ -62,7 +62,7 @@ class SolicitudViewModel(
 
     // Estados de Recetas
     val recetas: StateFlow<List<com.example.kubhubsystem_gp13_dam.ui.model.Receta>> =
-        recetaRepository.observarRecetas()
+        recetaRepositoryNotDelete.observarRecetas()
             .stateIn(
                 scope = viewModelScope,
                 started = SharingStarted.WhileSubscribed(5000),
@@ -151,7 +151,7 @@ class SolicitudViewModel(
         viewModelScope.launch {
             try {
                 _isLoading.value = true
-                val receta = recetaRepository.obtenerRecetaPorId(idReceta)
+                val receta = recetaRepositoryNotDelete.obtenerRecetaPorId(idReceta)
 
                 receta?.let {
                     val nuevosDetalles = it.ingredientes.map { ingrediente ->

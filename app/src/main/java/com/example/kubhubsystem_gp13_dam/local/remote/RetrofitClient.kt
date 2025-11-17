@@ -1,6 +1,7 @@
 package com.example.kubhubsystem_gp13_dam.local.remote
 
 import com.example.kubhubsystem_gp13_dam.BuildConfig
+import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -16,6 +17,12 @@ object RetrofitClient {
     // ✅ Base URL leída desde build.gradle.kts (BuildConfig)
     // Ejemplo: "http://54.242.76.7/"
     private val BASE_URL: String = BuildConfig.BASE_URL
+
+    private val gson = GsonBuilder()
+        .setLenient()
+        .serializeNulls()
+        .create()
+
 
     // ✅ Interceptor para logging (útil en desarrollo)
     private val loggingInterceptor = HttpLoggingInterceptor().apply {

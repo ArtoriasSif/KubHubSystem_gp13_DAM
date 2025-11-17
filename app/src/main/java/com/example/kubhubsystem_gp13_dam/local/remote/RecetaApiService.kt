@@ -21,7 +21,7 @@ interface RecetaApiService {
 
 
     /**
-     * 🟢 Crear receta con detalles
+     * 🔵 Crear receta con detalles
      * POST http://localhost:8080/api/v1/receta/create-recipe-with-details/
      */
     @POST("api/v1/receta/create-recipe-with-details/")

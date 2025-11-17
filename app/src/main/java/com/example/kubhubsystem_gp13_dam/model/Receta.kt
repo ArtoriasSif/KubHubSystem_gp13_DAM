@@ -23,8 +23,6 @@ data class IngredienteReceta(
 )
 
 
-
-
 data class RecipeWithDetailsCreateDTO(
 
     @SerializedName("nombreReceta")
@@ -95,7 +93,12 @@ enum class EstadoRecetaType {
     INACTIVO
 }
 
-
+// 🔥 OPTIMIZACIÓN: Data class para estadísticas (inmutable)
+data class RecetasStats(
+    val total: Int,
+    val activas: Int,
+    val inactivas: Int
+)
 
 
 
