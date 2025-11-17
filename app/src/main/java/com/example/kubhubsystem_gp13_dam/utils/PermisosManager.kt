@@ -1,6 +1,7 @@
 package com.example.kubhubsystem_gp13_dam.utils
 
 import com.example.kubhubsystem_gp13_dam.model.Rol
+import com.example.kubhubsystem_gp13_dam.ui.components.MenuItem
 import com.example.kubhubsystem_gp13_dam.ui.navigation.MenuRoutes
 
 /**
@@ -24,11 +25,13 @@ object PermisosManager {
             MenuRoutes.Home.route,
             MenuRoutes.MainMenu.route,
             MenuRoutes.Dashboard.route,
+            MenuRoutes.Solicitud.route,
             MenuRoutes.Inventario.route,
             MenuRoutes.Asignaturas.route,
             MenuRoutes.Recetas.route,
             MenuRoutes.GestionPedidos.route,
-            MenuRoutes.Usuarios.route
+            MenuRoutes.Usuarios.route,
+
         ),
 
         // CO_ADMINISTRADOR - Acceso total (por ahora)
@@ -39,8 +42,7 @@ object PermisosManager {
             MenuRoutes.Inventario.route,
             MenuRoutes.Asignaturas.route,
             MenuRoutes.Recetas.route,
-            MenuRoutes.GestionPedidos.route,
-            MenuRoutes.Usuarios.route
+            MenuRoutes.GestionPedidos.route
         ),
 
         // GESTOR_PEDIDOS - Acceso total (por ahora)
@@ -49,10 +51,11 @@ object PermisosManager {
             MenuRoutes.MainMenu.route,
             MenuRoutes.Dashboard.route,
             MenuRoutes.Inventario.route,
+            MenuRoutes.Solicitud.route,
             MenuRoutes.Asignaturas.route,
             MenuRoutes.Recetas.route,
-            MenuRoutes.GestionPedidos.route,
-            MenuRoutes.Usuarios.route
+            MenuRoutes.GestionPedidos.route
+
         ),
 
         // PROFESOR_A_CARGO - Acceso total (por ahora)
@@ -61,6 +64,7 @@ object PermisosManager {
             MenuRoutes.MainMenu.route,
             MenuRoutes.Dashboard.route,
             MenuRoutes.Inventario.route,
+            MenuRoutes.Solicitud.route,
             MenuRoutes.Asignaturas.route,
             MenuRoutes.Recetas.route,
             MenuRoutes.GestionPedidos.route,
@@ -71,12 +75,9 @@ object PermisosManager {
         Rol.DOCENTE to listOf(
             MenuRoutes.Home.route,
             MenuRoutes.MainMenu.route,
-            MenuRoutes.Dashboard.route,
-            MenuRoutes.Inventario.route,
-            MenuRoutes.Asignaturas.route,
-            MenuRoutes.Recetas.route,
-            MenuRoutes.GestionPedidos.route,
-            MenuRoutes.Usuarios.route
+            MenuRoutes.Solicitud.route
+
+
         ),
 
         // ENCARGADO_BODEGA - Acceso total (por ahora)
@@ -85,10 +86,8 @@ object PermisosManager {
             MenuRoutes.MainMenu.route,
             MenuRoutes.Dashboard.route,
             MenuRoutes.Inventario.route,
-            MenuRoutes.Asignaturas.route,
-            MenuRoutes.Recetas.route,
             MenuRoutes.GestionPedidos.route,
-            MenuRoutes.Usuarios.route
+
         ),
 
         // ASISTENTE_BODEGA - Acceso total (por ahora)
@@ -96,11 +95,8 @@ object PermisosManager {
             MenuRoutes.Home.route,
             MenuRoutes.MainMenu.route,
             MenuRoutes.Dashboard.route,
-            MenuRoutes.Inventario.route,
-            MenuRoutes.Asignaturas.route,
-            MenuRoutes.Recetas.route,
-            MenuRoutes.GestionPedidos.route,
-            MenuRoutes.Usuarios.route
+            MenuRoutes.Inventario.route
+
         )
     )
 

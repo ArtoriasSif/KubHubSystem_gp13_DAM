@@ -8,7 +8,8 @@ sealed class MenuRoutes(val route: String) {
     object Inventario : MenuRoutes("inventario")
     object Asignaturas : MenuRoutes("asignaturas")
     object Recetas : MenuRoutes("recetas")
-    //object Solicitud : MenuRoutes("solicitud")  // ✅ Formulario
+
+    object Solicitud : MenuRoutes("solicitud")  // ✅ Formulario
     object GestionPedidos : MenuRoutes("gestion_pedidos")
     object Usuarios : MenuRoutes("usuarios")
 }

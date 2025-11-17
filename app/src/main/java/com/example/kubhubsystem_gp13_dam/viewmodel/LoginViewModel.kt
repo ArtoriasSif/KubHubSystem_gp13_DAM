@@ -25,10 +25,11 @@ data class LoginUiState(
     val forgotPasswordRequested: Boolean = false
 )
 
-class LoginViewModel(context: Context) : ViewModel() {
+class LoginViewModel(
+    private val loginRepository: LoginRepository
+) : ViewModel() {
 
-    // ✅ ACTUALIZADO: Ahora usa el repositorio que se conecta al backend
-    private val loginRepository = LoginRepository.getInstance(context)
+    constructor(context: Context) : this(LoginRepository.getInstance(context))
 
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
