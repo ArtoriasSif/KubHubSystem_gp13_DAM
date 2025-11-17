@@ -1,5 +1,5 @@
 [readme.md.txt](https://github.com/user-attachments/files/22996377/readme.md.txt)
-Evaluación 2
+Evaluación 3
 
 Integrantes:	Matheus de Lara
 		Francisco Gómez
@@ -21,19 +21,20 @@ El propósito del software es probar el resto de funcionalidades, gestión de As
 Se trabaja utilizando GitHub y MIRO
 https://github.com/ArtoriasSif/KubHubSystem_gp13_DAM.git
 https://miro.com/app/board/uXjVJfTFkms=/
-
+https://trello.com/b/H94em5yR/kuhubsystem
 Para Ejecutar, 
+
+Se conectó todo al Backend Java Springboot y algunos elementos a React TS aparte de estar Conectado a Kotlin
+Se conectó Receta Inventario Producto Usuario y Rol
 
 1.- Ingresar con uno de los usuarios DEMO que precargan sus datos según el rol.
 
-2.- Activar Iniciar Periodo y luego reiniciar la APP para probar Persistencia.
+2.- Se pueden Verificar que como Admin se ve todo, y como Docente solo se ve Solicitud
 
-3.- Revisar Perfil usuario para añadir una foto usando la cámara o una foto guardada
+3.- Revisar Inventario y añadir un nuevo producto, se puede reiniciar la app para probar persistencia
 
-4.- Ingresar a Ramos / asignaturas y al seleccionar una sección, asignar un docente
+4.- Revisar Usuarios, se pueden crear, borrar y desactivar
 
-5.- Revisar Inventario y añadir un nuevo producto, se puede reiniciar la app para probar persistencia
+5.- Revisar Pruebas Unitarias
 
-6.- Intentar crear una solicitud con una receta que dará un preset de ingredientes y cantidades
 
-7.- Gestión pedidos, revisar y aprobar la solicitud, luego revisar aglomerado
