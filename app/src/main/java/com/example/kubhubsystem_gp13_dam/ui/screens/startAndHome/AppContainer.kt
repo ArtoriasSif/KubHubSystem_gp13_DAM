@@ -54,8 +54,8 @@ fun AppContainer() {
         )
     }
 
-    val recetaRepository = remember {
-        com.example.kubhubsystem_gp13_dam.data.repository.RecetaRepository(
+    val recetaRepositoryNotDelete = remember {
+        com.example.kubhubsystem_gp13_dam.data.repository.RecetaRepositoryNotDelete(
             recetaDAO = database.recetaDao(),
             detalleDAO = database.detalleRecetaDao(),
             productoDAO = database.productoDao(),
@@ -89,7 +89,7 @@ fun AppContainer() {
     val solicitudViewModel = remember {
         SolicitudViewModel(
             solicitudRepository = solicitudRepository,
-            `recetaRepository` = recetaRepository,
+            `recetaRepositoryNotDelete` = recetaRepositoryNotDelete,
             productoRepository = productoRepository,
             asignaturaRepository = asignaturaRepository,
             seccionRepository = seccionRepository,

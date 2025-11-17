@@ -2,7 +2,7 @@ package com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome
 
 import android.util.Log
 import com.example.kubhubsystem_gp13_dam.data.repository.AsignaturaRepository
-import com.example.kubhubsystem_gp13_dam.data.repository.RecetaRepository
+import com.example.kubhubsystem_gp13_dam.data.repository.RecetaRepositoryNotDelete
 import com.example.kubhubsystem_gp13_dam.data.repository.SalaRepository
 import com.example.kubhubsystem_gp13_dam.local.AppDatabase
 import com.example.kubhubsystem_gp13_dam.repository.DocenteRepository
@@ -29,13 +29,13 @@ class AppInitializer(private val db: AppDatabase) {
         Log.d(tag, "✅ Docentes listos")
 
         onProgress("Cargando recetas")
-        val recetaRepository = RecetaRepository(
+        val recetaRepositoryNotDelete = RecetaRepositoryNotDelete(
             db.recetaDao(),
             db.detalleRecetaDao(),
             db.productoDao(),
             db.inventarioDao()
         )
-        recetaRepository.inicializarRecetas()
+        recetaRepositoryNotDelete.inicializarRecetas()
         Log.d(tag, "✅ Recetas cargadas")
 
         onProgress("Cargando asignaturas")
