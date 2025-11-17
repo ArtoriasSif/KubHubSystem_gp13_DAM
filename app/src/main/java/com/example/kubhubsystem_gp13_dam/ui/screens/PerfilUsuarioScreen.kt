@@ -25,16 +25,13 @@ import com.example.kubhubsystem_gp13_dam.utils.rememberImagePickerWithCameraLaun
 import com.example.kubhubsystem_gp13_dam.viewmodel.PerfilUsuarioViewModel
 
 /**
- * Pantalla de perfil de usuario con funcionalidades completas:
- * - Scroll vertical en toda la pantalla
- * - Bottom sheet para elegir entre cámara o galería
- * - Manejo individual de permisos
- * - Diálogos informativos cuando se deniegan permisos
+ * Pantalla de perfil de usuario
+ * ✅ ACTUALIZADO: Obtiene el usuario completo desde el backend vía ViewModel
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilUsuarioScreen(
-    usuario: Usuario,
+    idUsuario: Int, // ✅ Ahora solo necesita el ID
     perfilViewModel: PerfilUsuarioViewModel,
     onNavigateBack: () -> Unit,
     modifier: Modifier = Modifier
@@ -44,7 +41,15 @@ fun PerfilUsuarioScreen(
     // Estados del ViewModel
     val estado by perfilViewModel.estado.collectAsState()
     val perfiles by perfilViewModel.perfiles.collectAsState()
-    val perfil = perfiles[usuario.idUsuario]
+    val perfil = perfiles[idUsuario]
+
+    // ✅ Cargar usuario completo desde el backend
+    LaunchedEffect(idUsuario) {
+        perfilViewModel.cargarUsuario(idUsuario)
+    }
+
+    // ✅ Usuario actualizado desde el backend
+    val usuario = estado.usuarioActual
 
     // Estados locales de UI
     var mostrarBottomSheet by remember { mutableStateOf(false) }
@@ -57,7 +62,7 @@ fun PerfilUsuarioScreen(
     val imagePickerState = rememberImagePickerWithCameraLauncher(
         onImageSelected = { uri ->
             println("✅ Imagen seleccionada: $uri")
-            perfilViewModel.actualizarFotoPerfil(usuario.idUsuario, uri)
+            perfilViewModel.actualizarFotoPerfil(idUsuario, uri)
         },
         onGalleryPermissionDenied = {
             println("❌ Permiso de galería denegado")
@@ -103,7 +108,6 @@ fun PerfilUsuarioScreen(
                     }
                 },
                 actions = {
-                    // Menú de opciones (3 puntos verticales)
                     IconButton(onClick = { mostrarMenuOpciones = true }) {
                         Icon(
                             imageVector = Icons.Default.MoreVert,
@@ -115,7 +119,6 @@ fun PerfilUsuarioScreen(
                         expanded = mostrarMenuOpciones,
                         onDismissRequest = { mostrarMenuOpciones = false }
                     ) {
-                        // Opción: Eliminar foto (solo visible si tiene foto)
                         if (perfil?.fotoPerfil != null) {
                             DropdownMenuItem(
                                 text = { Text("Eliminar foto") },
@@ -129,7 +132,6 @@ fun PerfilUsuarioScreen(
                             )
                         }
 
-                        // Opción: Abrir configuración de la app
                         DropdownMenuItem(
                             text = { Text("Abrir configuración") },
                             onClick = {
@@ -149,42 +151,53 @@ fun PerfilUsuarioScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        // Columna principal con scroll
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState()) // ✅ SCROLL HABILITADO
-        ) {
-            // Sección: Foto de perfil grande
-            SeccionFotoPerfil(
-                perfil = perfil,
-                usuario = usuario,
-                onCambiarFoto = {
-                    mostrarBottomSheet = true // Abre bottom sheet en vez de galería directamente
-                },
-                onEliminarFoto = {
-                    mostrarDialogoEliminar = true
-                },
-                procesando = estado.procesando
-            )
+        // ✅ Mostrar loading mientras carga el usuario
+        if (estado.cargandoUsuario || usuario == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
+            }
+        } else {
+            // Columna principal con scroll
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                // Sección: Foto de perfil grande
+                SeccionFotoPerfil(
+                    perfil = perfil,
+                    usuario = usuario,
+                    onCambiarFoto = {
+                        mostrarBottomSheet = true
+                    },
+                    onEliminarFoto = {
+                        mostrarDialogoEliminar = true
+                    },
+                    procesando = estado.procesando
+                )
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
-            // Sección: Información del usuario
-            SeccionInformacionUsuario(usuario = usuario)
+                // Sección: Información del usuario
+                SeccionInformacionUsuario(usuario = usuario)
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
+                HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
-            // Sección: Estadísticas del perfil
-            SeccionEstadisticas(perfilViewModel = perfilViewModel)
+                // Sección: Estadísticas del perfil
+                SeccionEstadisticas(perfilViewModel = perfilViewModel)
 
-            // Espaciado final para permitir scroll completo
-            Spacer(modifier = Modifier.height(24.dp))
+                Spacer(modifier = Modifier.height(24.dp))
+            }
         }
     }
 
-    // ✅ BOTTOM SHEET: Elegir entre Cámara o Galería
+    // Bottom sheet para elegir cámara o galería
     if (mostrarBottomSheet) {
         ModalBottomSheet(
             onDismissRequest = { mostrarBottomSheet = false },
@@ -195,7 +208,6 @@ fun PerfilUsuarioScreen(
                     .fillMaxWidth()
                     .padding(bottom = 32.dp)
             ) {
-                // Título del bottom sheet
                 Text(
                     text = "Seleccionar foto de perfil",
                     style = MaterialTheme.typography.titleLarge,
@@ -203,7 +215,6 @@ fun PerfilUsuarioScreen(
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
                 )
 
-                // Opción 1: Tomar foto con cámara
                 ListItem(
                     headlineContent = { Text("Tomar foto") },
                     supportingContent = { Text("Usar la cámara") },
@@ -216,14 +227,12 @@ fun PerfilUsuarioScreen(
                     },
                     modifier = Modifier
                         .clickable {
-                            println("📸 Usuario seleccionó: Tomar foto")
                             imagePickerState.solicitarDesdeCamara()
                             mostrarBottomSheet = false
                         }
                         .fillMaxWidth()
                 )
 
-                // Opción 2: Elegir de galería
                 ListItem(
                     headlineContent = { Text("Elegir de galería") },
                     supportingContent = { Text("Seleccionar foto existente") },
@@ -236,14 +245,12 @@ fun PerfilUsuarioScreen(
                     },
                     modifier = Modifier
                         .clickable {
-                            println("🖼️ Usuario seleccionó: Elegir de galería")
                             imagePickerState.solicitarDesdeGaleria()
                             mostrarBottomSheet = false
                         }
                         .fillMaxWidth()
                 )
 
-                // Opción 3: Cancelar
                 ListItem(
                     headlineContent = { Text("Cancelar") },
                     leadingContent = {
@@ -254,7 +261,6 @@ fun PerfilUsuarioScreen(
                     },
                     modifier = Modifier
                         .clickable {
-                            println("❌ Usuario canceló selección")
                             mostrarBottomSheet = false
                         }
                         .fillMaxWidth()
@@ -263,7 +269,7 @@ fun PerfilUsuarioScreen(
         }
     }
 
-    // Diálogo: Permiso de galería denegado
+    // Diálogos
     if (mostrarDialogoPermisosGaleria) {
         DialogoPermisos(
             tipo = "galería",
@@ -275,7 +281,6 @@ fun PerfilUsuarioScreen(
         )
     }
 
-    // Diálogo: Permiso de cámara denegado
     if (mostrarDialogoPermisosCamara) {
         DialogoPermisos(
             tipo = "cámara",
@@ -287,12 +292,11 @@ fun PerfilUsuarioScreen(
         )
     }
 
-    // Diálogo: Confirmación para eliminar foto
     if (mostrarDialogoEliminar) {
         DialogoEliminarFoto(
             onDismiss = { mostrarDialogoEliminar = false },
             onConfirmar = {
-                perfilViewModel.actualizarFotoPerfil(usuario.idUsuario, null)
+                perfilViewModel.actualizarFotoPerfil(idUsuario, null)
                 mostrarDialogoEliminar = false
             }
         )
@@ -303,9 +307,6 @@ fun PerfilUsuarioScreen(
 // COMPONENTES PRIVADOS
 // ========================================================================================
 
-/**
- * Sección de foto de perfil con overlay de cámara
- */
 @Composable
 private fun SeccionFotoPerfil(
     perfil: com.example.kubhubsystem_gp13_dam.model.PerfilUsuario?,
@@ -320,13 +321,11 @@ private fun SeccionFotoPerfil(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // Avatar grande (160dp) con indicador de carga
         Box(
             modifier = Modifier.size(160.dp),
             contentAlignment = Alignment.Center
         ) {
             if (perfil?.fotoPerfil != null) {
-                // Mostrar foto de perfil usando Coil
                 AsyncImage(
                     model = perfil.fotoPerfil,
                     contentDescription = "Foto de perfil",
@@ -337,7 +336,6 @@ private fun SeccionFotoPerfil(
                     contentScale = ContentScale.Crop
                 )
             } else {
-                // Mostrar iniciales con color de fondo
                 Box(
                     modifier = Modifier
                         .size(160.dp)
@@ -355,7 +353,6 @@ private fun SeccionFotoPerfil(
                 }
             }
 
-            // Overlay: Ícono de cámara en la esquina
             if (!procesando) {
                 Surface(
                     modifier = Modifier
@@ -375,7 +372,6 @@ private fun SeccionFotoPerfil(
                 }
             }
 
-            // Indicador de carga
             if (procesando) {
                 CircularProgressIndicator(
                     modifier = Modifier.align(Alignment.Center)
@@ -385,16 +381,20 @@ private fun SeccionFotoPerfil(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Nombre completo del usuario
+        // ✅ Construir nombre completo desde los campos del usuario
         Text(
-            text = "${usuario.primerNombre} ${usuario.segundoNombre} ${usuario.apellidoPaterno} ${usuario.apellidoMaterno}".trim(),
+            text = buildString {
+                append(usuario.primerNombre)
+                if (!usuario.segundoNombre.isNullOrBlank()) append(" ${usuario.segundoNombre}")
+                if (!usuario.apellidoPaterno.isNullOrBlank()) append(" ${usuario.apellidoPaterno}")
+                if (!usuario.apellidoMaterno.isNullOrBlank()) append(" ${usuario.apellidoMaterno}")
+            }.trim(),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold
         )
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        // Badge con el rol del usuario
         Surface(
             shape = MaterialTheme.shapes.small,
             color = MaterialTheme.colorScheme.secondaryContainer
@@ -409,11 +409,9 @@ private fun SeccionFotoPerfil(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Botones de acción
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Botón: Cambiar foto
             Button(
                 onClick = onCambiarFoto,
                 enabled = !procesando
@@ -427,7 +425,6 @@ private fun SeccionFotoPerfil(
                 Text("Cambiar foto")
             }
 
-            // Botón: Eliminar foto (solo si tiene foto)
             if (perfil?.fotoPerfil != null) {
                 OutlinedButton(
                     onClick = onEliminarFoto,
@@ -446,9 +443,6 @@ private fun SeccionFotoPerfil(
     }
 }
 
-/**
- * Sección de información del usuario
- */
 @Composable
 private fun SeccionInformacionUsuario(usuario: Usuario) {
     Column(
@@ -463,7 +457,6 @@ private fun SeccionInformacionUsuario(usuario: Usuario) {
             modifier = Modifier.padding(bottom = 16.dp)
         )
 
-        // Email
         ItemInformacion(
             icono = Icons.Default.Email,
             etiqueta = "Email",
@@ -472,16 +465,15 @@ private fun SeccionInformacionUsuario(usuario: Usuario) {
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Username
+        // ✅ Mostrar username desde el backend
         ItemInformacion(
             icono = Icons.Default.Person,
             etiqueta = "Username",
-            valor = usuario.primerNombre
+            valor = usuario.username ?: "No asignado"
         )
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        // Rol
         ItemInformacion(
             icono = Icons.Default.Security,
             etiqueta = "Rol",
@@ -490,9 +482,6 @@ private fun SeccionInformacionUsuario(usuario: Usuario) {
     }
 }
 
-/**
- * Item individual de información con icono
- */
 @Composable
 private fun ItemInformacion(
     icono: androidx.compose.ui.graphics.vector.ImageVector,
@@ -524,9 +513,6 @@ private fun ItemInformacion(
     }
 }
 
-/**
- * Sección de estadísticas del perfil
- */
 @Composable
 private fun SeccionEstadisticas(perfilViewModel: PerfilUsuarioViewModel) {
     val estadisticas = perfilViewModel.obtenerEstadisticas()
@@ -547,21 +533,18 @@ private fun SeccionEstadisticas(perfilViewModel: PerfilUsuarioViewModel) {
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            // Total de perfiles
             EstadisticaCard(
                 valor = estadisticas.totalPerfiles.toString(),
                 etiqueta = "Total",
                 icono = Icons.Default.People
             )
 
-            // Perfiles con foto
             EstadisticaCard(
                 valor = estadisticas.perfilesConFoto.toString(),
                 etiqueta = "Con foto",
                 icono = Icons.Default.Photo
             )
 
-            // Perfiles sin foto
             EstadisticaCard(
                 valor = estadisticas.perfilesSinFoto.toString(),
                 etiqueta = "Sin foto",
@@ -571,9 +554,6 @@ private fun SeccionEstadisticas(perfilViewModel: PerfilUsuarioViewModel) {
     }
 }
 
-/**
- * Card individual de estadística
- */
 @Composable
 private fun EstadisticaCard(
     valor: String,
@@ -613,12 +593,9 @@ private fun EstadisticaCard(
     }
 }
 
-/**
- * Diálogo de permisos denegados
- */
 @Composable
 private fun DialogoPermisos(
-    tipo: String, // "galería" o "cámara"
+    tipo: String,
     onDismiss: () -> Unit,
     onAbrirConfiguracion: () -> Unit
 ) {
@@ -651,9 +628,6 @@ private fun DialogoPermisos(
     )
 }
 
-/**
- * Diálogo de confirmación para eliminar foto
- */
 @Composable
 private fun DialogoEliminarFoto(
     onDismiss: () -> Unit,

@@ -202,8 +202,9 @@ fun MainMenuScreen(
                             val usuarioActual = remember { loginRepository.obtenerUsuarioLogueado() }
 
                             if (usuarioActual != null) {
+                                // ✅ ACTUALIZADO: Ahora solo pasa el idUsuario
                                 PerfilUsuarioScreenSimple(
-                                    usuario = usuarioActual,
+                                    idUsuario = usuarioActual.idUsuario, // Solo el ID
                                     perfilManager = perfilManager,
                                     onNavigateBack = { navController.popBackStack() }
                                 )

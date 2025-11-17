@@ -1,12 +1,12 @@
 package com.example.kubhubsystem_gp13_dam.viewmodel
 
-
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.kubhubsystem_gp13_dam.manager.PerfilUsuarioManager
 import com.example.kubhubsystem_gp13_dam.model.PerfilUsuario
 import com.example.kubhubsystem_gp13_dam.model.Usuario
+import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,10 +15,11 @@ import kotlinx.coroutines.launch
 
 /**
  * ViewModel dedicado exclusivamente a la gestión de perfiles de usuario
- * No interactúa con la base de datos, solo maneja datos en memoria
+ * ✅ ACTUALIZADO: Ahora puede cargar el usuario completo desde el backend
  */
 class PerfilUsuarioViewModel(
-    private val perfilManager: PerfilUsuarioManager = PerfilUsuarioManager.getInstance()
+    private val perfilManager: PerfilUsuarioManager = PerfilUsuarioManager.getInstance(),
+    private val usuarioRepository: UsuarioRepository = UsuarioRepository()
 ) : ViewModel() {
 
     private val _estado = MutableStateFlow(PerfilUsuarioEstado())
@@ -29,6 +30,28 @@ class PerfilUsuarioViewModel(
 
     init {
         observarPerfiles()
+    }
+
+    /**
+     * ✅ NUEVO: Carga el usuario completo desde el backend
+     * Útil para obtener datos actualizados como username, email, etc.
+     */
+    fun cargarUsuario(idUsuario: Int) {
+        viewModelScope.launch {
+            _estado.update { it.copy(cargandoUsuario = true, error = null) }
+            try {
+                val usuario = usuarioRepository.obtenerPorId(idUsuario)
+                _estado.update { it.copy(
+                    usuarioActual = usuario,
+                    cargandoUsuario = false
+                ) }
+            } catch (e: Exception) {
+                _estado.update { it.copy(
+                    error = "Error al cargar usuario: ${e.message}",
+                    cargandoUsuario = false
+                ) }
+            }
+        }
     }
 
     /**
@@ -201,6 +224,7 @@ class PerfilUsuarioViewModel(
 
 /**
  * Estado del ViewModel de perfiles
+ * ✅ ACTUALIZADO: Ahora incluye usuarioActual y cargandoUsuario
  */
 data class PerfilUsuarioEstado(
     val perfilesActivos: List<PerfilUsuario> = emptyList(),
@@ -211,7 +235,10 @@ data class PerfilUsuarioEstado(
     val procesando: Boolean = false,
     val error: String? = null,
     val mensajeExito: String? = null,
-    val ultimoIdModificado: Int? = null
+    val ultimoIdModificado: Int? = null,
+    // ✅ NUEVOS CAMPOS
+    val usuarioActual: Usuario? = null,
+    val cargandoUsuario: Boolean = false
 )
 
 /**

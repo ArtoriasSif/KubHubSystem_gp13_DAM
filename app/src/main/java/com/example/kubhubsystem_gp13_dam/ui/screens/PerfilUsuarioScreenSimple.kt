@@ -21,30 +21,59 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.kubhubsystem_gp13_dam.manager.PerfilUsuarioManager
 import com.example.kubhubsystem_gp13_dam.model.Usuario
+import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 import com.example.kubhubsystem_gp13_dam.utils.ImagePickerHelper
 import com.example.kubhubsystem_gp13_dam.utils.rememberImagePickerWithCameraLauncher
+import kotlinx.coroutines.launch
 
 /**
  * Pantalla de perfil de usuario (versión simple sin ViewModel).
+ * ✅ ACTUALIZADO: Ahora carga el usuario completo desde el backend
  *
  * Funcionalidades:
  * - ✅ Scroll completo en toda la pantalla
  * - ✅ Bottom sheet para elegir cámara o galería
  * - ✅ Manejo de permisos individual por opción
  * - ✅ Actualización directa con PerfilUsuarioManager
+ * - ✅ Carga usuario actualizado desde el backend
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PerfilUsuarioScreenSimple(
-    usuario: Usuario,
-    perfilManager: PerfilUsuarioManager,
+    idUsuario: Int, // ✅ Cambio: Ahora solo recibe el ID
+    perfilManager: PerfilUsuarioManager = PerfilUsuarioManager.getInstance(),
+    usuarioRepository: UsuarioRepository = UsuarioRepository(),
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    // ✅ Estado para cargar el usuario desde el backend
+    var usuario by remember { mutableStateOf<Usuario?>(null) }
+    var cargandoUsuario by remember { mutableStateOf(true) }
+    var errorCarga by remember { mutableStateOf<String?>(null) }
+
+    // ✅ Cargar usuario desde el backend
+    LaunchedEffect(idUsuario) {
+        cargandoUsuario = true
+        errorCarga = null
+        try {
+            val usuarioCargado = usuarioRepository.obtenerPorId(idUsuario)
+            usuario = usuarioCargado
+            if (usuarioCargado == null) {
+                errorCarga = "No se encontró el usuario"
+            }
+        } catch (e: Exception) {
+            errorCarga = "Error al cargar usuario: ${e.message}"
+            e.printStackTrace()
+        } finally {
+            cargandoUsuario = false
+        }
+    }
 
     // Estado del perfil desde el manager
     val perfiles by perfilManager.perfiles.collectAsState()
-    val perfil = perfiles[usuario.idUsuario]
+    val perfil = perfiles[idUsuario]
 
     // Estados de UI
     var mostrarBottomSheet by remember { mutableStateOf(false) }
@@ -52,12 +81,17 @@ fun PerfilUsuarioScreenSimple(
     var mostrarDialogoPermisosCamara by remember { mutableStateOf(false) }
     var mostrarDialogoEliminar by remember { mutableStateOf(false) }
 
+    // Snackbar para mensajes
+    val snackbarHostState = remember { SnackbarHostState() }
+
     // Image picker con soporte de cámara y galería
     val imagePickerState = rememberImagePickerWithCameraLauncher(
         onImageSelected = { uri ->
             println("✅ Imagen seleccionada: $uri")
-            // Actualizar foto directamente en el manager
-            perfilManager.actualizarFotoPerfil(usuario.idUsuario, uri)
+            perfilManager.actualizarFotoPerfil(idUsuario, uri)
+            scope.launch {
+                snackbarHostState.showSnackbar("Foto de perfil actualizada")
+            }
         },
         onGalleryPermissionDenied = {
             println("❌ Permiso de galería denegado")
@@ -82,151 +116,211 @@ fun PerfilUsuarioScreenSimple(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
                 )
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        // ✅ Column con scroll vertical habilitado
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState()), // ← SCROLL COMPLETO
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Avatar grande con click para cambiar foto
-            Box(
-                modifier = Modifier.size(160.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                if (perfil?.fotoPerfil != null) {
-                    // Mostrar foto de perfil usando Coil
-                    AsyncImage(
-                        model = perfil.fotoPerfil,
-                        contentDescription = "Foto de perfil",
-                        modifier = Modifier
-                            .size(160.dp)
-                            .clip(CircleShape)
-                            .clickable { mostrarBottomSheet = true }, // Click para cambiar
-                        contentScale = ContentScale.Crop
-                    )
-                } else {
-                    // Mostrar iniciales con color de fondo
-                    Box(
-                        modifier = Modifier
-                            .size(160.dp)
-                            .clip(CircleShape)
-                            .background(Color(perfil?.colorFondo ?: 0xFFBDBDBD))
-                            .clickable { mostrarBottomSheet = true }, // Click para cambiar
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = perfil?.iniciales ?: "??",
-                            style = MaterialTheme.typography.displayLarge,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
+        // ✅ Mostrar loading mientras carga
+        when {
+            cargandoUsuario -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        CircularProgressIndicator()
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text("Cargando perfil...")
                     }
                 }
-
-                // Overlay: Ícono de cámara en la esquina inferior derecha
-                Surface(
+            }
+            errorCarga != null -> {
+                Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .align(Alignment.BottomEnd)
-                        .offset(x = (-4).dp, y = (-4).dp),
-                    shape = CircleShape,
-                    color = MaterialTheme.colorScheme.primary,
-                    shadowElevation = 4.dp
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = "Cambiar foto",
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.padding(12.dp)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Nombre completo del usuario
-            Text(
-                text = "${usuario.primerNombre} ${usuario.segundoNombre} ${usuario.apellidoPaterno} ${usuario.apellidoMaterno}".trim(),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Badge con el rol del usuario
-            Surface(
-                shape = MaterialTheme.shapes.small,
-                color = MaterialTheme.colorScheme.secondaryContainer
-            ) {
-                Text(
-                    text = usuario.rol.obtenerNombre(),
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Botones de acción
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Botón: Cambiar foto (abre bottom sheet)
-                Button(
-                    onClick = { mostrarBottomSheet = true }
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CameraAlt,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Cambiar foto")
-                }
-
-                // Botón: Eliminar foto (solo si tiene foto)
-                if (perfil?.fotoPerfil != null) {
-                    OutlinedButton(
-                        onClick = { mostrarDialogoEliminar = true }
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(24.dp)
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Delete,
+                            imageVector = Icons.Default.Error,
                             contentDescription = null,
-                            modifier = Modifier.size(18.dp)
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(64.dp)
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Eliminar")
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = errorCarga ?: "Error desconocido",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = onNavigateBack) {
+                            Text("Volver")
+                        }
                     }
                 }
             }
+            usuario != null -> {
+                // ✅ Column con scroll vertical habilitado
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState()),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(24.dp))
 
-            Spacer(modifier = Modifier.height(32.dp))
+                    // Avatar grande con click para cambiar foto
+                    Box(
+                        modifier = Modifier.size(160.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (perfil?.fotoPerfil != null) {
+                            AsyncImage(
+                                model = perfil.fotoPerfil,
+                                contentDescription = "Foto de perfil",
+                                modifier = Modifier
+                                    .size(160.dp)
+                                    .clip(CircleShape)
+                                    .clickable { mostrarBottomSheet = true },
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(160.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(perfil?.colorFondo ?: 0xFFBDBDBD))
+                                    .clickable { mostrarBottomSheet = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = perfil?.iniciales ?: "??",
+                                    style = MaterialTheme.typography.displayLarge,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
 
-            // Card de información del usuario
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    InfoRow("Email", usuario.email, Icons.Default.Email)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    //TODO(REVISAR EN CASO DE NULL EXCEPTION)
-                    InfoRow("Username", usuario.username ?: "No asignado", Icons.Default.Person)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    InfoRow("Rol", usuario.rol.obtenerNombre(), Icons.Default.Security)
+                        // Overlay: Ícono de cámara
+                        Surface(
+                            modifier = Modifier
+                                .size(48.dp)
+                                .align(Alignment.BottomEnd)
+                                .offset(x = (-4).dp, y = (-4).dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            shadowElevation = 4.dp
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CameraAlt,
+                                contentDescription = "Cambiar foto",
+                                tint = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.padding(12.dp)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // ✅ Nombre completo construido desde los campos individuales
+                    Text(
+                        text = buildString {
+                            append(usuario!!.primerNombre)
+                            if (!usuario!!.segundoNombre.isNullOrBlank()) {
+                                append(" ${usuario!!.segundoNombre}")
+                            }
+                            if (!usuario!!.apellidoPaterno.isNullOrBlank()) {
+                                append(" ${usuario!!.apellidoPaterno}")
+                            }
+                            if (!usuario!!.apellidoMaterno.isNullOrBlank()) {
+                                append(" ${usuario!!.apellidoMaterno}")
+                            }
+                        }.trim(),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Badge con el rol
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Text(
+                            text = usuario!!.rol.obtenerNombre(),
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Botones de acción
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Button(
+                            onClick = { mostrarBottomSheet = true }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.CameraAlt,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Cambiar foto")
+                        }
+
+                        if (perfil?.fotoPerfil != null) {
+                            OutlinedButton(
+                                onClick = { mostrarDialogoEliminar = true }
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Eliminar")
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // Card de información del usuario
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 24.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            InfoRow("Email", usuario!!.email, Icons.Default.Email)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            // ✅ Username desde el backend
+                            InfoRow(
+                                "Username",
+                                usuario!!.username ?: "No asignado",
+                                Icons.Default.Person
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            InfoRow("Rol", usuario!!.rol.obtenerNombre(), Icons.Default.Security)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
-
-            // Espaciado final para permitir scroll completo
-            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 
@@ -241,7 +335,6 @@ fun PerfilUsuarioScreenSimple(
                     .fillMaxWidth()
                     .padding(bottom = 32.dp)
             ) {
-                // Título
                 Text(
                     text = "Seleccionar foto de perfil",
                     style = MaterialTheme.typography.titleLarge,
@@ -249,7 +342,6 @@ fun PerfilUsuarioScreenSimple(
                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp)
                 )
 
-                // Opción 1: Tomar foto con cámara
                 ListItem(
                     headlineContent = { Text("Tomar foto") },
                     supportingContent = { Text("Usar la cámara") },
@@ -269,7 +361,6 @@ fun PerfilUsuarioScreenSimple(
                         .fillMaxWidth()
                 )
 
-                // Opción 2: Elegir de galería
                 ListItem(
                     headlineContent = { Text("Elegir de galería") },
                     supportingContent = { Text("Seleccionar foto existente") },
@@ -289,7 +380,6 @@ fun PerfilUsuarioScreenSimple(
                         .fillMaxWidth()
                 )
 
-                // Opción 3: Cancelar
                 ListItem(
                     headlineContent = { Text("Cancelar") },
                     leadingContent = {
@@ -391,9 +481,11 @@ fun PerfilUsuarioScreenSimple(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        // Eliminar foto directamente en el manager (pasar null)
-                        perfilManager.actualizarFotoPerfil(usuario.idUsuario, null)
+                        perfilManager.actualizarFotoPerfil(idUsuario, null)
                         mostrarDialogoEliminar = false
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Foto de perfil eliminada")
+                        }
                     },
                     colors = ButtonDefaults.textButtonColors(
                         contentColor = MaterialTheme.colorScheme.error
@@ -413,10 +505,6 @@ fun PerfilUsuarioScreenSimple(
 
 /**
  * Fila de información con icono, etiqueta y valor.
- *
- * @param label Etiqueta (ej: "Email")
- * @param value Valor (ej: "admin@kuhub.cl")
- * @param icon Icono opcional para mostrar a la izquierda
  */
 @Composable
 private fun InfoRow(
@@ -428,7 +516,6 @@ private fun InfoRow(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Icono opcional
         if (icon != null) {
             Icon(
                 imageVector = icon,
@@ -439,7 +526,6 @@ private fun InfoRow(
             Spacer(modifier = Modifier.width(12.dp))
         }
 
-        // Columna con label y valor
         Column {
             Text(
                 text = label,
