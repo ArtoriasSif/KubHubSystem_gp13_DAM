@@ -26,10 +26,11 @@ import com.example.kubhubsystem_gp13_dam.ui.screens.perfil.PerfilUsuarioScreenSi
 import kotlinx.coroutines.launch
 
 /**
- * MainMenuScreen
- * ✅ Sin UsuarioRepository local
- * ✅ GestionUsuariosViewModel obtiene usuarios del backend
- * ✅ PerfilUsuarioManager maneja fotos en memoria
+ * ✅ PANTALLA PRINCIPAL DEL MENÚ
+ * - Integra todas las funcionalidades de ambas versiones
+ * - Sin conflictos entre mainMenuConflict y MainMenuScreen
+ * - Backend-first para usuarios
+ * - Manejo de perfiles en memoria
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -44,14 +45,14 @@ fun MainMenuScreen(
     val navController = rememberNavController()
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
 
-    // ✅ Solo necesitamos el manager de perfiles
+    // ✅ Manager de perfiles (fotos en memoria)
     val perfilManager = remember { PerfilUsuarioManager.getInstance() }
 
-    // ✅ GestionUsuariosViewModel obtiene usuarios del backend automáticamente
+    // ✅ ViewModel para gestión de usuarios (obtiene del backend)
     val gestionUsuariosViewModel: GestionUsuariosViewModel = viewModel()
     val estadoUsuarios by gestionUsuariosViewModel.estado.collectAsState()
 
-    // Inicializar perfiles cuando se cargan los usuarios
+    // Inicializar perfiles cuando se cargan usuarios del backend
     LaunchedEffect(estadoUsuarios.usuarios) {
         if (estadoUsuarios.usuarios.isNotEmpty()) {
             perfilManager.inicializarPerfiles(estadoUsuarios.usuarios)
@@ -68,8 +69,9 @@ fun MainMenuScreen(
                 )
                 HorizontalDivider()
 
+                // 🏠 INICIO
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Home, null) },
+                    icon = { Icon(Icons.Default.Home, contentDescription = null) },
                     label = { Text("Inicio") },
                     selected = currentRoute == "home_internal",
                     onClick = {
@@ -79,65 +81,136 @@ fun MainMenuScreen(
                                 popUpTo("home_internal") { inclusive = true }
                             }
                         }
-                    }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
 
+                // 👤 PERFIL
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Dashboard, null) },
-                    label = { Text("Dashboard") },
-                    selected = currentRoute == "dashboard",
-                    onClick = { scope.launch { drawerState.close(); navController.navigate("dashboard") } }
-                )
-
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Inventory, null) },
-                    label = { Text("Inventario") },
-                    selected = currentRoute == "inventario",
-                    onClick = { scope.launch { drawerState.close(); navController.navigate("inventario") } }
-                )
-
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Assignment, null) },
-                    label = { Text("Solicitudes") },
-                    selected = currentRoute == "solicitudes",
-                    onClick = { scope.launch { drawerState.close(); navController.navigate("solicitudes") } }
-                )
-
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.ShoppingCart, null) },
-                    label = { Text("Pedidos") },
-                    selected = currentRoute == "pedidos",
-                    onClick = { scope.launch { drawerState.close(); navController.navigate("pedidos") } }
-                )
-
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, null) },
-                    label = { Text("Recetas") },
-                    selected = currentRoute == "recetas",
-                    onClick = { scope.launch { drawerState.close(); navController.navigate("recetas") } }
-                )
-
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.People, null) },
-                    label = { Text("Usuarios") },
-                    selected = currentRoute == "usuarios",
-                    onClick = { scope.launch { drawerState.close(); navController.navigate("usuarios") } }
-                )
-
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Person, null) },
+                    icon = { Icon(Icons.Default.AccountCircle, contentDescription = null) },
                     label = { Text("Perfil") },
                     selected = currentRoute == "perfil",
-                    onClick = { scope.launch { drawerState.close(); navController.navigate("perfil") } }
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate("perfil")
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                // 📊 DASHBOARD
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Dashboard, contentDescription = null) },
+                    label = { Text("Dashboard") },
+                    selected = currentRoute == "dashboard",
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate("dashboard")
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                // 📦 INVENTARIO
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Inventory, contentDescription = null) },
+                    label = { Text("Inventario") },
+                    selected = currentRoute == "inventario",
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate("inventario")
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                // 📚 RAMOS-ADMIN
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Class, contentDescription = null) },
+                    label = { Text("Ramos-Admin") },
+                    selected = currentRoute == "asignaturas",
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate("asignaturas")
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                // 🍳 GESTIÓN DE RECETAS
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null) },
+                    label = { Text("Gestión de Recetas") },
+                    selected = currentRoute == "recetas",
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate("recetas")
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                // 📋 SOLICITUDES
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.Assignment, contentDescription = null) },
+                    label = { Text("Solicitudes") },
+                    selected = currentRoute == "solicitud",
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate("solicitud")
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                // 🛒 GESTIÓN DE PEDIDOS
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.ShoppingCart, contentDescription = null) },
+                    label = { Text("Gestión de Pedidos") },
+                    selected = currentRoute == "gestion_pedidos",
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate("gestion_pedidos")
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
+                )
+
+                // 👥 USUARIOS
+                NavigationDrawerItem(
+                    icon = { Icon(Icons.Default.People, contentDescription = null) },
+                    label = { Text("Usuarios") },
+                    selected = currentRoute == "usuarios",
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            navController.navigate("usuarios")
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
 
                 HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
+                // 🚪 CERRAR SESIÓN
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.ExitToApp, null) },
-                    label = { Text("Cerrar Sesión") },
+                    icon = { Icon(Icons.Default.ExitToApp, contentDescription = null) },
+                    label = { Text("Cerrar sesión") },
                     selected = false,
-                    onClick = { scope.launch { drawerState.close(); onLogout() } }
+                    onClick = {
+                        scope.launch {
+                            drawerState.close()
+                            onLogout()
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
             }
         },
@@ -146,54 +219,59 @@ fun MainMenuScreen(
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("KubHub System") },
+                    title = {
+                        Text(
+                            when(currentRoute) {
+                                "perfil" -> "Perfil"
+                                "dashboard" -> "Dashboard"
+                                "inventario" -> "Inventario"
+                                "solicitud" -> "Solicitudes"
+                                "gestion_pedidos" -> "Gestión de Pedidos"
+                                "asignaturas" -> "Gestión de Asignaturas"
+                                "recetas" -> "Gestión de Recetas"
+                                "usuarios" -> "Gestión Usuarios"
+                                else -> "Kubhub System"
+                            }
+                        )
+                    },
                     navigationIcon = {
                         IconButton(onClick = {
-                            scope.launch { if (drawerState.isClosed) drawerState.open() else drawerState.close() }
+                            scope.launch {
+                                if (drawerState.isClosed) drawerState.open()
+                                else drawerState.close()
+                            }
                         }) {
-                            Icon(Icons.Default.Menu, "Menú")
+                            Icon(Icons.Default.Menu, contentDescription = "Menú")
                         }
                     }
                 )
             }
-        ) { padding ->
-            Box(modifier = Modifier.padding(padding)) {
+        ) { innerPadding ->
+            Box(modifier = Modifier.padding(innerPadding)) {
+                // Mostrar loading mientras se cargan los usuarios
                 if (estadoUsuarios.cargando) {
-                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
                         CircularProgressIndicator()
                     }
                 } else {
-                    NavHost(navController, startDestination = "home_internal") {
-                        composable("home_internal") { HomeInternalScreen() }
-                        composable("dashboard") { DashboardScreen() }
-                        composable("inventario") {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Pantalla de Inventario")
-                            }
-                        }
-                        composable("solicitudes") {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Pantalla de Solicitudes")
-                            }
-                        }
-                        composable("pedidos") {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text("Pantalla de Pedidos")
-                            }
-                        }
-                        composable("recetas") { RecetasScreen() }
-                        // ✅ CORREGIDO: Los parámetros ya tienen valores por defecto
-                        composable("usuarios") {
-                            GestionUsuariosScreen(
-                                onNavigateToDetalleUsuario = { idUsuario ->
-                                    // TODO: Implementar navegación a detalle de usuario
-                                    // navController.navigate("usuarios/detalle/$idUsuario")
-                                },
-                                onNavigateBack = {
-                                    navController.popBackStack()
+                    NavHost(
+                        navController = navController,
+                        startDestination = "home_internal"
+                    ) {
+                        // 🏠 HOME INTERNAL
+                        composable("home_internal") {
+                            HomeInternalScreen(
+                                pedidoViewModel = pedidoViewModel,
+                                onNavigateToPedidos = {
+                                    navController.navigate("gestion_pedidos")
                                 }
                             )
                         }
+
+                        // 👤 PERFIL
                         composable("perfil") {
                             // Obtener usuario actual desde LoginRepository
                             val loginRepository = remember {
@@ -206,30 +284,93 @@ fun MainMenuScreen(
                                 PerfilUsuarioScreenSimple(
                                     idUsuario = usuarioActual.idUsuario, // Solo el ID
                                     perfilManager = perfilManager,
-                                    onNavigateBack = { navController.popBackStack() }
+                                    onNavigateBack = {
+                                        navController.popBackStack()
+                                    }
                                 )
                             } else {
-                                // Si no hay usuario, mostrar error o redirigir a login
-                                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                // Si no hay usuario en sesión
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Column(
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
                                         Icon(
-                                            Icons.Default.Person,
+                                            imageVector = Icons.Default.Error,
                                             contentDescription = null,
                                             modifier = Modifier.size(64.dp),
                                             tint = MaterialTheme.colorScheme.error
                                         )
-                                        Spacer(modifier = Modifier.height(16.dp))
                                         Text(
-                                            "No hay usuario en sesión",
+                                            text = "No hay usuario en sesión",
                                             style = MaterialTheme.typography.titleMedium
                                         )
-                                        Spacer(modifier = Modifier.height(8.dp))
                                         Button(onClick = onLogout) {
                                             Text("Volver al login")
                                         }
                                     }
                                 }
                             }
+                        }
+
+                        // 📊 DASHBOARD
+                        composable("dashboard") {
+                            DashboardScreen()
+                        }
+
+                        // 📦 INVENTARIO
+                        composable("inventario") {
+                            InventarioScreen()
+                        }
+
+                        // 📚 ASIGNATURAS
+                        composable("asignaturas") {
+                            GestionAcademicaScreen()
+                        }
+
+                        // 🍳 RECETAS
+                        composable("recetas") {
+                            RecetasScreen2()
+                        }
+
+                        // 📋 SOLICITUDES
+                        composable("solicitud") {
+                            SolicitudScreen(
+                                viewModel = solicitudViewModel,
+                                onNavigateBack = {
+                                    navController.navigate("solicitud")
+                                }
+                            )
+                        }
+
+                        // 🛒 GESTIÓN DE PEDIDOS
+                        composable("gestion_pedidos") {
+                            GestionPedidosScreen(
+                                viewModel = pedidoViewModel,
+                                onNavigateToSolicitud = { idSolicitud ->
+                                    // Cargar solicitud para editar si existe
+                                    if (idSolicitud != null) {
+                                        solicitudViewModel.cargarSolicitudParaEditar(idSolicitud)
+                                    }
+                                    navController.navigate("solicitud")
+                                }
+                            )
+                        }
+
+                        // 👥 USUARIOS
+                        composable("usuarios") {
+                            GestionUsuariosScreen(
+                                onNavigateToDetalleUsuario = { idUsuario ->
+                                    // TODO: Implementar navegación a detalle de usuario
+                                    // navController.navigate("usuarios/detalle/$idUsuario")
+                                },
+                                onNavigateBack = {
+                                    navController.popBackStack()
+                                }
+                            )
                         }
                     }
                 }

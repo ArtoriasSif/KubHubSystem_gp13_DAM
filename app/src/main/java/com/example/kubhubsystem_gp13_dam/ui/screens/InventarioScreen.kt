@@ -44,24 +44,17 @@ fun InventarioScreen() {
     // --- Servicios y Repositorios ---
     val inventarioApiService = remember { RetrofitClient.createService(InventarioApiService::class.java) }
     val productoApiService = remember { RetrofitClient.createService(ProductoApiService::class.java) }
-
     val inventarioRepository = remember { InventarioRepository(inventarioApiService) }
     val productoRepository = remember { ProductoRepository(productoApiService) }
-
-    val factory = remember {
-        InventarioRepository.InventarioViewModelFactory(inventarioRepository, productoRepository)
-    }
-
+    val factory = remember { InventarioRepository.InventarioViewModelFactory(inventarioRepository, productoRepository) }
     val viewModel: InventarioViewModel = viewModel(factory = factory)
 
     // Estados del ViewModel
     val inventariosPaginados by viewModel.inventoryPaginated.collectAsState()
     val categorias by viewModel.categorias.collectAsState()
     val unidadesMedida by viewModel.unidadesMedida.collectAsState()
-    val estados by viewModel.estados.collectAsState()
     val searchQuery by viewModel.searchQuery.collectAsState()
     val selectedCategoria by viewModel.selectedCategoria.collectAsState()
-    val selectedEstado by viewModel.selectedEstado.collectAsState()
     val currentPage by viewModel.currentPage.collectAsState()
     val totalPages by viewModel.totalPages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
@@ -77,9 +70,11 @@ fun InventarioScreen() {
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    val categoriasConTodos by remember(categorias) {
+    val categoriasConTodos by remember {
         derivedStateOf {
-            listOf("Todas las categorías") + categorias.map { it.lowercase().replaceFirstChar { char -> char.uppercase() } }
+            listOf("Todas las categorías") + categorias.map {
+                it.lowercase().replaceFirstChar { char -> char.uppercase() }
+            }
         }
     }
 
@@ -101,6 +96,11 @@ fun InventarioScreen() {
         }
         successMessage?.let {
             snackbarHostState.showSnackbar(it, duration = SnackbarDuration.Short)
+            if (showDialog) {
+                showDialog = false
+                itemToEdit = null
+            }
+            viewModel.clearSuccess()
         }
     }
 
@@ -114,6 +114,8 @@ fun InventarioScreen() {
             viewModel.clearSuccess()
         }
     }
+
+
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -486,26 +488,34 @@ private fun InventarioRow(
     var tipoMovimiento by remember { mutableStateOf("ENTRADA") }
 
     // ✅ Valores seguros con protección contra null y strings vacíos
-    val safeNombre = item.nombreProducto?.trim().takeIf { !it.isNullOrBlank() } ?: "Sin nombre"
-    val safeDescripcion = item.descripcionProducto
-        ?.trim()
-        ?.ifBlank { "Sin descripción" }
-        ?: "Sin descripción"
-    val safeCategoria = item.nombreCategoria
-        ?.trim()
-        ?.takeIf { it.isNotBlank() }
-        ?.replaceFirstChar { it.uppercase() }
-        ?: "Sin categoría"
-    val safeUnidad = item.unidadMedida
-        ?.trim()
-        ?.takeIf { it.isNotBlank() }
-        ?.uppercase()
-        ?: "N/A"
-    val safeStock = item.stock ?: 0.0
-    val safeStockLimitMin = item.stockLimitMin
-    val safeIdInventario = item.idInventario ?: 0
+    // ✅ OPTIMIZACIÓN: Cálculos pesados con remember
+    val safeData = remember(item.idInventario) {
+        object {
+            val nombre = item.nombreProducto?.trim().takeIf { !it.isNullOrBlank() } ?: "Sin nombre"
+            val categoria = item.nombreCategoria?.trim()?.takeIf { it.isNotBlank() }?.replaceFirstChar { it.uppercase() } ?: "Sin categoría"
+            val unidad = item.unidadMedida?.trim()?.takeIf { it.isNotBlank() }?.uppercase() ?: "N/A"
+            val stock = item.stock ?: 0.0
+            val stockLimitMin = item.stockLimitMin
+            val idInventario = item.idInventario ?: 0
+        }
+    }
 
-    // Cálculo del estado (seguro frente a nulls)
+    // ✅ OPTIMIZACIÓN: Estado calculado con remember
+    val estadoInfo = remember(safeData.stock, safeData.stockLimitMin) {
+        when {
+            safeData.stockLimitMin == null || safeData.stockLimitMin == 0.0 ->
+                "NO ASIGNADO" to Color(0xFF9E9E9E)
+            safeData.stock == 0.0 ->
+                "AGOTADO" to Color(0xFFFF5252)
+            safeData.stock < safeData.stockLimitMin ->
+                "BAJO STOCK" to Color(0xFFFFA500)
+            else ->
+                "DISPONIBLE" to Color(0xFF00C853)
+        }
+    }
+
+
+    /**Cálculo del estado (seguro frente a nulls)
     val estadoCalculado = when {
         safeStockLimitMin == null || safeStockLimitMin == 0.0 -> "NO ASIGNADO"
         safeStock == 0.0 -> "AGOTADO"
@@ -518,7 +528,7 @@ private fun InventarioRow(
         "BAJO STOCK" -> Color(0xFFFFA500)
         "DISPONIBLE" -> Color(0xFF00C853)
         else -> Color(0xFF9E9E9E)
-    }
+    }*/
 
     // ========== CUERPO DE TABLA CORREGIDO ==========
     Row(
@@ -529,7 +539,7 @@ private fun InventarioRow(
     ) {
         // NOMBRE (0.20f)
         Text(
-            text = safeNombre,
+            text = safeData.nombre,
             modifier = Modifier.weight(0.20f),
             color = MaterialTheme.colorScheme.onSurface,
             fontSize = 14.sp,
@@ -539,7 +549,7 @@ private fun InventarioRow(
 
         // CATEGORÍA (0.18f)
         Text(
-            text = safeCategoria,
+            text = safeData.categoria,
             modifier = Modifier.weight(0.18f),
             color = MaterialTheme.colorScheme.onSurface,
             fontSize = 14.sp,
@@ -548,7 +558,6 @@ private fun InventarioRow(
         )
 
         // STOCK (0.08f) - Clickeable para ajustar
-        // ✅ CAMBIO: Agregamos Box con Alignment.Center para centrar
         Box(
             modifier = Modifier.weight(0.08f),
             contentAlignment = Alignment.Center
@@ -558,22 +567,21 @@ private fun InventarioRow(
                 contentPadding = PaddingValues(0.dp)
             ) {
                 Text(
-                    text = if (safeStock % 1 != 0.0) {
-                        safeStock.toString()
+                    text = if (safeData.stock % 1 != 0.0) {
+                        safeData.stock.toString()
                     } else {
-                        safeStock.toInt().toString()
+                        safeData.stock.toInt().toString()
                     },
                     fontSize = 14.sp,
                     fontWeight = FontWeight.Bold,
-                    color = estadoColor
+                    color = estadoInfo.second
                 )
             }
         }
 
         // UNIDAD (0.22f)
-        // ✅ CAMBIO: Agregamos textAlign = TextAlign.Center
         Text(
-            text = safeUnidad,
+            text = safeData.unidad,
             modifier = Modifier.weight(0.22f),
             color = MaterialTheme.colorScheme.onSurface,
             fontSize = 14.sp,
@@ -585,11 +593,11 @@ private fun InventarioRow(
         // ESTADO (0.20f)
         Surface(
             modifier = Modifier.weight(0.20f),
-            color = estadoColor,
+            color = estadoInfo.second,
             shape = RoundedCornerShape(12.dp)
         ) {
             Text(
-                text = estadoCalculado,
+                text = estadoInfo.first,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
                 color = Color.Black,
                 fontSize = 12.sp,
@@ -610,8 +618,8 @@ private fun InventarioRow(
                 // Botón Editar
                 IconButton(
                     onClick = {
-                        Log.d("EDIT_BTN", "Editar inventario ID=$safeIdInventario")
-                        onEdit(safeIdInventario)
+                        Log.d("EDIT_BTN", "Editar inventario ID=${safeData.idInventario}")
+                        onEdit(safeData.idInventario)
                     },
                     modifier = Modifier.size(32.dp)
                 ) {
@@ -698,10 +706,11 @@ private fun InventarioRow(
     // Diálogo de ajuste de stock
     if (showStockDialog) {
         StockAdjustDialog(
-            productoNombre = safeNombre,
-            stockActual = safeStock,
-            unidad = safeUnidad,
-            onDismiss = { showStockDialog = false },onConfirm = { nuevoStock ->
+            productoNombre = safeData.nombre,
+            stockActual = safeData.stock,
+            unidad = safeData.unidad,
+            onDismiss = { showStockDialog = false },
+            onConfirm = { nuevoStock ->
                 coroutineScope.launch {
                     TODO("Implementar updateStock en el ViewModel")
                 }
@@ -710,12 +719,13 @@ private fun InventarioRow(
         )
     }
 
+
     // Diálogo de movimiento (entrada/salida)
     if (showMovimientoDialog) {
         MovimientoDialog(
-            productoNombre = safeNombre,
-            stockActual = safeStock,
-            unidad = safeUnidad,
+            productoNombre = safeData.nombre,
+            stockActual = safeData.stock,
+            unidad = safeData.unidad,
             tipoMovimiento = tipoMovimiento,
             onDismiss = { showMovimientoDialog = false },
             onConfirm = { cantidad ->
@@ -736,7 +746,7 @@ private fun InventarioRow(
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("Confirmar eliminación") },
-            text = { Text("¿Está seguro de que desea eliminar '$safeNombre'?") },
+            text = { Text("¿Está seguro de que desea eliminar '${safeData.nombre}'?") },
             confirmButton = {
                 Button(
                     onClick = {
@@ -758,6 +768,7 @@ private fun InventarioRow(
 }
 
 
+/**
 @Composable
 private fun RowScope.TableHeaderText(text: String, weight: Float) {
     Text(
@@ -769,199 +780,7 @@ private fun RowScope.TableHeaderText(text: String, weight: Float) {
         maxLines = 1,
         overflow = TextOverflow.Ellipsis
     )
-}
-
-@Composable
-private fun InventarioRow(
-    item: InventoryWithProductResponseAnswerUpdateDTO,
-    onEdit: (Int) -> Unit,   // 👈 ahora recibe el ID del inventario
-    onViewDetails: () -> Unit,
-    onDelete: () -> Unit
-) {
-    var showDeleteDialog by remember { mutableStateOf(false) }
-
-    // ✅ Valores seguros con protección contra null y strings vacíos
-    val safeNombre = item.nombreProducto?.trim().takeIf { !it.isNullOrBlank() } ?: "Sin nombre"
-
-    // IMPORTANT: proteger trim() con ?.
-    val safeDescripcion = item.descripcionProducto
-        ?.trim()
-        ?.ifBlank { "Sin descripción" }
-        ?: "Sin descripción"
-
-    val safeCategoria = item.nombreCategoria
-        ?.trim()
-        ?.takeIf { it.isNotBlank() }
-        ?.replaceFirstChar { it.uppercase() }
-        ?: "Sin categoría"
-
-    val safeUnidad = item.unidadMedida
-        ?.trim()
-        ?.takeIf { it.isNotBlank() }
-        ?.uppercase()
-        ?: "N/A"
-
-    val safeStock = item.stock ?: 0.0
-    val safeStockLimitMin = item.stockLimitMin // lo tratamos abajo
-
-    // Cálculo del estado (seguro frente a nulls)
-    val estadoCalculado = when {
-        safeStockLimitMin == null || safeStockLimitMin == 0.0 -> "NO ASIGNADO"
-        safeStock == 0.0 -> "AGOTADO"
-        safeStock < safeStockLimitMin -> "BAJO STOCK"
-        else -> "DISPONIBLE"
-    }
-
-    val estadoColor = when (estadoCalculado) {
-        "AGOTADO" -> Color(0xFFFF5252)
-        "BAJO STOCK" -> Color(0xFFFFA500)
-        "DISPONIBLE" -> Color(0xFF00C853)
-        else -> Color(0xFF9E9E9E)
-    }
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // NOMBRE (15%)
-        Text(
-            text = safeNombre,
-            modifier = Modifier.weight(0.15f),
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 14.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Spacer(modifier = Modifier.width(20.dp))
-
-        // CATEGORÍA (15%)
-        Text(
-            text = safeCategoria,
-            modifier = Modifier.weight(0.15f),
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 14.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Spacer(modifier = Modifier.width(20.dp))
-
-        // STOCK (8%)
-        Text(
-            text = safeStock.toInt().toString(),
-            modifier = Modifier.weight(0.08f),
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center
-        )
-        Spacer(modifier = Modifier.width(20.dp))
-
-        // UNIDAD (18%)
-        Text(
-            text = safeUnidad,
-            modifier = Modifier.weight(0.18f),
-            color = MaterialTheme.colorScheme.onSurface,
-            fontSize = 14.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Spacer(modifier = Modifier.width(20.dp))
-
-        // ESTADO (24%)
-        Surface(
-            modifier = Modifier.weight(0.18f),
-            color = estadoColor,
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Text(
-                text = estadoCalculado,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp),
-                color = Color.Black,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Spacer(modifier = Modifier.width(24.dp))
-
-        // ACCIONES (20%)
-        Row(
-            modifier = Modifier.weight(0.20f),
-            horizontalArrangement = Arrangement.End,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Botón Editar
-            IconButton(
-                onClick = {
-                    Log.d("EDIT_BTN", "Editar inventario ID=${item.idInventario}")
-                    onEdit(item.idInventario!!)
-                },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    Icons.Default.Edit,
-                    contentDescription = "Editar",
-                    tint = Color(0xFFFFC107),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            // Botón Ver detalles
-            IconButton(
-                onClick = onViewDetails,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    Icons.Default.MoreHoriz,
-                    contentDescription = "Ver detalles",
-                    tint = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-
-            // Botón Eliminar
-            IconButton(
-                onClick = { showDeleteDialog = true },
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "Eliminar",
-                    tint = Color(0xFFF44336),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
-        }
-    }
-
-    // Diálogo de confirmación de eliminación
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Confirmar eliminación") },
-            text = { Text("¿Está seguro de que desea eliminar '${item.nombreProducto}'?") },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        onDelete()
-                        showDeleteDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF44336))
-                ) {
-                    Text("Eliminar")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("Cancelar")
-                }
-            }
-        )
-    }
-}
+}*/
 
 
 @OptIn(ExperimentalMaterial3Api::class)

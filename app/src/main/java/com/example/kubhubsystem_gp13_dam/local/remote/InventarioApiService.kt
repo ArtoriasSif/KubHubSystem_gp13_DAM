@@ -24,7 +24,7 @@ interface InventarioApiService {
 
     // --- Endpoints que devuelven el DTO para el Frontend (USO RECOMENDADO) ---
     /**
-     * ✅ [GET] /api/v1/inventario/find-all-inventories-active/
+     * 🟢 /api/v1/inventario/find-all-inventories-active/
      * Obtiene la lista de todos los productos activos en el inventario.
      * (Equivalente a 'findAllActiveInventoryOrderedByName' en el Controller)
      */
@@ -32,7 +32,7 @@ interface InventarioApiService {
     suspend fun getAllActiveInventories(): List<InventoryWithProductResponseAnswerUpdateDTO>
 
     /**
-     * ✅ [POST] /api/v1/inventario/create-inventory-with-product/
+     * 🔵  /api/v1/inventario/create-inventory-with-product/
      * Crea un nuevo registro de inventario.
      * (Equivalente a 'save' en el Controller)
      */
@@ -42,7 +42,7 @@ interface InventarioApiService {
     ): InventoryWithProductCreateDTO
 
     /**
-     * ✅ [PUT] /api/v1/inventario/update-inventory-with-product/
+     * 🟡  /api/v1/inventario/update-inventory-with-product/
      * Actualiza un item de inventario existente.
      * (Equivalente a 'updateInventoryWithProduct' en el Controller)
      */
@@ -52,7 +52,7 @@ interface InventarioApiService {
     ): InventoryWithProductResponseAnswerUpdateDTO
 
     /**
-     * ✅ [PUT] /api/v1/inventario/update-active-value-product-false/{id_inventario}
+     * 🔴   /api/v1/inventario/update-active-value-product-false/{id_inventario}
      * Realiza una eliminación lógica actualizando el estado 'activo' a false.
      * (Equivalente a 'updateActiveValueProductFalse' en el Controller)
      *
