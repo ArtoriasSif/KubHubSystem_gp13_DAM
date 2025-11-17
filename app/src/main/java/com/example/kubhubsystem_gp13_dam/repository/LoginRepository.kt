@@ -144,8 +144,8 @@ class LoginRepository private constructor(
             Rol.ADMINISTRADOR -> "admin@kuhub.cl" to "admin123"
             Rol.CO_ADMINISTRADOR -> "coadmin@kuhub.cl" to "coadmin123"
             Rol.GESTOR_PEDIDOS -> "gestor@kuhub.cl" to "gestor123"
-            Rol.PROFESOR_A_CARGO -> "profesor@kuhub.cl" to "profesor123"
-            Rol.DOCENTE -> "docente@kuhub.cl" to "docente123"
+            Rol.PROFESOR_A_CARGO -> "profesorCargo@kuhub.cl" to "profesor123"
+            Rol.DOCENTE -> "carmen.jimenez@kuhub.cl" to "docente123"
             Rol.ENCARGADO_BODEGA -> "bodega@kuhub.cl" to "bodega123"
             Rol.ASISTENTE_BODEGA -> "asistente@kuhub.cl" to "asistente123"
         }

@@ -32,10 +32,10 @@ data class GestionUsuariosEstado(
     val filtroEstado: String = "Todos" // 🆕 Nuevo filtro para Activo/Inactivo
 )
 
-class GestionUsuariosViewModel : ViewModel() {
-
-    private val usuarioRepository = UsuarioRepository()
-    private val rolRepository = RolRepository()
+class GestionUsuariosViewModel(
+    private val usuarioRepository: UsuarioRepository = UsuarioRepository(),
+    private val rolRepository: RolRepository = RolRepository()
+) : ViewModel() {
 
     private val _estado = MutableStateFlow(GestionUsuariosEstado())
     val estado: StateFlow<GestionUsuariosEstado> = _estado.asStateFlow()
