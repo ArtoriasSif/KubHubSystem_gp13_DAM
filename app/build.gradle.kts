@@ -18,7 +18,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // ✅ Genera la constante BASE_URL dentro de BuildConfig
-        buildConfigField("String", "BASE_URL", "\"http://54.163.19.39/\"")
+        buildConfigField("String", "BASE_URL", "\"http://34.227.190.71/\"")
     }
 
     buildTypes {
@@ -120,7 +120,6 @@ dependencies {
 
     // ---GSON ---
     implementation("com.google.code.gson:gson:2.10.1")
-
     // ========================================
     //  IMAGES (COIL)
     // ========================================

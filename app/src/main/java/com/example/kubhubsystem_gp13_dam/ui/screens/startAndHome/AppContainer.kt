@@ -117,7 +117,7 @@ fun AppContainer() {
 
         composable(MenuRoutes.Login.route) {
             // ✅ Sin parámetros
-            LoginScreen(
+            LoginScreen2(
                 onLoginSuccess = {
                     navController.navigate(MenuRoutes.MainMenu.route) {
                         popUpTo(MenuRoutes.Login.route) { inclusive = true }

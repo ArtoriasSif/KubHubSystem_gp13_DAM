@@ -1,7 +1,8 @@
 package com.example.kubhubsystem_gp13_dam.ui.screens
 
-import android.view.Menu
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
@@ -24,8 +25,8 @@ import com.example.kubhubsystem_gp13_dam.ui.viewmodel.SolicitudViewModel
 import com.example.kubhubsystem_gp13_dam.viewmodel.PedidoViewModel
 import com.example.kubhubsystem_gp13_dam.ui.screens.dashboard.DashboardScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome.HomeInternalScreen
-import com.example.kubhubsystem_gp13_dam.ui.screens.mainMenu.recetas.RecetasScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.perfil.PerfilUsuarioScreenSimple
+import com.example.kubhubsystem_gp13_dam.repository.LoginRepository2
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,12 +46,17 @@ fun MainMenuScreen(
     val gestionUsuariosViewModel: GestionUsuariosViewModel = viewModel()
     val estadoUsuarios by gestionUsuariosViewModel.estado.collectAsState()
 
-    // ✅ OBTENER ROL DEL USUARIO ACTUAL
     val loginRepository = remember {
-        com.example.kubhubsystem_gp13_dam.data.repository.LoginRepository.getInstance(context)
+        LoginRepository2.getInstance(context)
     }
     val usuarioActual = remember { loginRepository.obtenerUsuarioLogueado() }
     val rolUsuario = usuarioActual?.rol
+
+    // Debug: Verificar que el usuario está disponible
+    LaunchedEffect(Unit) {
+        println("🔍 MainMenuScreen - Usuario actual: ${usuarioActual?.email}")
+        println("🔍 MainMenuScreen - Rol: ${rolUsuario?.nombreRol}")
+    }
 
     LaunchedEffect(estadoUsuarios.usuarios) {
         if (estadoUsuarios.usuarios.isNotEmpty()) {
@@ -61,171 +67,199 @@ fun MainMenuScreen(
     ModalNavigationDrawer(
         drawerContent = {
             ModalDrawerSheet {
-                Text(
-                    text = "Kubhub System",
-                    modifier = Modifier.padding(16.dp),
-                    style = MaterialTheme.typography.titleLarge
-                )
-                HorizontalDivider()
+                // 🔄 AÑADIDO: ScrollState para hacer el contenido scrolleable
+                val scrollState = rememberScrollState()
 
-                // 🏠 INICIO (siempre visible)
-                if (rolUsuario != null && PermisosManager.tieneAcceso(rolUsuario, MenuRoutes.Home.route)) {
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Home, contentDescription = null) },
-                        label = { Text("Inicio") },
-                        selected = currentRoute == "home_internal",
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                                navController.navigate("home_internal") {
-                                    popUpTo("home_internal") { inclusive = true }
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .verticalScroll(scrollState)
+                ) {
+                    // Header del drawer
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                    ) {
+                        Text(
+                            text = "Kubhub System",
+                            style = MaterialTheme.typography.titleLarge
+                        )
+                        usuarioActual?.let {
+                            Text(
+                                text = it.nombreCompleto,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = it.rol.nombreRol,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                    HorizontalDivider()
+
+                    // 🏠 INICIO (siempre visible)
+                    if (rolUsuario != null && PermisosManager.tieneAcceso(rolUsuario, MenuRoutes.Home.route)) {
+                        NavigationDrawerItem(
+                            icon = { Icon(Icons.Default.Home, contentDescription = null) },
+                            label = { Text("Inicio") },
+                            selected = currentRoute == "home_internal",
+                            onClick = {
+                                scope.launch {
+                                    drawerState.close()
+                                    navController.navigate("home_internal") {
+                                        popUpTo("home_internal") { inclusive = true }
+                                    }
                                 }
-                            }
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp)
-                    )
-                }
+                            },
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        )
+                    }
 
-                // 👤 PERFIL (siempre visible - no necesita permiso específico)
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.AccountCircle, contentDescription = null) },
-                    label = { Text("Perfil") },
-                    selected = currentRoute == "perfil",
-                    onClick = {
-                        scope.launch {
-                            drawerState.close()
-                            navController.navigate("perfil")
-                        }
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp)
-                )
-
-                // 📊 DASHBOARD
-                if (rolUsuario != null && PermisosManager.tieneAcceso(rolUsuario, MenuRoutes.Dashboard.route)) {
+                    // 👤 PERFIL (siempre visible)
                     NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Dashboard, contentDescription = null) },
-                        label = { Text("Dashboard") },
-                        selected = currentRoute == "dashboard",
+                        icon = { Icon(Icons.Default.AccountCircle, contentDescription = null) },
+                        label = { Text("Perfil") },
+                        selected = currentRoute == "perfil",
                         onClick = {
                             scope.launch {
                                 drawerState.close()
-                                navController.navigate("dashboard")
+                                navController.navigate("perfil")
                             }
                         },
                         modifier = Modifier.padding(horizontal = 12.dp)
                     )
-                }
 
-                // 📦 INVENTARIO
-                if (rolUsuario != null && PermisosManager.puedeGestionarInventario(rolUsuario)) {
+                    // 📊 DASHBOARD
+                    if (rolUsuario != null && PermisosManager.tieneAcceso(rolUsuario, MenuRoutes.Dashboard.route)) {
+                        NavigationDrawerItem(
+                            icon = { Icon(Icons.Default.Dashboard, contentDescription = null) },
+                            label = { Text("Dashboard") },
+                            selected = currentRoute == "dashboard",
+                            onClick = {
+                                scope.launch {
+                                    drawerState.close()
+                                    navController.navigate("dashboard")
+                                }
+                            },
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        )
+                    }
+
+                    // 📦 INVENTARIO
+                    if (rolUsuario != null && PermisosManager.puedeGestionarInventario(rolUsuario)) {
+                        NavigationDrawerItem(
+                            icon = { Icon(Icons.Default.Inventory, contentDescription = null) },
+                            label = { Text("Inventario") },
+                            selected = currentRoute == "inventario",
+                            onClick = {
+                                scope.launch {
+                                    drawerState.close()
+                                    navController.navigate("inventario")
+                                }
+                            },
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        )
+                    }
+
+                    // 📚 RAMOS-ADMIN
+                    if (rolUsuario != null && PermisosManager.tieneAcceso(rolUsuario, MenuRoutes.Asignaturas.route)) {
+                        NavigationDrawerItem(
+                            icon = { Icon(Icons.Default.Class, contentDescription = null) },
+                            label = { Text("Ramos-Admin") },
+                            selected = currentRoute == "asignaturas",
+                            onClick = {
+                                scope.launch {
+                                    drawerState.close()
+                                    navController.navigate("asignaturas")
+                                }
+                            },
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        )
+                    }
+
+                    // 🍳 GESTIÓN DE RECETAS
+                    if (rolUsuario != null && PermisosManager.tieneAcceso(rolUsuario, MenuRoutes.Recetas.route)) {
+                        NavigationDrawerItem(
+                            icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null) },
+                            label = { Text("Gestión de Recetas") },
+                            selected = currentRoute == "recetas",
+                            onClick = {
+                                scope.launch {
+                                    drawerState.close()
+                                    navController.navigate("recetas")
+                                }
+                            },
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        )
+                    }
+
+                    // 📋 SOLICITUDES
+                    if (rolUsuario != null && PermisosManager.tieneAcceso(rolUsuario, MenuRoutes.Solicitud.route)) {
+                        NavigationDrawerItem(
+                            icon = { Icon(Icons.Default.Assignment, contentDescription = null) },
+                            label = { Text("Solicitudes") },
+                            selected = currentRoute == "solicitud",
+                            onClick = {
+                                scope.launch {
+                                    drawerState.close()
+                                    navController.navigate("solicitud")
+                                }
+                            },
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        )
+                    }
+
+                    // 🛒 GESTIÓN DE PEDIDOS
+                    if (rolUsuario != null && PermisosManager.puedeGestionarPedidos(rolUsuario)) {
+                        NavigationDrawerItem(
+                            icon = { Icon(Icons.Default.ShoppingCart, contentDescription = null) },
+                            label = { Text("Gestión de Pedidos") },
+                            selected = currentRoute == "gestion_pedidos",
+                            onClick = {
+                                scope.launch {
+                                    drawerState.close()
+                                    navController.navigate("gestion_pedidos")
+                                }
+                            },
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        )
+                    }
+
+                    // 👥 USUARIOS
+                    if (rolUsuario != null && PermisosManager.puedeGestionarUsuarios(rolUsuario)) {
+                        NavigationDrawerItem(
+                            icon = { Icon(Icons.Default.People, contentDescription = null) },
+                            label = { Text("Usuarios") },
+                            selected = currentRoute == "usuarios",
+                            onClick = {
+                                scope.launch {
+                                    drawerState.close()
+                                    navController.navigate("usuarios")
+                                }
+                            },
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        )
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    // 🚪 CERRAR SESIÓN
                     NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Inventory, contentDescription = null) },
-                        label = { Text("Inventario") },
-                        selected = currentRoute == "inventario",
+                        icon = { Icon(Icons.Default.ExitToApp, contentDescription = null) },
+                        label = { Text("Cerrar sesión") },
+                        selected = false,
                         onClick = {
                             scope.launch {
                                 drawerState.close()
-                                navController.navigate("inventario")
+                                onLogout()
                             }
                         },
                         modifier = Modifier.padding(horizontal = 12.dp)
                     )
                 }
-
-                // 📚 RAMOS-ADMIN
-                if (rolUsuario != null && PermisosManager.tieneAcceso(rolUsuario, MenuRoutes.Asignaturas.route)) {
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.Class, contentDescription = null) },
-                        label = { Text("Ramos-Admin") },
-                        selected = currentRoute == "asignaturas",
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                                navController.navigate("asignaturas")
-                            }
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp)
-                    )
-                }
-
-                // 🍳 GESTIÓN DE RECETAS
-                if (rolUsuario != null && PermisosManager.tieneAcceso(rolUsuario, MenuRoutes.Recetas.route)) {
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null) },
-                        label = { Text("Gestión de Recetas") },
-                        selected = currentRoute == "recetas",
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                                navController.navigate("recetas")
-                            }
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp)
-                    )
-                }
-
-                // 📋 SOLICITUDES (agregar permiso si existe en MenuRoutes)
-                if(rolUsuario!=null && PermisosManager.tieneAcceso(rolUsuario, MenuRoutes.Solicitud.route))
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.Assignment, contentDescription = null) },
-                    label = { Text("Solicitudes") },
-                    selected = currentRoute == "solicitud",
-                    onClick = {
-                        scope.launch {
-                            drawerState.close()
-                            navController.navigate("solicitud")
-                        }
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp)
-                )
-
-                // 🛒 GESTIÓN DE PEDIDOS
-                if (rolUsuario != null && PermisosManager.puedeGestionarPedidos(rolUsuario)) {
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.ShoppingCart, contentDescription = null) },
-                        label = { Text("Gestión de Pedidos") },
-                        selected = currentRoute == "gestion_pedidos",
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                                navController.navigate("gestion_pedidos")
-                            }
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp)
-                    )
-                }
-
-                // 👥 USUARIOS - ✅ SOLO VISIBLE SEGÚN PERMISOS
-                if (rolUsuario != null && PermisosManager.puedeGestionarUsuarios(rolUsuario)) {
-                    NavigationDrawerItem(
-                        icon = { Icon(Icons.Default.People, contentDescription = null) },
-                        label = { Text("Usuarios") },
-                        selected = currentRoute == "usuarios",
-                        onClick = {
-                            scope.launch {
-                                drawerState.close()
-                                navController.navigate("usuarios")
-                            }
-                        },
-                        modifier = Modifier.padding(horizontal = 12.dp)
-                    )
-                }
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                // 🚪 CERRAR SESIÓN
-                NavigationDrawerItem(
-                    icon = { Icon(Icons.Default.ExitToApp, contentDescription = null) },
-                    label = { Text("Cerrar sesión") },
-                    selected = false,
-                    onClick = {
-                        scope.launch {
-                            drawerState.close()
-                            onLogout()
-                        }
-                    },
-                    modifier = Modifier.padding(horizontal = 12.dp)
-                )
             }
         },
         drawerState = drawerState
@@ -235,7 +269,7 @@ fun MainMenuScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            when(currentRoute) {
+                            when (currentRoute) {
                                 "perfil" -> "Perfil"
                                 "dashboard" -> "Dashboard"
                                 "inventario" -> "Inventario"
@@ -293,33 +327,10 @@ fun MainMenuScreen(
                                     }
                                 )
                             } else {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Default.Error,
-                                            contentDescription = null,
-                                            modifier = Modifier.size(64.dp),
-                                            tint = MaterialTheme.colorScheme.error
-                                        )
-                                        Text(
-                                            text = "No hay usuario en sesión",
-                                            style = MaterialTheme.typography.titleMedium
-                                        )
-                                        Button(onClick = onLogout) {
-                                            Text("Volver al login")
-                                        }
-                                    }
-                                }
+                                PantallaUsuarioNoEncontrado(onLogout = onLogout)
                             }
                         }
 
-                        // ✅ VALIDACIÓN DE ACCESO EN CADA RUTA
                         composable("dashboard") {
                             if (rolUsuario != null && PermisosManager.tieneAcceso(rolUsuario, MenuRoutes.Dashboard.route)) {
                                 DashboardScreen()
@@ -353,12 +364,16 @@ fun MainMenuScreen(
                         }
 
                         composable("solicitud") {
-                            SolicitudScreen(
-                                viewModel = solicitudViewModel,
-                                onNavigateBack = {
-                                    navController.navigate("solicitud")
-                                }
-                            )
+                            if (rolUsuario != null && PermisosManager.tieneAcceso(rolUsuario, MenuRoutes.Solicitud.route)) {
+                                SolicitudScreen(
+                                    viewModel = solicitudViewModel,
+                                    onNavigateBack = {
+                                        navController.navigate("solicitud")
+                                    }
+                                )
+                            } else {
+                                PantallaAccesoDenegado()
+                            }
                         }
 
                         composable("gestion_pedidos") {
@@ -425,6 +440,33 @@ fun PantallaAccesoDenegado() {
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+fun PantallaUsuarioNoEncontrado(onLogout: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Error,
+                contentDescription = null,
+                modifier = Modifier.size(64.dp),
+                tint = MaterialTheme.colorScheme.error
+            )
+            Text(
+                text = "No hay usuario en sesión",
+                style = MaterialTheme.typography.titleMedium
+            )
+            Button(onClick = onLogout) {
+                Text("Volver al login")
+            }
         }
     }
 }

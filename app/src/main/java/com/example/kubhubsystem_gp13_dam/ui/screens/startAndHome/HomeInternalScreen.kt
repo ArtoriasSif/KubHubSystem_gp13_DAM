@@ -1,6 +1,8 @@
 package com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -23,7 +25,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun HomeInternalScreen(
     pedidoViewModel: PedidoViewModel? = null,
-    onNavigateToPedidos: () -> Unit = {}  // ✅ NUEVO: Para navegar a Gestión de Pedidos
+    onNavigateToPedidos: () -> Unit = {}
 ) {
     val periodoRepository = remember { PeriodoRepository.getInstance() }
     val periodoActual by periodoRepository.periodoActual.collectAsState()
@@ -31,11 +33,13 @@ fun HomeInternalScreen(
     // Observar el pedido activo desde la BD
     val pedidoActivo by (pedidoViewModel?.pedidoActivo?.collectAsState() ?: remember { mutableStateOf(null) })
 
-    // ✅ NUEVO: Observar el aglomerado en tiempo real
     val aglomerado by (pedidoViewModel?.aglomerado?.collectAsState() ?: remember { mutableStateOf(emptyList()) })
 
     var showIniciarPeriodoDialog by remember { mutableStateOf(false) }
     var showCerrarPeriodoDialog by remember { mutableStateOf(false) }
+
+    // 🔄 AÑADIDO: ScrollState para hacer el contenido scrolleable
+    val scrollState = rememberScrollState()
 
     LaunchedEffect(pedidoActivo) {
         pedidoActivo?.let { pedido ->
@@ -53,6 +57,7 @@ fun HomeInternalScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .verticalScroll(scrollState)
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
@@ -239,7 +244,7 @@ fun HomeInternalScreen(
             }
         }
 
-        // ✅ SECCIÓN ACTUALIZADA: Resumen del Pedido Actual
+        //  Resumen del Pedido Actual
         if (pedidoActivo != null) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -271,7 +276,7 @@ fun HomeInternalScreen(
 
                     HorizontalDivider()
 
-                    // ✅ Usar el aglomerado observado en tiempo real
+                    //Usar el aglomerado observado en tiempo real
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween
@@ -288,7 +293,7 @@ fun HomeInternalScreen(
                         )
                     }
 
-                    // ✅ NUEVO: Botón para ir a Gestión de Pedidos
+                    // Botón para ir a Gestión de Pedidos
                     Button(
                         onClick = onNavigateToPedidos,
                         modifier = Modifier.fillMaxWidth(),

@@ -1,6 +1,5 @@
 package com.example.kubhubsystem_gp13_dam.local.remote
 
-import com.example.kubhubsystem_gp13_dam.local.dto.LoginRequestDTO
 import com.example.kubhubsystem_gp13_dam.local.dto.LoginResponseDTO
 import retrofit2.Response
 import retrofit2.http.Body
@@ -23,7 +22,7 @@ interface AuthApiService {
      * @return LoginResponseDTO con usuario, token y mensaje
      */
     @POST("api/v1/auth/login")
-    suspend fun login(@Body loginRequest: LoginRequestDTO): Response<LoginResponseDTO>
+    suspend fun login(@Body loginRequest: com.example.kubhubsystem_gp13_dam.model.LoginRequestDTO): Response<LoginResponseDTO>
 
     /**
      * POST /api/v1/auth/logout
