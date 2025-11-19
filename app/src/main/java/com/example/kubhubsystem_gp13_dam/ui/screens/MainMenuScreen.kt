@@ -394,7 +394,7 @@ fun MainMenuScreen(
 
                         composable("usuarios") {
                             if (rolUsuario != null && PermisosManager.puedeGestionarUsuarios(rolUsuario)) {
-                                GestionUsuariosScreen(
+                                GestionUsuarioScreen2(
                                     onNavigateToDetalleUsuario = { idUsuario ->
                                         // TODO: Implementar navegación a detalle
                                     },

@@ -169,13 +169,13 @@ fun LoginScreen2(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Grid de roles demo
+            // d de roles demo
             AnimatedVisibility(
                 visible = showDemoAccounts,
                 enter = fadeIn() + expandVertically(),
                 exit = fadeOut() + shrinkVertically()
             ) {
-                DemoAccountsGrid(
+                DemoAccounts(
                     selectedRole = uiState.selectedRole,
                     onRoleSelected = { role ->
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -274,13 +274,13 @@ fun AnimatedLogo() {
             text = "KuHub System",
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primaryContainer // ✅ Color del tema
+            color = MaterialTheme.colorScheme.primaryContainer
         )
 
         Text(
-            text = "Sistema de Gestión Educativa",
+            text = "Sistema de Gestión Gastronómica",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f) // ✅ Color del tema
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f)
         )
     }
 }
@@ -626,7 +626,7 @@ fun ModernPasswordField(
 }
 
 @Composable
-fun DemoAccountsGrid(
+fun DemoAccounts(
     selectedRole: Rol2?,
     onRoleSelected: (Rol2) -> Unit
 ) {
@@ -643,23 +643,28 @@ fun DemoAccountsGrid(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
                 text = "Cuentas Demo Disponibles",
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primaryContainer // ✅ Color del tema
-            )
+                color = MaterialTheme.colorScheme.primaryContainer,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+                )
 
             Text(
                 text = "Haz clic en cualquier rol para autocompletar las credenciales",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f) // ✅ Color del tema
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
             )
 
             HorizontalDivider(
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f), // ✅ Color del tema
+                color = MaterialTheme.colorScheme.onSurfaceVariant, // ✅ Color del tema
                 thickness = 1.dp,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
