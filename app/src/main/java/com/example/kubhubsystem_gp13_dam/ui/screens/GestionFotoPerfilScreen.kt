@@ -12,7 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.AdminPanelSettings
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
@@ -36,16 +36,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.Font
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.example.kubhubsystem_gp13_dam.manager.PerfilUsuarioManager
 import com.example.kubhubsystem_gp13_dam.model.PerfilUsuario
 import com.example.kubhubsystem_gp13_dam.model.Usuario2
@@ -163,7 +160,7 @@ private fun MostrarIniciales(
                 fontSize = (size.value / 3).sp,
                 fontWeight = FontWeight.Bold
             ),
-            color = Color.White
+            color = MaterialTheme.colorScheme.onPrimary
         )
     }
 }
@@ -237,8 +234,8 @@ fun AvatarUsuarioConEstado(
                     .align(Alignment.BottomEnd)
                     .offset(x = (-2).dp, y = (-2).dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF4CAF50))
-                    .border(2.dp, Color.White, CircleShape)
+                    .background(MaterialTheme.colorScheme.tertiary)
+                    .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)
             )
         }
     }
@@ -339,11 +336,19 @@ fun PerfilUsuarioScreenSimple(
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
+                modifier = Modifier.height(70.dp),
                 title = {
-                    Text(
-                        "Perfil de Usuario",
-                        style = MaterialTheme.typography.titleLarge
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Text(
+                            "Perfil de Usuario",
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.scrim,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
                 },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primaryContainer
@@ -361,9 +366,14 @@ fun PerfilUsuarioScreenSimple(
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.primary
+                        )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Text(if (subiendoFoto) "Subiendo foto..." else "Cargando perfil...")
+                        Text(
+                            text = if (subiendoFoto) "Subiendo foto..." else "Cargando perfil...",
+                            color = MaterialTheme.colorScheme.onBackground
+                        )
                     }
                 }
             }
@@ -392,7 +402,13 @@ fun PerfilUsuarioScreenSimple(
                             color = MaterialTheme.colorScheme.error
                         )
                         Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = onNavigateBack) {
+                        Button(
+                            onClick = onNavigateBack,
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                contentColor = MaterialTheme.colorScheme.onPrimary
+                            )
+                        ) {
                             Text("Volver")
                         }
                     }
@@ -460,7 +476,7 @@ fun PerfilUsuarioScreenSimple(
                                     Text(
                                         text = perfil.iniciales,
                                         style = MaterialTheme.typography.displayLarge,
-                                        color = Color.White,
+                                        color = MaterialTheme.colorScheme.onPrimary,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
@@ -478,7 +494,7 @@ fun PerfilUsuarioScreenSimple(
                                 Text(
                                     text = perfil?.iniciales ?: "??",
                                     style = MaterialTheme.typography.displayLarge,
-                                    color = Color.White,
+                                    color = MaterialTheme.colorScheme.onPrimary,
                                     fontWeight = FontWeight.Bold
                                 )
                             }
@@ -491,13 +507,13 @@ fun PerfilUsuarioScreenSimple(
                                 .align(Alignment.BottomEnd)
                                 .offset(x = (-4).dp, y = (-4).dp),
                             shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primary,
+                            color = MaterialTheme.colorScheme.primaryContainer,
                             shadowElevation = 4.dp
                         ) {
                             Icon(
                                 imageVector = Icons.Default.CameraAlt,
                                 contentDescription = "Cambiar foto",
-                                tint = MaterialTheme.colorScheme.onPrimary,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.padding(12.dp)
                             )
                         }
@@ -523,7 +539,7 @@ fun PerfilUsuarioScreenSimple(
                             text = usuario!!.rol.obtenerNombre(),
                             modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                             style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
 
@@ -531,7 +547,13 @@ fun PerfilUsuarioScreenSimple(
 
                     // Botones de acción
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Button(onClick = { mostrarBottomSheet = true }) {
+                        Button(
+                            onClick = { mostrarBottomSheet = true },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,      // Fondo
+                                contentColor = MaterialTheme.colorScheme.onPrimary                // Icono + texto
+                            )
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.CameraAlt,
                                 contentDescription = null,
@@ -546,6 +568,7 @@ fun PerfilUsuarioScreenSimple(
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = null,
+                                    tint = Color(0xFFB00020),
                                     modifier = Modifier.size(18.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -563,11 +586,26 @@ fun PerfilUsuarioScreenSimple(
                             .padding(horizontal = 24.dp)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            InfoRow("Email", usuario!!.email, Icons.Default.Email)
+                            InfoRow(
+                                "Email",
+                                usuario!!.email,
+                                Icons.Default.Email,
+                                iconTint = MaterialTheme.colorScheme.primaryContainer
+                            )
                             Spacer(modifier = Modifier.height(16.dp))
-                            InfoRow("Username", usuario!!.username, Icons.Default.Person)
+
+                            InfoRow("Username",
+                                usuario!!.username,
+                                Icons.Default.Person,
+                                iconTint = Color(0xFF1565C0)
+                            )
                             Spacer(modifier = Modifier.height(16.dp))
-                            InfoRow("Rol", usuario!!.rol.obtenerNombre(), Icons.Default.Security)
+
+                            InfoRow("Rol",
+                                usuario!!.rol.obtenerNombre(),
+                                Icons.Default.AdminPanelSettings,
+                                iconTint = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
 
@@ -751,7 +789,8 @@ fun PerfilUsuarioScreenSimple(
 private fun InfoRow(
     label: String,
     value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector? = null
+    icon: ImageVector? = null,
+    iconTint: Color? = null
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -761,7 +800,7 @@ private fun InfoRow(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = iconTint ?: MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
             )
             Spacer(modifier = Modifier.width(12.dp))
