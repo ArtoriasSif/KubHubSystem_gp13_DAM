@@ -1,6 +1,7 @@
 package com.example.kubhubsystem_gp13_dam.model
 
 import android.net.Uri
+import android.util.Log
 
 /**
  * Data class para representar el perfil de un usuario
@@ -46,7 +47,7 @@ object PerfilHelper {
      * @param usuario Usuario del cual generar iniciales
      * @return String con 2 letras en mayúsculas (ej: "AK")
      */
-    fun generarIniciales(usuario: Usuario): String {
+    fun generarIniciales(usuario: Usuario2): String {
         val primerLetra = usuario.primerNombre.firstOrNull()?.uppercaseChar() ?: 'U'
         val segundaLetra = (usuario.apellidoPaterno?.firstOrNull() ?: usuario.primerNombre.getOrNull(1))?.uppercaseChar() ?: 'S'
         return "$primerLetra$segundaLetra"
@@ -94,7 +95,7 @@ object PerfilHelper {
      * @param usuario Usuario para el cual crear el perfil
      * @return PerfilUsuario con valores por defecto (sin foto)
      */
-    fun crearPerfilPorDefecto(usuario: Usuario): PerfilUsuario {
+    fun crearPerfilPorDefecto(usuario: Usuario2): PerfilUsuario {
         return PerfilUsuario(
             idUsuario = usuario.idUsuario,
             fotoPerfil = null,
@@ -112,4 +113,72 @@ object PerfilHelper {
     fun esUriValida(uri: Uri?): Boolean {
         return uri != null && uri.toString().isNotEmpty()
     }
+
+    /**
+     * Convierte la foto de perfil del backend a Uri
+     * Soporta URLs HTTP/HTTPS y Base64 (como viene del backend Java)
+     *
+     * @param fotoString String con URL o Base64 de la imagen
+     * @return Uri válida o null
+     */
+    fun fotoPerfilToUri(fotoString: String?): Uri? {
+        if (fotoString.isNullOrBlank()) {
+            Log.d("PerfilHelper", "🔍 fotoPerfil es null o vacío")
+            return null
+        }
+
+        return try {
+            when {
+                // ✅ Si es una URL HTTP/HTTPS, usarla directamente
+                fotoString.startsWith("http://", ignoreCase = true) ||
+                        fotoString.startsWith("https://", ignoreCase = true) -> {
+                    Log.d("PerfilHelper", "✅ Detectada URL HTTP: ${fotoString.take(100)}...")
+                    Uri.parse(fotoString)
+                }
+                // ✅ Si ya tiene el prefijo data:image, usarlo tal cual
+                fotoString.startsWith("data:image", ignoreCase = true) -> {
+                    Log.d("PerfilHelper", "✅ Detectado data URI scheme completo")
+                    Uri.parse(fotoString)
+                }
+                // ✅ Si parece Base64 puro (viene del backend Java), agregar el prefijo
+                else -> {
+                    Log.d("PerfilHelper", "✅ Detectado Base64 puro del backend, agregando prefijo data URI")
+                    Log.d("PerfilHelper", "   Longitud: ${fotoString.length} caracteres")
+                    // El backend envía Base64 puro sin prefijo, debemos agregarlo
+                    Uri.parse("data:image/jpeg;base64,$fotoString")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("PerfilHelper", "❌ Error al convertir foto a Uri: ${e.message}")
+            Log.e("PerfilHelper", "   Input: ${fotoString.take(100)}...")
+            e.printStackTrace()
+            null
+        }
+    }
+
+    /**
+     * @deprecated Usar fotoPerfilToUri() en su lugar
+     */
+    @Deprecated("Usar fotoPerfilToUri() que soporta URLs y Base64")
+    fun base64ToUri(base64String: String?): Uri? {
+        return fotoPerfilToUri(base64String)
+    }
+
+    /**
+     * Crea un perfil desde Usuario con soporte para foto Base64 o URL
+     *
+     * @param usuario Usuario con datos del backend
+     * @return PerfilUsuario con foto convertida o iniciales por defecto
+     */
+    fun crearPerfilDesdeUsuario(usuario: Usuario2): PerfilUsuario {
+        val fotoUri = fotoPerfilToUri(usuario.fotoPerfil)
+
+        return PerfilUsuario(
+            idUsuario = usuario.idUsuario,
+            fotoPerfil = fotoUri,
+            iniciales = generarIniciales(usuario),
+            colorFondo = obtenerColorPorId(usuario.idUsuario)
+        )
+    }
+
 }

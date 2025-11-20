@@ -1,7 +1,7 @@
 package com.example.kubhubsystem_gp13_dam.local.remote
 
-import com.example.kubhubsystem_gp13_dam.local.dto.LoginRequestDTO
-import com.example.kubhubsystem_gp13_dam.local.dto.LoginResponseDTO
+import com.example.kubhubsystem_gp13_dam.model.LoginRequestDTO
+import com.example.kubhubsystem_gp13_dam.model.LoginResponseDTO
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST

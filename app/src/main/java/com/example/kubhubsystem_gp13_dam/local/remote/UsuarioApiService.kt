@@ -1,9 +1,10 @@
 package com.example.kubhubsystem_gp13_dam.local.remote
 
-import com.example.kubhubsystem_gp13_dam.local.dto.UsuarioEstadisticasDTO
-import com.example.kubhubsystem_gp13_dam.local.dto.UsuarioRequestDTO
-import com.example.kubhubsystem_gp13_dam.local.dto.UsuarioResponseDTO
-import com.example.kubhubsystem_gp13_dam.local.dto.UsuarioUpdateDTO
+import com.example.kubhubsystem_gp13_dam.model.UsuarioEstadisticasDTO
+import com.example.kubhubsystem_gp13_dam.model.UsuarioRequestDTO
+import com.example.kubhubsystem_gp13_dam.model.UsuarioResponseDTO
+import com.example.kubhubsystem_gp13_dam.model.UsuarioUpdateDTO
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.*
 
@@ -73,6 +74,18 @@ interface UsuarioApiService {
     suspend fun actualizar(
         @Path("id") id: Int,
         @Body usuarioUpdate: UsuarioUpdateDTO
+    ): Response<UsuarioResponseDTO>
+
+
+    /**
+     * PUT /api/v1/usuarios/{id}/foto
+     * Actualiza la foto de perfil de un usuario
+     */
+    @Multipart
+    @PUT("/api/v1/usuarios/{id}/foto")
+    suspend fun actualizarFotoPerfil(
+        @Path("id") idUsuario: Int,
+        @Part foto: MultipartBody.Part
     ): Response<UsuarioResponseDTO>
 
     /**

@@ -3,8 +3,8 @@ package com.example.kubhubsystem_gp13_dam.viewmodel
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.kubhubsystem_gp13_dam.data.repository.LoginRepository
-import com.example.kubhubsystem_gp13_dam.model.Rol
+import com.example.kubhubsystem_gp13_dam.model.Rol2
+import com.example.kubhubsystem_gp13_dam.repository.LoginRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,8 +12,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel para Login
- * ✅ ACTUALIZADO: Ahora usa el nuevo LoginRepository que se conecta al backend
+ * Estado UI para Login
  */
 data class LoginUiState(
     val email: String = "",
@@ -21,10 +20,17 @@ data class LoginUiState(
     val rememberSession: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val selectedRole: Rol? = null,
-    val forgotPasswordRequested: Boolean = false
+    val selectedRole: Rol2? = null,
+    val forgotPasswordRequested: Boolean = false,
+    val loginSuccessful: Boolean = false
 )
 
+/**
+ * ViewModel para Login - Versión 2 Refactorizado
+ * ✅ Maneja toda la lógica de autenticación
+ * ✅ Usa LoginRepository para comunicación con backend
+ * ✅ Proporciona estado reactivo para la UI
+ */
 class LoginViewModel(
     private val loginRepository: LoginRepository
 ) : ViewModel() {
@@ -34,155 +40,230 @@ class LoginViewModel(
     private val _uiState = MutableStateFlow(LoginUiState())
     val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
 
+    init {
+        println("✅ LoginViewModel2 inicializado")
+        verificarSesionActiva()
+    }
+
     override fun onCleared() {
         super.onCleared()
-        println("🧹 LoginViewModel: Limpiando recursos")
+        println("🧹 LoginViewModel2: Limpiando recursos")
     }
-
-    // ========================================
-    // MÉTODOS DE ACTUALIZACIÓN DE ESTADO
-    // ========================================
-
-    fun updateEmail(email: String) {
-        if (_uiState.value.email != email) {
-            _uiState.update { currentState ->
-                currentState.copy(email = email, errorMessage = null)
-            }
-        }
-    }
-
-    fun updatePassword(password: String) {
-        if (_uiState.value.password != password) {
-            _uiState.update { currentState ->
-                currentState.copy(password = password, errorMessage = null)
-            }
-        }
-    }
-
-    fun updateRememberSession(remember: Boolean) {
-        if (_uiState.value.rememberSession != remember) {
-            _uiState.update { currentState ->
-                currentState.copy(rememberSession = remember)
-            }
-        }
-    }
-
-    fun updateForgotPasswordRequest(requested: Boolean) {
-        if (_uiState.value.forgotPasswordRequested != requested) {
-            _uiState.update { currentState ->
-                currentState.copy(forgotPasswordRequested = requested)
-            }
-        }
-    }
-
-    // ========================================
-    // SELECCIÓN DE ROLES DEMO
-    // ========================================
 
     /**
-     * Selecciona un rol demo y llena automáticamente email y password
-     * Útil para testing
+     * Verifica si existe una sesión activa al iniciar
      */
-    fun selectDemoRole(role: Rol) {
-        val credentials = loginRepository.getDemoCredentials(role)
-        if (credentials != null) {
-            val currentState = _uiState.value
-            if (currentState.email != credentials.first ||
-                currentState.password != credentials.second ||
-                currentState.selectedRole != role) {
-
-                _uiState.update {
-                    it.copy(
-                        email = credentials.first,
-                        password = credentials.second,
-                        selectedRole = role,
-                        errorMessage = null
-                    )
-                }
-            }
+    private fun verificarSesionActiva() {
+        val tieneSesion = loginRepository.tieneSesionActiva()
+        if (tieneSesion) {
+            println("✅ Sesión activa detectada")
+            val usuario = loginRepository.obtenerUsuarioLogueado()
+            println("   Usuario: ${usuario?.email} - Rol: ${usuario?.rol?.nombreRol}")
+        } else {
+            println("ℹ️ No hay sesión activa")
         }
     }
 
-    fun clearDemoSelection() {
-        val currentState = _uiState.value
-        if (currentState.email.isNotEmpty() ||
-            currentState.password.isNotEmpty() ||
-            currentState.selectedRole != null) {
+    /**
+     * Actualiza el email ingresado
+     */
+    fun updateEmail(email: String) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                email = email,
+                errorMessage = null
+            )
+        }
+    }
 
-            _uiState.update {
-                it.copy(
-                    email = "",
-                    password = "",
-                    selectedRole = null,
+    /**
+     * Actualiza la contraseña ingresada
+     */
+    fun updatePassword(password: String) {
+        _uiState.update { currentState ->
+            currentState.copy(
+                password = password,
+                errorMessage = null
+            )
+        }
+    }
+
+    /**
+     * Actualiza el estado de "recordar sesión"
+     */
+    fun updateRememberSession(remember: Boolean) {
+        _uiState.update { currentState ->
+            currentState.copy(rememberSession = remember)
+        }
+    }
+
+    /**
+     * Marca que se solicitó recuperación de contraseña
+     */
+    fun updateForgotPasswordRequest(requested: Boolean) {
+        _uiState.update { currentState ->
+            currentState.copy(forgotPasswordRequested = requested)
+        }
+    }
+
+    /**
+     * Selecciona un rol demo y autocompleta credenciales
+     */
+    fun selectDemoRole(role: Rol2) {
+        val credentials = loginRepository.getDemoCredentials(role)
+        if (credentials != null) {
+            _uiState.update { currentState ->
+                currentState.copy(
+                    email = credentials.first,
+                    password = credentials.second,
+                    selectedRole = role,
                     errorMessage = null
                 )
             }
+            println("✅ Rol demo seleccionado: ${role.nombreRol}")
+        } else {
+            println("⚠️ No se encontraron credenciales para el rol: ${role.nombreRol}")
         }
     }
 
-    // ========================================
-    // LOGIN
-    // ========================================
+    /**
+     * Limpia la selección de cuenta demo
+     */
+    fun clearDemoSelection() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                email = "",
+                password = "",
+                selectedRole = null,
+                errorMessage = null
+            )
+        }
+        println("🧹 Selección de demo limpiada")
+    }
 
     /**
-     * Ejecuta el login contra el backend
-     * ✅ ACTUALIZADO: Ahora se conecta al backend Spring Boot
+     * Valida los campos de email y contraseña
      */
-    fun login(onSuccess: () -> Unit) {
+    private fun validarCampos(): String? {
         val currentState = _uiState.value
 
-        // Validaciones básicas
-        if (currentState.email.isEmpty() || currentState.password.isEmpty()) {
+        if (currentState.email.isEmpty()) {
+            return "Por favor ingrese su correo electrónico"
+        }
+
+        if (currentState.password.isEmpty()) {
+            return "Por favor ingrese su contraseña"
+        }
+
+        if (!loginRepository.validarEmail(currentState.email)) {
+            return "El formato del correo electrónico es inválido"
+        }
+
+        if (!loginRepository.validarPassword(currentState.password)) {
+            return "La contraseña debe tener al menos 6 caracteres"
+        }
+
+        return null
+    }
+
+    /**
+     * Realiza el login con las credenciales actuales
+     */
+    fun login(onSuccess: () -> Unit) {
+        // Validar campos primero
+        val validationError = validarCampos()
+        if (validationError != null) {
             _uiState.update {
-                it.copy(errorMessage = "Por favor complete todos los campos obligatorios")
+                it.copy(errorMessage = validationError)
             }
+            println("❌ Validación fallida: $validationError")
             return
         }
 
-        // Mostrar indicador de carga
+        val currentState = _uiState.value
+
+        // Mostrar loading
         _uiState.update {
             it.copy(isLoading = true, errorMessage = null)
         }
 
+        println("🔄 Intentando login para: ${currentState.email}")
+
         viewModelScope.launch {
             try {
-                // ✅ LLAMADA AL BACKEND
                 val result = loginRepository.login(currentState.email, currentState.password)
 
                 when (result) {
                     null -> {
-                        // ✅ Login exitoso
+                        // Login exitoso
+                        println("✅ Login exitoso para: ${currentState.email}")
                         _uiState.update {
-                            it.copy(isLoading = false)
+                            it.copy(
+                                isLoading = false,
+                                loginSuccessful = true,
+                                errorMessage = null
+                            )
                         }
                         onSuccess()
                     }
                     "email" -> {
+                        println("❌ Usuario no encontrado: ${currentState.email}")
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                errorMessage = "El usuario no existe"
+                                errorMessage = "El correo electrónico no está registrado en el sistema"
                             )
                         }
                     }
                     "password" -> {
+                        println("❌ Contraseña incorrecta para: ${currentState.email}")
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                errorMessage = "Contraseña incorrecta"
+                                errorMessage = "La contraseña ingresada es incorrecta"
+                            )
+                        }
+                    }
+                    "inactive" -> {
+                        println("⚠️ Usuario inactivo: ${currentState.email}")
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = "Su cuenta está inactiva. Contacte al administrador."
+                            )
+                        }
+                    }
+                    "invalid_format" -> {
+                        println("❌ Formato inválido")
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = "El formato de las credenciales es inválido"
                             )
                         }
                     }
                     "error" -> {
+                        println("❌ Error de conexión")
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                errorMessage = "Error de conexión. Verifique su red."
+                                errorMessage = "Error de conexión. Verifique su red e intente nuevamente."
+                            )
+                        }
+                    }
+                    else -> {
+                        println("❌ Error desconocido: $result")
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = "Error inesperado. Por favor intente más tarde."
                             )
                         }
                     }
                 }
             } catch (e: Exception) {
+                println("❌ Excepción en login: ${e.message}")
+                e.printStackTrace()
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -192,4 +273,41 @@ class LoginViewModel(
             }
         }
     }
+
+    /**
+     * Cierra la sesión del usuario
+     */
+    fun logout() {
+        viewModelScope.launch {
+            try {
+                loginRepository.logout()
+                _uiState.update {
+                    LoginUiState()
+                }
+                println("✅ Logout completado")
+            } catch (e: Exception) {
+                println("❌ Error en logout: ${e.message}")
+                e.printStackTrace()
+            }
+        }
+    }
+
+    /**
+     * Limpia el mensaje de error actual
+     */
+    fun clearError() {
+        _uiState.update {
+            it.copy(errorMessage = null)
+        }
+    }
+
+    /**
+     * Obtiene el usuario actualmente logueado
+     */
+    fun obtenerUsuarioLogueado() = loginRepository.obtenerUsuarioLogueado()
+
+    /**
+     * Verifica si hay sesión activa
+     */
+    fun tieneSesionActiva() = loginRepository.tieneSesionActiva()
 }

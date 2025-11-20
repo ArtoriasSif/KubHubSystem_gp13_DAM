@@ -107,7 +107,7 @@ fun HomeScreen(onNavigateToLogin: () -> Unit) {
         when (step) {
             0 -> {
                 Image(
-                    painter = painterResource(id = R.drawable.logo_webquest),
+                    painter = painterResource(id = R.drawable.questweboficial),
                     contentDescription = "Logo 1",
                     modifier = Modifier
                         .size(logoSize.value)
@@ -129,7 +129,7 @@ fun HomeScreen(onNavigateToLogin: () -> Unit) {
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = "¡Bienvenido a KubHub!",
+                        text = "¡Bienvenido a KuHub!",
                         color = MaterialTheme.colorScheme.onPrimary,
                         style = MaterialTheme.typography.headlineMedium,
                         textAlign = TextAlign.Center

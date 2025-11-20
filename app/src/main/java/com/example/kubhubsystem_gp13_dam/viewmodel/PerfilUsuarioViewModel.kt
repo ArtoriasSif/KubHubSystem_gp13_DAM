@@ -1,11 +1,12 @@
 package com.example.kubhubsystem_gp13_dam.viewmodel
 
 import android.net.Uri
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.kubhubsystem_gp13_dam.manager.PerfilUsuarioManager
 import com.example.kubhubsystem_gp13_dam.model.PerfilUsuario
-import com.example.kubhubsystem_gp13_dam.model.Usuario
+import com.example.kubhubsystem_gp13_dam.model.Usuario2
 import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,14 +34,19 @@ class PerfilUsuarioViewModel(
     }
 
     /**
-     * ✅ NUEVO: Carga el usuario completo desde el backend
-     * Útil para obtener datos actualizados como username, email, etc.
+     * ✅ ACTUALIZADO: Carga el usuario y sincroniza su perfil con foto
      */
     fun cargarUsuario(idUsuario: Int) {
         viewModelScope.launch {
             _estado.update { it.copy(cargandoUsuario = true, error = null) }
             try {
                 val usuario = usuarioRepository.obtenerPorId(idUsuario)
+
+                if (usuario != null) {
+                    // ✅ Sincronizar el perfil con los datos del backend (incluye foto)
+                    perfilManager.sincronizarPerfil(usuario)
+                }
+
                 _estado.update { it.copy(
                     usuarioActual = usuario,
                     cargandoUsuario = false
@@ -72,23 +78,22 @@ class PerfilUsuarioViewModel(
     /**
      * Inicializa perfiles por defecto para una lista de usuarios
      */
-    fun inicializarPerfiles(usuarios: List<Usuario>) {
+    fun inicializarPerfiles(usuarios: List<Usuario2>) {
         viewModelScope.launch {
-            _estado.update { it.copy(cargando = true, error = null) }
             try {
                 perfilManager.inicializarPerfiles(usuarios)
-                _estado.update { it.copy(
-                    cargando = false,
-                    mensajeExito = "Perfiles inicializados correctamente"
-                ) }
+
+                _estado.update {
+                    it.copy(mensajeExito = "Perfiles inicializados correctamente")
+                }
+
             } catch (e: Exception) {
-                _estado.update { it.copy(
-                    error = "Error al inicializar perfiles: ${e.message}",
-                    cargando = false
-                ) }
+                _estado.update { it.copy(error = e.message) }
             }
         }
     }
+
+
 
     /**
      * Actualiza la foto de perfil de un usuario específico
@@ -144,7 +149,7 @@ class PerfilUsuarioViewModel(
     /**
      * Agrega un nuevo perfil cuando se crea un usuario
      */
-    fun agregarPerfil(usuario: Usuario) {
+    fun agregarPerfil(usuario: Usuario2) {
         viewModelScope.launch {
             try {
                 perfilManager.agregarPerfil(usuario)
@@ -237,7 +242,7 @@ data class PerfilUsuarioEstado(
     val mensajeExito: String? = null,
     val ultimoIdModificado: Int? = null,
     // ✅ NUEVOS CAMPOS
-    val usuarioActual: Usuario? = null,
+    val usuarioActual: Usuario2? = null,
     val cargandoUsuario: Boolean = false
 )
 

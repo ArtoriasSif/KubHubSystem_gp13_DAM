@@ -2,13 +2,18 @@ package com.example.kubhubsystem_gp13_dam.manager
 
 
 
+import android.content.ContentValues.TAG
 import android.net.Uri
+import android.util.Log
+import androidx.compose.material3.MaterialTheme
 import com.example.kubhubsystem_gp13_dam.model.PerfilUsuario
-import com.example.kubhubsystem_gp13_dam.model.Usuario
 import com.example.kubhubsystem_gp13_dam.model.PerfilHelper
+import com.example.kubhubsystem_gp13_dam.model.PerfilHelper.generarIniciales
+import com.example.kubhubsystem_gp13_dam.model.Usuario2
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 /**
  * Gestor centralizado para los perfiles de usuario (sin persistencia)
@@ -56,22 +61,87 @@ class PerfilUsuarioManager private constructor() {
      *
      * @param usuarios Lista de usuarios existentes en la base de datos
      */
-    fun inicializarPerfiles(usuarios: List<Usuario>) {
+
+    /**
+     * Inicializa perfiles para una lista de usuarios
+     * ✅ ACTUALIZADO: Ahora carga las fotos de perfil desde Usuario2.fotoPerfil
+     */
+    fun inicializarPerfiles(usuarios: List<Usuario2>) {
         val nuevosPerfiles = usuarios.associate { usuario ->
-            val perfilExistente = _perfiles.value[usuario.idUsuario]
+            val nombreCompleto = buildString {
+                append(usuario.primerNombre)
+                if (!usuario.segundoNombre.isNullOrBlank()) append(" ${usuario.segundoNombre}")
+                if (!usuario.apellidoPaterno.isNullOrBlank()) append(" ${usuario.apellidoPaterno}")
+                if (!usuario.apellidoMaterno.isNullOrBlank()) append(" ${usuario.apellidoMaterno}")
+            }.trim()
 
-            // Si ya existe un perfil con foto, mantenerlo
-            // Si no, crear uno nuevo por defecto
-            val perfil = if (perfilExistente != null) {
-                perfilExistente
-            } else {
-                PerfilHelper.crearPerfilPorDefecto(usuario)
-            }
+            // ✅ CRÍTICO: Usar fotoPerfilToUri() que soporta URLs HTTP
+            val fotoUri = PerfilHelper.fotoPerfilToUri(usuario.fotoPerfil)
 
-            usuario.idUsuario to perfil
+            usuario.idUsuario to PerfilUsuario(
+                idUsuario = usuario.idUsuario,
+                fotoPerfil = fotoUri,
+                iniciales = PerfilHelper.generarIniciales(usuario),
+                colorFondo = PerfilHelper.obtenerColorPorId(usuario.idUsuario)
+            )
         }
+
         _perfiles.value = nuevosPerfiles
+        Log.d(TAG, "✅ Perfiles inicializados: ${nuevosPerfiles.size} usuarios")
+
+        // Log detallado para debug
+        val conFoto = nuevosPerfiles.values.count { it.fotoPerfil != null }
+        Log.d(TAG, "📸 Usuarios con foto de perfil: $conFoto de ${nuevosPerfiles.size}")
+
+        // ✅ Log para ver las URLs de las fotos
+        nuevosPerfiles.forEach { (id, perfil) ->
+            if (perfil.fotoPerfil != null) {
+                Log.d(TAG, "👤 Usuario $id tiene foto: ${perfil.fotoPerfil}")
+            }
+        }
     }
+
+
+    /**
+     * ✅ NUEVO: Sincroniza el perfil de un usuario específico con los datos del backend
+     * Útil cuando se actualiza un usuario individualmente
+     */
+    fun sincronizarPerfil(usuario: Usuario2) {
+        val fotoUri = PerfilHelper.fotoPerfilToUri(usuario.fotoPerfil)
+
+        Log.d(TAG, "🔄 Sincronizando perfil usuario ${usuario.idUsuario}")
+        Log.d(TAG, "   fotoPerfil backend: ${usuario.fotoPerfil?.take(100)}")
+        Log.d(TAG, "   URI generada: ${fotoUri?.toString()?.take(100)}")
+        val nombreCompleto = buildString {
+            append(usuario.primerNombre)
+            if (!usuario.segundoNombre.isNullOrBlank()) append(" ${usuario.segundoNombre}")
+            if (!usuario.apellidoPaterno.isNullOrBlank()) append(" ${usuario.apellidoPaterno}")
+            if (!usuario.apellidoMaterno.isNullOrBlank()) append(" ${usuario.apellidoMaterno}")
+        }.trim()
+
+        // ✅ CRÍTICO: Usar fotoPerfilToUri() que soporta URLs HTTP
+        PerfilHelper.fotoPerfilToUri(usuario.fotoPerfil)
+
+        val perfilActualizado = PerfilUsuario(
+            idUsuario = usuario.idUsuario,
+            fotoPerfil = fotoUri,
+            iniciales = PerfilHelper.generarIniciales(usuario),
+            colorFondo = PerfilHelper.obtenerColorPorId(usuario.idUsuario)
+        )
+
+        _perfiles.update { perfilesActuales ->
+            perfilesActuales + (usuario.idUsuario to perfilActualizado)
+        }
+
+        Log.d(
+            TAG,
+            "✅ Perfil sincronizado para usuario ${usuario.idUsuario}: " +
+                    if (perfilActualizado.fotoPerfil != null) "Con foto: ${perfilActualizado.fotoPerfil}" else "Sin foto"
+        )
+    }
+
+
+
 
     /**
      * Actualiza la foto de perfil de un usuario específico
@@ -137,11 +207,12 @@ class PerfilUsuarioManager private constructor() {
      *
      * @param usuario Usuario nuevo al cual crear perfil
      */
-    fun agregarPerfil(usuario: Usuario) {
+    fun agregarPerfil(usuario: Usuario2) {
         val perfilesActuales = _perfiles.value.toMutableMap()
 
         if (!perfilesActuales.containsKey(usuario.idUsuario)) {
-            perfilesActuales[usuario.idUsuario] = PerfilHelper.crearPerfilPorDefecto(usuario)
+            // Crear perfil desde usuario (convierte Base64 a Uri si existe)
+            perfilesActuales[usuario.idUsuario] = PerfilHelper.crearPerfilDesdeUsuario(usuario)
             _perfiles.value = perfilesActuales
         }
     }
@@ -149,23 +220,25 @@ class PerfilUsuarioManager private constructor() {
     /**
      * Actualiza el perfil cuando cambian los datos del usuario
      * Regenera iniciales y color si cambiaron nombre/apellido
-     * MANTIENE la foto si ya existía
+     * Actualiza foto desde Base64 o URL si viene del backend
      *
-     * @param usuario Usuario con datos actualizados
+     * @param usuario Usuario con datos actualizados del backend
      */
-    fun actualizarDatosUsuario(usuario: Usuario) {
+    fun actualizarDatosUsuario(usuario: Usuario2) {
         val perfilesActuales = _perfiles.value.toMutableMap()
         val perfilActual = perfilesActuales[usuario.idUsuario]
 
         if (perfilActual != null) {
-            // Regenerar iniciales con los nuevos datos
             val nuevasIniciales = PerfilHelper.generarIniciales(usuario)
             val nuevoColor = PerfilHelper.obtenerColorPorId(usuario.idUsuario)
 
+            // ✅ Actualizar foto desde Backend (URL o Base64)
+            val nuevaFoto = PerfilHelper.fotoPerfilToUri(usuario.fotoPerfil)
+
             perfilesActuales[usuario.idUsuario] = perfilActual.copy(
                 iniciales = nuevasIniciales,
-                colorFondo = nuevoColor
-                // fotoPerfil se mantiene sin cambios
+                colorFondo = nuevoColor,
+                fotoPerfil = nuevaFoto
             )
             _perfiles.value = perfilesActuales
         }

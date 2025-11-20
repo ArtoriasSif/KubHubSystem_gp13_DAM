@@ -1,0 +1,189 @@
+mi clase usuario entity tiene esos atributos
+
+@Entity
+@Table(name = "usuario", schema = "public")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Usuario {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "id_usuario")
+    private Integer idUsuario;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_rol", nullable = false)
+    private Rol rol;
+
+    @Column(name = "p_nombre", length = 100)
+    private String primerNombre;
+
+    @Column(name = "s_nombre", length = 100)
+    private String segundoNombre;
+
+    @Column(name = "app_paterno", length = 100)
+    private String apellidoPaterno;
+
+    @Column(name = "app_materno", length = 100)
+    private String apellidoMaterno;
+
+    @Column(name = "email", nullable = false, unique = true, length = 255)
+    private String email;
+
+    @Column(name = "username", unique = true, length = 100)
+    private String username;
+
+    @Column(name = "contrasena", nullable = false, length = 255)
+    private String contrasena;
+
+    @Column(name = "foto_perfil")
+    private byte[] fotoPerfil;
+
+    @Column(name = "activo", nullable = false)
+    private Boolean activo = true;
+
+    @Column(name = "fecha_creacion", nullable = false, updatable = false)
+    private LocalDateTime fechaCreacion;
+
+    @Column(name = "ultimo_acceso")
+    private LocalDateTime ultimoAcceso;
+
+    @PrePersist
+    protected void onCreate() {
+        if (fechaCreacion == null) {
+            fechaCreacion = LocalDateTime.now();
+        }
+        if (activo == null) {
+            activo = true;
+        }
+    }
+
+    /**
+     * Método helper para obtener el nombre completo del usuario
+     */
+    public String getNombreCompleto() {
+        StringBuilder nombre = new StringBuilder();
+        if (primerNombre != null) nombre.append(primerNombre).append(" ");
+        if (segundoNombre != null) nombre.append(segundoNombre).append(" ");
+        if (apellidoPaterno != null) nombre.append(apellidoPaterno).append(" ");
+        if (apellidoMaterno != null) nombre.append(apellidoMaterno);
+        return nombre.toString().trim();
+    }
+}
+
+
+mi seguinte controller para actualizar la foto del perfil
+
+/**
+     * PUT /api/v1/usuarios/{id}/foto
+     * Actualiza la foto de perfil de un usuario
+     */
+    @PutMapping("/{id}/foto")
+    public ResponseEntity<?> actualizarFotoPerfil(
+            @PathVariable Integer id,
+            @RequestParam("foto") MultipartFile foto) {
+        try {
+            UsuarioResponseDTO usuarioActualizado = usuarioService.actualizarFotoPerfil(id, foto);
+            return ResponseEntity.ok(usuarioActualizado);
+        } catch (UsuarioNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Usuario no encontrado con id: " + id);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error al actualizar la foto de perfil");
+        }
+    }
+
+que llama al service implementadado
+
+@Override
+    @Transactional
+    public UsuarioResponseDTO actualizarFotoPerfil(Integer idUsuario, MultipartFile foto) {
+
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> new UsuarioNotFoundException(idUsuario));
+
+        if (foto != null && !foto.isEmpty()) {
+            try {
+                byte[] fotoBytes = foto.getBytes();
+
+                // Validar tamaño máximo 10MB
+                if (fotoBytes.length > 10 * 1024 * 1024) {
+                    throw new IllegalArgumentException("La foto no puede superar 10MB");
+                }
+
+                // Validar que realmente es una imagen (JPG, PNG, etc.)
+                if (!ImagenUtils.esImagenValida(fotoBytes)) {
+                    throw new IllegalArgumentException("El archivo no es una imagen válida (JPG/PNG).");
+                }
+
+                usuario.setFotoPerfil(fotoBytes);
+
+            } catch (IOException e) {
+                throw new RuntimeException("Error al leer el archivo", e);
+            }
+        }
+
+        Usuario usuarioActualizado = usuarioRepository.save(usuario);
+        return convertirADTO(usuarioActualizado);
+    }
+
+	donde hay un retorn de un metodo privado dto
+
+	private UsuarioResponseDTO convertirADTO(Usuario usuario) {
+        String fotoBase64 = null;
+
+        if (usuario.getFotoPerfil() != null && usuario.getFotoPerfil().length > 0) {
+            try {
+                // Validar si es imagen real
+                if (ImagenUtils.esImagenValida(usuario.getFotoPerfil())) {
+                    fotoBase64 = Base64.getEncoder().encodeToString(usuario.getFotoPerfil());
+                }
+                // Si NO es una imagen válida, fotoBase64 queda en null
+            } catch (Exception e) {
+                // Cualquier error → dejamos fotoBase64 como null
+                fotoBase64 = null;
+            }
+        }
+
+        return new UsuarioResponseDTO(
+                usuario.getIdUsuario(),
+                usuario.getRol().getIdRol(),
+                convertirNombreRolEnumALegible(usuario.getRol().getNombreRol()),
+                usuario.getPrimerNombre(),
+                usuario.getSegundoNombre(),
+                usuario.getApellidoPaterno(),
+                usuario.getApellidoMaterno(),
+                usuario.getNombreCompleto(),
+                usuario.getEmail(),
+                usuario.getUsername(),
+                fotoBase64,
+                usuario.getActivo(),
+                usuario.getFechaCreacion(),
+                usuario.getUltimoAcceso()
+        );
+    }
+
+
+hay que considera que en la bbdd de postgret la tabla tiene los seguintes atributos
+-- Tabla usuario
+CREATE TABLE usuario (
+    id_usuario SERIAL PRIMARY KEY,
+    id_rol INTEGER NOT NULL REFERENCES rol(id_rol),
+    p_nombre VARCHAR(100),
+    s_nombre VARCHAR(100),
+    app_paterno VARCHAR(100),
+    app_materno VARCHAR(100),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    username VARCHAR(100) UNIQUE,
+    contrasena VARCHAR(255) NOT NULL,
+    foto_perfil BYTEA,
+    activo BOOLEAN DEFAULT true,
+    fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ultimo_acceso TIMESTAMP
+);
