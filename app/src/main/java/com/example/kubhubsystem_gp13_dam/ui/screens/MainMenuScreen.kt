@@ -25,7 +25,7 @@ import com.example.kubhubsystem_gp13_dam.ui.viewmodel.SolicitudViewModel
 import com.example.kubhubsystem_gp13_dam.viewmodel.PedidoViewModel
 import com.example.kubhubsystem_gp13_dam.ui.screens.dashboard.DashboardScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome.HomeInternalScreen
-import com.example.kubhubsystem_gp13_dam.repository.LoginRepository2
+import com.example.kubhubsystem_gp13_dam.repository.LoginRepository
 import com.example.kubhubsystem_gp13_dam.ui.components.PerfilUsuarioScreenSimple
 import kotlinx.coroutines.launch
 
@@ -47,7 +47,7 @@ fun MainMenuScreen(
     val estadoUsuarios by gestionUsuariosViewModel.estado.collectAsState()
 
     val loginRepository = remember {
-        LoginRepository2.getInstance(context)
+        LoginRepository.getInstance(context)
     }
     val usuarioActual = remember { loginRepository.obtenerUsuarioLogueado() }
     val rolUsuario = usuarioActual?.rol
@@ -394,7 +394,7 @@ fun MainMenuScreen(
 
                         composable("usuarios") {
                             if (rolUsuario != null && PermisosManager.puedeGestionarUsuarios(rolUsuario)) {
-                                GestionUsuarioScreen2(
+                                GestionUsuarioScreen(
                                     onNavigateToDetalleUsuario = { idUsuario ->
                                         // TODO: Implementar navegación a detalle
                                     },

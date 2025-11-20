@@ -1,19 +1,16 @@
-/**
-package com.example.kubhubsystem_gp13_dam.data.repository
+package com.example.kubhubsystem_gp13_dam.repository
 
 import android.content.Context
 import com.example.kubhubsystem_gp13_dam.local.remote.RetrofitClient
-import com.example.kubhubsystem_gp13_dam.model.Rol
-import com.example.kubhubsystem_gp13_dam.model.Usuario
-import com.example.kubhubsystem_gp13_dam.local.dto.LoginRequestDTO
-import com.example.kubhubsystem_gp13_dam.local.dto.LoginResponseDTO
+import com.example.kubhubsystem_gp13_dam.model.*
 import com.example.kubhubsystem_gp13_dam.utils.TokenManager
 import kotlinx.coroutines.delay
 
 /**
- * Repositorio de autenticación
- * ✅ ACTUALIZADO: Ahora se conecta al backend Spring Boot vía Retrofit
- * ❌ ELIMINADO: Ya no usa DAOs ni base de datos local
+ * Repositorio de autenticación - Versión 2 Refactorizado
+ * ✅ Conectado directamente con API Services
+ * ✅ Sin dependencias de contexto local innecesarias
+ * ✅ Usa DTOs correctos del backend
  */
 class LoginRepository private constructor(
     private val context: Context
@@ -24,19 +21,12 @@ class LoginRepository private constructor(
 
     /**
      * Realiza el login contra el backend
-     *
-     * @param email Correo del usuario
-     * @param password Contraseña ingresada
-     * @return String? → Devuelve:
-     *  - "email" si el usuario no existe
-     *  - "password" si la contraseña es incorrecta
-     *  - "error" si hay un error de conexión
-     *  - null si la autenticación es exitosa
+     * @return null si es exitoso, o código de error como String
      */
     suspend fun login(email: String, password: String): String? {
         return try {
-            // Simular delay de red
-            delay(1000)
+            // Delay simulado para mejor UX
+            delay(500)
 
             // Crear DTO de request
             val loginRequest = LoginRequestDTO(
@@ -44,65 +34,104 @@ class LoginRepository private constructor(
                 contrasena = password
             )
 
-            // Llamar al backend
+            // Validación básica antes de enviar
+            if (!loginRequest.isValid()) {
+                return "invalid_format"
+            }
+
+            // Llamada al backend
             val response = authService.login(loginRequest)
 
             when {
                 response.isSuccessful && response.body() != null -> {
-                    // ✅ Login exitoso
                     val loginResponse = response.body()!!
+                    val usuario = loginResponse.usuario
 
-                    // Guardar sesión en SharedPreferences
+                    // Verificar si el usuario está activo
+                    if (usuario.activo == false) {
+                        return "inactive"
+                    }
+
+                    // Guardar sesión
                     guardarSesion(loginResponse)
 
-                    null // Login exitoso
+                    println("✅ Login exitoso: ${usuario.email} - Rol: ${usuario.nombreRol}")
+                    null // Éxito
                 }
                 response.code() == 401 -> {
-                    // Credenciales inválidas
+                    println("❌ Credenciales incorrectas")
                     "password"
                 }
                 response.code() == 404 -> {
-                    // Usuario no encontrado
+                    println("❌ Usuario no encontrado")
                     "email"
                 }
+                response.code() == 403 -> {
+                    println("⚠️ Usuario inactivo")
+                    "inactive"
+                }
                 else -> {
-                    // Error genérico
+                    println("⚠️ Error en login: ${response.code()} - ${response.message()}")
                     "error"
                 }
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            "error" // Error de conexión o servidor
+            println("❌ Excepción en login: ${e.message}")
+            "error"
         }
     }
 
     /**
-     * Guarda la información de sesión en SharedPreferences
+     * Guarda la sesión del usuario en TokenManager
      */
     private fun guardarSesion(loginResponse: LoginResponseDTO) {
-        val usuario = loginResponse.usuario
+        val usuarioResponse = loginResponse.usuario
 
+        // Construir nombre completo
+        val nombreCompleto = if (!usuarioResponse.nombreCompleto.isNullOrBlank()) {
+            usuarioResponse.nombreCompleto!!
+        } else {
+            // Construir manualmente desde las partes
+            val partes = listOfNotNull(
+                usuarioResponse.primerNombre,
+                usuarioResponse.segundoNombre,
+                usuarioResponse.apellidoPaterno,
+                usuarioResponse.apellidoMaterno
+            )
+            partes.joinToString(" ")
+        }
+
+        // Obtener nombre del rol
+        val rolNombre = usuarioResponse.nombreRol ?: "Desconocido"
+
+        // Guardar en TokenManager
         tokenManager.guardarSesion(
             token = loginResponse.token,
-            userId = usuario.idUsuario,
-            userEmail = usuario.email,
-            userRol = usuario.nombreRol,
-            userName = usuario.nombreCompleto
+            userId = usuarioResponse.idUsuario ?: 0,
+            userEmail = usuarioResponse.email ?: "",
+            userRol = rolNombre,
+            userName = nombreCompleto
         )
+
+        println("✅ Sesión guardada: ${usuarioResponse.email} - Rol: $rolNombre")
     }
 
     /**
-     * Cierra la sesión del usuario
+     * Cierra sesión del usuario
      */
     suspend fun logout() {
         try {
-            // Llamar al endpoint de logout (opcional, ya que el backend lo maneja en frontend)
+            // Intentar logout en backend
             authService.logout()
+            println("✅ Logout exitoso en backend")
         } catch (e: Exception) {
             e.printStackTrace()
+            println("⚠️ Error al hacer logout en backend: ${e.message}")
         } finally {
-            // Siempre limpiar la sesión local
+            // Siempre limpiar sesión local
             tokenManager.limpiarSesion()
+            println("✅ Sesión local limpiada")
         }
     }
 
@@ -114,9 +143,9 @@ class LoginRepository private constructor(
     }
 
     /**
-     * Obtiene el usuario logueado desde SharedPreferences
+     * Obtiene el usuario actualmente logueado
      */
-    fun obtenerUsuarioLogueado(): Usuario? {
+    fun obtenerUsuarioLogueado(): Usuario2? {
         if (!tokenManager.tieneSesionActiva()) return null
 
         val userId = tokenManager.obtenerUserId()
@@ -124,32 +153,57 @@ class LoginRepository private constructor(
         val rolNombre = tokenManager.obtenerUserRol() ?: return null
         val nombreCompleto = tokenManager.obtenerUserName() ?: return null
 
-        // Parsear el rol
-        val rol = Rol.desdeNombre(rolNombre) ?: Rol.DOCENTE
+        // Convertir nombre de rol a enum
+        val rol = Rol2.desdeNombre(rolNombre) ?: Rol2.DOCENTE
 
-        return Usuario(
+        // Dividir nombre completo
+        val partes = nombreCompleto.split(" ")
+        val primerNombre = partes.firstOrNull() ?: ""
+        val segundoNombre = if (partes.size > 2) partes[1] else ""
+        val apellidoPaterno = partes.getOrNull(if (partes.size > 2) 2 else 1) ?: ""
+        val apellidoMaterno = partes.lastOrNull() ?: ""
+
+        return Usuario2(
             idUsuario = userId,
             rol = rol,
-            primerNombre = nombreCompleto.split(" ").firstOrNull() ?: "",
+            primerNombre = primerNombre,
+            segundoNombre = segundoNombre,
+            apellidoPaterno = apellidoPaterno,
+            apellidoMaterno = apellidoMaterno,
             email = email,
+            username = email.substringBefore("@"),
+            password = "", // No almacenamos la contraseña
             activo = true
         )
     }
 
     /**
-     * Obtiene las credenciales demo para testing
-     * (mantener para compatibilidad con LoginViewModel actual)
+     * Obtiene credenciales demo para un rol específico
      */
-    fun getDemoCredentials(rol: Rol): Pair<String, String>? {
+    fun getDemoCredentials(rol: Rol2): Pair<String, String>? {
         return when (rol) {
-            Rol.ADMINISTRADOR -> "admin@kuhub.cl" to "admin123"
-            Rol.CO_ADMINISTRADOR -> "coadmin@kuhub.cl" to "coadmin123"
-            Rol.GESTOR_PEDIDOS -> "gestor@kuhub.cl" to "gestor123"
-            Rol.PROFESOR_A_CARGO -> "profesorCargo@kuhub.cl" to "profesor123"
-            Rol.DOCENTE -> "carmen.jimenez@kuhub.cl" to "docente123"
-            Rol.ENCARGADO_BODEGA -> "bodega@kuhub.cl" to "bodega123"
-            Rol.ASISTENTE_BODEGA -> "asistente@kuhub.cl" to "asistente123"
+            Rol2.ADMINISTRADOR -> "admin@kuhub.cl" to "admin123"
+            Rol2.CO_ADMINISTRADOR -> "ma.delara@kuhub.cl" to "matheusmago123"
+            Rol2.GESTOR_PEDIDOS -> "gestor@kuhub.cl" to "gestor123"
+            Rol2.PROFESOR_A_CARGO -> "profesorCargo@kuhub.cl" to "profesor123"
+            Rol2.DOCENTE -> "carmen.jimenez@kuhub.cl" to "docente123"
+            Rol2.ENCARGADO_BODEGA -> "bodega@kuhub.cl" to "bodega123"
+            Rol2.ASISTENTE_BODEGA -> "asistente@kuhub.cl" to "asistente123"
         }
+    }
+
+    /**
+     * Valida formato de email
+     */
+    fun validarEmail(email: String): Boolean {
+        return android.util.Patterns.EMAIL_ADDRESS.matcher(email).matches()
+    }
+
+    /**
+     * Valida longitud de contraseña
+     */
+    fun validarPassword(password: String): Boolean {
+        return password.length >= 6
     }
 
     companion object {
@@ -158,9 +212,11 @@ class LoginRepository private constructor(
 
         fun getInstance(context: Context): LoginRepository {
             return instance ?: synchronized(this) {
-                instance ?: LoginRepository(context.applicationContext).also { instance = it }
+                instance ?: LoginRepository(context.applicationContext).also {
+                    instance = it
+                    println("✅ LoginRepository inicializado")
+                }
             }
         }
     }
 }
- */

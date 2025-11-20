@@ -1,6 +1,7 @@
 package com.example.kubhubsystem_gp13_dam.model
 
 
+/**ESTE CODIGO NO ES ELIMINADO POR CAUSA DE SOLICITUDE PARA QUE SE PUEDA VISUALIZAR EN ROOM LOCAL*/
 
 /**
  * Modelo de dominio para Usuario
