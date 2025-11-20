@@ -1,11 +1,14 @@
 package com.example.kubhubsystem_gp13_dam.viewmodel
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.kubhubsystem_gp13_dam.model.Rol
-import com.example.kubhubsystem_gp13_dam.model.Usuario
-import com.example.kubhubsystem_gp13_dam.local.dto.RolResponseDTO
-import com.example.kubhubsystem_gp13_dam.local.dto.UsuarioEstadisticasDTO
+import com.example.kubhubsystem_gp13_dam.manager.PerfilUsuarioManager
+import com.example.kubhubsystem_gp13_dam.model.Rol2
+import com.example.kubhubsystem_gp13_dam.model.RolResponseDTO
+import com.example.kubhubsystem_gp13_dam.model.Usuario2
+import com.example.kubhubsystem_gp13_dam.model.UsuarioEstadisticasDTO
 import com.example.kubhubsystem_gp13_dam.repository.RolRepository
 import com.example.kubhubsystem_gp13_dam.repository.UsuarioRepository
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,8 +23,8 @@ import kotlinx.coroutines.launch
  * ⛔ ELIMINADO: Ya no maneja DocenteRepository ni inicialización de datos locales
  */
 data class GestionUsuariosEstado(
-    val usuarios: List<Usuario> = emptyList(),
-    val usuariosFiltrados: List<Usuario> = emptyList(),
+    val usuarios: List<Usuario2> = emptyList(),
+    val usuariosFiltrados: List<Usuario2> = emptyList(),
     val roles: List<RolResponseDTO> = emptyList(),
     val estadisticas: UsuarioEstadisticasDTO? = null,
     val cargando: Boolean = false,
@@ -48,6 +51,10 @@ class GestionUsuariosViewModel(
      * Carga todos los datos necesarios para la pantalla
      * ✅ ACTUALIZADO: Ahora consulta el backend
      */
+    /**
+     * Carga todos los datos necesarios para la pantalla
+     * ✅ ACTUALIZADO: Ahora sincroniza perfiles con fotos del backend
+     */
     fun cargarDatosCompletos() {
         viewModelScope.launch {
             _estado.update { it.copy(cargando = true, error = null) }
@@ -61,6 +68,9 @@ class GestionUsuariosViewModel(
 
                 // Cargar estadísticas
                 val estadisticas = usuarioRepository.obtenerEstadisticas()
+
+                // ✅ CRÍTICO: Inicializar perfiles con fotos del backend
+                PerfilUsuarioManager.getInstance().inicializarPerfiles(usuarios)
 
                 _estado.update { it.copy(
                     usuarios = usuarios,
@@ -129,7 +139,7 @@ class GestionUsuariosViewModel(
      * Elimina un usuario
      * ✅ ACTUALIZADO: Ahora elimina vía API
      */
-    fun eliminarUsuario(usuario: Usuario) {
+    fun eliminarUsuario(usuario: Usuario2) {
         viewModelScope.launch {
             try {
                 val exitoso = usuarioRepository.eliminar(usuario.idUsuario)
@@ -164,19 +174,19 @@ class GestionUsuariosViewModel(
         email: String,
         username: String?,
         password: String,
-        rol: Rol
+        rol: Rol2
     ) {
         viewModelScope.launch {
             try {
-                val nuevoUsuario = Usuario(
+                val nuevoUsuario = Usuario2(
                     idUsuario = 0,
                     rol = rol,
                     primerNombre = primerNombre,
-                    segundoNombre = segundoNombre,
-                    apellidoPaterno = apellidoPaterno,
-                    apellidoMaterno = apellidoMaterno,
+                    segundoNombre = segundoNombre ?: "",
+                    apellidoMaterno = apellidoMaterno ?: "",
+                    apellidoPaterno = apellidoPaterno ?: "",
                     email = email,
-                    username = username,
+                    username = username ?: email.substringBefore("@"),
                     password = password
                 )
 
@@ -204,7 +214,7 @@ class GestionUsuariosViewModel(
      * Actualiza un usuario existente
      * ✅ ACTUALIZADO: Ahora actualiza vía API
      */
-    fun actualizarUsuario(usuario: Usuario) {
+    fun actualizarUsuario(usuario: Usuario2) {
         viewModelScope.launch {
             try {
                 val usuarioActualizado = usuarioRepository.actualizar(usuario.idUsuario, usuario)
@@ -290,7 +300,7 @@ class GestionUsuariosViewModel(
     /**
      * Obtiene un usuario por su ID
      */
-    fun obtenerUsuarioPorId(id: Int): Usuario? {
+    fun obtenerUsuarioPorId(id: Int): Usuario2? {
         return estado.value.usuarios.find { it.idUsuario == id }
     }
 
@@ -299,7 +309,7 @@ class GestionUsuariosViewModel(
      */
     fun esUsuarioDocente(idUsuario: Int): Boolean {
         val usuario = estado.value.usuarios.find { it.idUsuario == idUsuario }
-        return usuario?.rol == Rol.DOCENTE
+        return usuario?.rol == Rol2.DOCENTE
     }
 
     /**
@@ -316,7 +326,7 @@ class GestionUsuariosViewModel(
      * Aplica filtros a una lista de usuarios
      * 🆕 ACTUALIZADO: Ahora incluye filtro por estado activo/inactivo
      */
-    private fun aplicarFiltros(usuarios: List<Usuario>): List<Usuario> {
+    private fun aplicarFiltros(usuarios: List<Usuario2>): List<Usuario2> {
         return usuarios.filter { usuario ->
             val coincideBusqueda = estado.value.buscarTexto.isEmpty() ||
                     usuario.primerNombre.contains(estado.value.buscarTexto, ignoreCase = true) ||
@@ -339,5 +349,77 @@ class GestionUsuariosViewModel(
 
             coincideBusqueda && coincideRol && coincideEstado
         }.sortedBy { it.primerNombre }
+    }
+
+    /**
+     * 🆕 Actualiza la foto de perfil de un usuario
+     *
+     * @param context Contexto de Android
+     * @param idUsuario ID del usuario
+     * @param imageUri Uri de la imagen seleccionada
+     */
+    fun actualizarFotoPerfil(context: Context, idUsuario: Int, imageUri: Uri) {
+        viewModelScope.launch {
+            _estado.update { it.copy(cargando = true, error = null) }
+
+            try {
+                val usuarioActualizado = usuarioRepository.actualizarFotoPerfil(
+                    context = context,
+                    idUsuario = idUsuario,
+                    imageUri = imageUri
+                )
+
+                if (usuarioActualizado != null) {
+                    cargarDatosCompletos()
+                    _estado.update { it.copy(
+                        mensajeExito = "Foto de perfil actualizada correctamente",
+                        cargando = false
+                    ) }
+                } else {
+                    _estado.update { it.copy(
+                        error = "No se pudo actualizar la foto de perfil",
+                        cargando = false
+                    ) }
+                }
+            } catch (e: Exception) {
+                _estado.update { it.copy(
+                    error = "Error al actualizar foto de perfil: ${e.message}",
+                    cargando = false
+                ) }
+            }
+        }
+    }
+
+    /**
+     * 🆕 Elimina la foto de perfil de un usuario
+     *
+     * @param idUsuario ID del usuario
+     */
+    fun eliminarFotoPerfil(idUsuario: Int) {
+        viewModelScope.launch {
+            _estado.update { it.copy(cargando = true, error = null) }
+
+            try {
+                val exitoso = usuarioRepository.eliminarFotoPerfil(idUsuario)
+
+                if (exitoso) {
+                    cargarDatosCompletos()
+                    _estado.update { it.copy(
+                        mensajeExito = "Foto de perfil eliminada correctamente",
+                        cargando = false
+                    ) }
+                } else {
+                    _estado.update { it.copy(
+                        error = "No se pudo eliminar la foto de perfil",
+                        cargando = false
+                    ) }
+                }
+            } catch (e: Exception) {
+                _estado.update { it.copy(
+                    error = "Error al eliminar foto de perfil: ${e.message}",
+                    cargando = false
+                ) }
+            }
+        }
     }
 }

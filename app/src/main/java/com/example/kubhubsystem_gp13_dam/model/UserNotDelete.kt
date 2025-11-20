@@ -32,7 +32,7 @@ enum class UserRole(
     companion object {
         /**
          * Convierte desde el enum Rol del sistema al UserRole de login
-         */
+
         fun desdeRol(rol: Rol): UserRole {
             return when (rol) {
                 Rol.ADMINISTRADOR -> ADMINISTRADOR
@@ -43,6 +43,6 @@ enum class UserRole(
                 Rol.ENCARGADO_BODEGA -> ENCARGADO_BODEGA
                 Rol.ASISTENTE_BODEGA -> ASISTENTE_BODEGA
             }
-        }
+        } */
     }
 }

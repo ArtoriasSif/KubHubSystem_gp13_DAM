@@ -2,7 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    id("kotlin-kapt")
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -18,7 +18,7 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // ✅ Genera la constante BASE_URL dentro de BuildConfig
-        buildConfigField("String", "BASE_URL", "\"http://34.227.190.71/\"")
+        buildConfigField("String", "BASE_URL", "\"http://54.91.220.71/\"")
     }
 
     buildTypes {
@@ -71,7 +71,6 @@ dependencies {
     //  COMPOSE & ANDROIDX CORE
     // ========================================
     implementation(libs.androidx.material3)
-    implementation(libs.androidx.runtime)
     implementation(libs.androidx.ui.text)
 
     implementation("androidx.core:core-ktx:1.15.0")
@@ -99,7 +98,7 @@ dependencies {
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")
     implementation("androidx.room:room-ktx:$roomVersion")
-    kapt("androidx.room:room-compiler:$roomVersion")
+    ksp("androidx.room:room-compiler:$roomVersion")
 
     // ========================================
     //  COROUTINES
@@ -130,9 +129,6 @@ dependencies {
     //  GOOGLE PLAY SERVICES
     // ========================================
     implementation("com.google.android.gms:play-services-location:21.3.0")
-
-
-
 
 
     // ========================================

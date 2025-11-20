@@ -37,7 +37,7 @@ class SolicitudRepository(
         val gestorPedidos = usuarioEntity?.let {
             Usuario(
                 idUsuario = it.idUsuario,
-                rol = Rol.desdeId(it.idRol) ?: Rol.GESTOR_PEDIDOS,
+                rol = Rol2.desdeId(it.idRol) ?: Rol2.GESTOR_PEDIDOS,
                 primerNombre = it.primeroNombre,      // ✅ Corregido
                 segundoNombre = it.segundoNombre,     // ✅ Nullable
                 apellidoPaterno = it.apellidoPaterno, // ✅ Nullable
@@ -49,7 +49,7 @@ class SolicitudRepository(
             )
         } ?: Usuario(
             idUsuario = 0,
-            rol = Rol.GESTOR_PEDIDOS,
+            rol = Rol2.GESTOR_PEDIDOS,
             primerNombre = "Desconocido",             // ✅ Corregido
             segundoNombre = null,                     // ✅ Nullable
             apellidoPaterno = null,                   // ✅ Nullable
@@ -78,7 +78,7 @@ class SolicitudRepository(
         val docenteSeccion = docenteEntity?.let {
             Usuario(
                 idUsuario = it.idUsuario,
-                rol = Rol.desdeId(it.idRol) ?: Rol.DOCENTE,
+                rol = Rol2.desdeId(it.idRol) ?: Rol2.DOCENTE,
                 primerNombre = it.primeroNombre,       // ✅ Corregido
                 segundoNombre = it.segundoNombre,     // ✅ Nullable
                 apellidoPaterno = it.apellidoPaterno, // ✅ Nullable
@@ -90,7 +90,7 @@ class SolicitudRepository(
             )
         } ?: Usuario(
             idUsuario = 0,
-            rol = Rol.DOCENTE,
+            rol = Rol2.DOCENTE,
             primerNombre = "Sin",                     // ✅ Corregido
             segundoNombre = null,                     // ✅ Nullable
             apellidoPaterno = "Docente",              // ✅ Nullable

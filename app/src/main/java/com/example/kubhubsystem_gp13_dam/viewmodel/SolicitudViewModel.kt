@@ -335,7 +335,7 @@ class SolicitudViewModel(
                 // ✅ ACTUALIZADO: Crear docente con atributos del backend
                 val docente = Usuario(
                     idUsuario = seccion.idDocente ?: 0,
-                    rol = Rol.DOCENTE,
+                    rol = Rol2.DOCENTE,
                     primerNombre = "Docente",  // ✅ Corregido: primerNombre
                     segundoNombre = null,       // ✅ Nullable
                     apellidoPaterno = "Asignado",
@@ -349,7 +349,7 @@ class SolicitudViewModel(
                 // ✅ ACTUALIZADO: Gestor de pedidos con atributos del backend
                 val gestorPedidos = Usuario(
                     idUsuario = 1,
-                    rol = Rol.GESTOR_PEDIDOS,
+                    rol = Rol2.GESTOR_PEDIDOS,
                     primerNombre = "Admin",     // ✅ Corregido: primerNombre
                     segundoNombre = null,       // ✅ Nullable
                     apellidoPaterno = "Sistema",

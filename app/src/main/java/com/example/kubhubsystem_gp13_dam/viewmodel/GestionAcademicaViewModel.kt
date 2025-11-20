@@ -117,7 +117,7 @@ class GestionAcademicaViewModel(
                 val docentesInfo = todosUsuarios
                     .filter { usuario ->
                         // Filtrar usuarios con rol DOCENTE (id = 4)
-                        usuario.rol == Rol.DOCENTE
+                        usuario.rol == Rol2.DOCENTE
                     }
                     .map { usuario ->
                         DocenteInfo(

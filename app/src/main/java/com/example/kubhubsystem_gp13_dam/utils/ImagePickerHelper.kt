@@ -6,16 +6,135 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.core.content.FileProvider
+import com.example.kubhubsystem_gp13_dam.model.Usuario2
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-// Helper object con funciones utilitarias
+
+/**
+ * ✅ PERFILHELPER SIMPLIFICADO
+ * Ya no convierte a URI - mantiene el Base64 como String
+ */
+object PerfilHelper {
+
+    private val coloresPaleta = listOf(
+        0xFFE57373, 0xFFF06292, 0xFFBA68C8, 0xFF9575CD,
+        0xFF7986CB, 0xFF64B5F6, 0xFF4FC3F7, 0xFF4DD0E1,
+        0xFF4DB6AC, 0xFF81C784, 0xFFAED581, 0xFFFFD54F,
+        0xFFFFB74D, 0xFFFF8A65, 0xFFA1887F, 0xFF90A4AE
+    )
+
+    /**
+     * Genera iniciales desde Usuario2
+     */
+    fun generarIniciales(usuario: Usuario2): String {
+        val primerLetra = usuario.primerNombre.firstOrNull()?.uppercaseChar() ?: 'U'
+        val segundaLetra = (usuario.apellidoPaterno?.firstOrNull()
+            ?: usuario.primerNombre.getOrNull(1))?.uppercaseChar() ?: 'S'
+        return "$primerLetra$segundaLetra"
+    }
+
+    /**
+     * Obtiene color consistente por ID
+     */
+    fun obtenerColorPorId(idUsuario: Int): Long {
+        return coloresPaleta[idUsuario % coloresPaleta.size]
+    }
+
+    /**
+     * ✅ FUNCIÓN CRÍTICA SIMPLIFICADA
+     * Ya no convierte a URI - devuelve el Base64 tal cual viene del backend
+     */
+    fun procesarFotoPerfil(fotoPerfil: String?): String? {
+        if (fotoPerfil.isNullOrBlank()) {
+            Log.d("PerfilHelper", "📭 fotoPerfil vacío")
+            return null
+        }
+
+        val limpio = fotoPerfil.trim()
+
+        Log.d("PerfilHelper", "📥 Foto recibida:")
+        Log.d("PerfilHelper", "   Preview: ${limpio.take(50)}")
+        Log.d("PerfilHelper", "   Length: ${limpio.length}")
+
+        // ✅ DEVOLVER TAL CUAL
+        // El componente AvatarUsuario se encargará de decodificar
+        return limpio
+    }
+
+    /**
+     * Crea perfil desde Usuario2
+     */
+    fun crearPerfilDesdeUsuario(usuario: Usuario2): PerfilUsuario {
+        val foto = procesarFotoPerfil(usuario.fotoPerfil)
+
+        Log.d("PerfilHelper", "🆕 Perfil usuario ${usuario.idUsuario}")
+        Log.d("PerfilHelper", "   Foto presente: ${foto != null}")
+
+        return PerfilUsuario(
+            idUsuario = usuario.idUsuario,
+            fotoPerfil = foto, // ✅ Ahora es String, no Uri
+            iniciales = generarIniciales(usuario),
+            colorFondo = obtenerColorPorId(usuario.idUsuario)
+        )
+    }
+
+    /**
+     * Limpia Base64 para enviar al backend
+     * Remueve prefijos data:image si existen
+     */
+    fun limpiarBase64ParaBackend(base64: String?): String? {
+        if (base64.isNullOrBlank()) return null
+
+        val limpio = base64.trim()
+
+        return when {
+            limpio.contains("base64,") -> limpio.substringAfter("base64,")
+            else -> limpio
+        }
+    }
+
+    /**
+     * Detecta tipo MIME según header Base64
+     */
+    fun detectarMimeType(base64: String): String {
+        val clean = if (base64.contains("base64,")) {
+            base64.substringAfter("base64,")
+        } else {
+            base64
+        }
+
+        return when {
+            clean.startsWith("/9j/") -> "image/jpeg"
+            clean.startsWith("iVBOR") -> "image/png"
+            clean.startsWith("R0lG") -> "image/gif"
+            clean.startsWith("UklG") -> "image/webp"
+            else -> "image/jpeg"
+        }
+    }
+}
+
+/**
+ * ✅ PERFILUSUARIO ACTUALIZADO
+ * fotoPerfil ahora es String? (Base64) en lugar de Uri?
+ */
+data class PerfilUsuario(
+    val idUsuario: Int,
+    val fotoPerfil: String? = null, // ✅ Cambio: String en lugar de Uri
+    val iniciales: String,
+    val colorFondo: Long
+)
+
+/**
+ * Helper para permisos y selección de imágenes
+ */
 object ImagePickerHelper {
 
     fun obtenerPermisoGaleria(): String {
@@ -82,18 +201,19 @@ object ImagePickerHelper {
     }
 }
 
-// Clase que maneja el estado del picker
+
+/**
+ * Estado del image picker con cámara
+ */
 class ImagePickerWithCameraState(
     private val context: Context,
     private val onImageSelected: (Uri) -> Unit,
     private val onGalleryPermissionDenied: () -> Unit,
     private val onCameraPermissionDenied: () -> Unit
 ) {
-    // Variables mutables para mantener el estado
     var photoUri by mutableStateOf<Uri?>(null)
     var photoFile by mutableStateOf<File?>(null)
 
-    // Launchers (se asignarán después de crear el composable)
     lateinit var galleryLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Uri?>
     lateinit var cameraLauncher: androidx.activity.compose.ManagedActivityResultLauncher<Uri, Boolean>
     lateinit var galleryPermissionLauncher: androidx.activity.compose.ManagedActivityResultLauncher<String, Boolean>
@@ -119,18 +239,18 @@ class ImagePickerWithCameraState(
         try {
             photoFile = ImagePickerHelper.crearArchivoFotoTemporal(context)
             photoUri = ImagePickerHelper.obtenerUriParaArchivo(context, photoFile!!)
-            println("📸 Lanzando cámara con URI: $photoUri")
+            Log.d("ImagePicker", "📸 Lanzando cámara con URI: $photoUri")
             cameraLauncher.launch(photoUri!!)
         } catch (e: Exception) {
-            println("❌ Error al abrir cámara: ${e.message}")
+            Log.e("ImagePicker", "❌ Error al abrir cámara: ${e.message}")
             e.printStackTrace()
         }
     }
 
     fun procesarResultadoCamara(success: Boolean) {
-        println("📸 Resultado cámara: success=$success, uri=$photoUri")
+        Log.d("ImagePicker", "📸 Resultado cámara: success=$success, uri=$photoUri")
         if (success && photoUri != null && photoFile?.exists() == true) {
-            println("✅ Foto capturada exitosamente")
+            Log.d("ImagePicker", "✅ Foto capturada exitosamente")
             onImageSelected(photoUri!!)
         }
         photoUri = null
@@ -154,7 +274,9 @@ class ImagePickerWithCameraState(
     }
 }
 
-// Composable principal
+/**
+ * Composable para recordar el estado del image picker
+ */
 @Composable
 fun rememberImagePickerWithCameraLauncher(
     onImageSelected: (Uri) -> Unit,
@@ -163,7 +285,6 @@ fun rememberImagePickerWithCameraLauncher(
 ): ImagePickerWithCameraState {
     val context = androidx.compose.ui.platform.LocalContext.current
 
-    // Crear el estado
     val state = remember(context) {
         ImagePickerWithCameraState(
             context = context,
@@ -173,28 +294,24 @@ fun rememberImagePickerWithCameraLauncher(
         )
     }
 
-    // Launcher para galería
     state.galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let { onImageSelected(it) }
     }
 
-    // Launcher para cámara
     state.cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture()
     ) { success ->
         state.procesarResultadoCamara(success)
     }
 
-    // Launcher para permiso de galería
     state.galleryPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         state.procesarPermisoGaleria(granted)
     }
 
-    // Launcher para permiso de cámara
     state.cameraPermissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->

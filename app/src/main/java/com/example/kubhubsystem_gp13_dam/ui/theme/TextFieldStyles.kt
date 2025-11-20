@@ -5,6 +5,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 
 
 @Composable
@@ -39,5 +40,4 @@ fun loginTextFieldColors(): TextFieldColors {
         unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.4f)
     )
 }
-
 

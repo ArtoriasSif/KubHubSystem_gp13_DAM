@@ -1,5 +1,5 @@
 package com.example.kubhubsystem_gp13_dam.model
-
+/**
 /**
  * Enum que representa los roles del sistema
  * ✅ ACTUALIZADO: Ahora coincide EXACTAMENTE con el backend Java Spring Boot
@@ -73,4 +73,4 @@ enum class Rol(
          */
         fun obtenerTodos(): List<Rol> = entries.toList()
     }
-}
+}*/

@@ -1,5 +1,5 @@
 package com.example.kubhubsystem_gp13_dam.local.dto
-
+/**
 import com.google.gson.annotations.SerializedName
 
 /**
@@ -37,4 +37,4 @@ data class UsuarioUpdateDTO(
     
     @SerializedName("activo")
     val activo: Boolean? = null
-)
+)*/

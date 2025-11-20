@@ -1,8 +1,9 @@
 package com.example.kubhubsystem_gp13_dam.model
 
+import android.util.Log
 import android.util.Patterns
 import com.google.gson.annotations.SerializedName
-import java.time.LocalDateTime
+import com.example.kubhubsystem_gp13_dam.utils.PerfilHelper
 
 /**
  * ===============================================
@@ -12,7 +13,7 @@ import java.time.LocalDateTime
 
 /**
  * DTO para petición de login
- * Enviado al backend en POST /api/v1/auth/login
+ * Mapea exactamente con LoginRequestDTO.java del backend
  */
 data class LoginRequestDTO(
     @SerializedName("email")
@@ -20,16 +21,29 @@ data class LoginRequestDTO(
 
     @SerializedName("contrasena")
     val contrasena: String
-) {
+){
     /**
-     * Función de validación simple
+     * Valida que el email y contraseña tengan formato correcto
      */
     fun isValid(): Boolean {
-        val emailValid = Patterns.EMAIL_ADDRESS.matcher(email).matches()
-        val passwordValid = contrasena.isNotBlank() && contrasena.length >= 6
-        return emailValid && passwordValid
+        return email.isNotBlank() &&
+                Patterns.EMAIL_ADDRESS.matcher(email).matches() &&
+                contrasena.isNotBlank() &&
+                contrasena.length >= 6
     }
 }
+
+
+data class LoginResponseDTO(
+    @SerializedName("usuario")
+    val usuario: UsuarioResponseDTO,
+
+    @SerializedName("token")
+    val token: String,
+
+    @SerializedName("mensaje")
+    val mensaje: String
+)
 
 /**
  * ===============================================
@@ -38,8 +52,8 @@ data class LoginRequestDTO(
  */
 
 /**
- * DTO para crear un nuevo usuario
- * POST /api/v1/usuarios
+ * DTO para crear un nuevo Usuario
+ * Mapea exactamente con UsuarioRequestDTO.java del backend
  */
 data class UsuarioRequestDTO(
     @SerializedName("idRol")
@@ -47,15 +61,6 @@ data class UsuarioRequestDTO(
 
     @SerializedName("primerNombre")
     val primerNombre: String,
-
-    @SerializedName("email")
-    val email: String,
-
-    @SerializedName("contrasena")
-    val contrasena: String,
-
-    @SerializedName("username")
-    val username: String? = null,
 
     @SerializedName("segundoNombre")
     val segundoNombre: String? = null,
@@ -66,101 +71,93 @@ data class UsuarioRequestDTO(
     @SerializedName("apellidoMaterno")
     val apellidoMaterno: String? = null,
 
+    @SerializedName("email")
+    val email: String,
+
+    @SerializedName("username")
+    val username: String? = null,
+
+    @SerializedName("contrasena")
+    val contrasena: String,
+
     @SerializedName("fotoPerfil")
-    val fotoPerfil: String? = null,
+    val fotoPerfil: String? = null, // Base64 string de la imagen
 
     @SerializedName("activo")
-    val activo: Boolean? = true
-) {
+    val activo: Boolean = true
+){
     /**
-     * Valida el DTO antes de enviarlo
+     * Valida que los datos del usuario sean correctos
      */
-    fun validate(): String? {
-        if (!Patterns.EMAIL_ADDRESS.matcher(email).matches())
-            return "Email inválido"
-        if (contrasena.length < 6)
-            return "Contraseña demasiado corta (mínimo 6 caracteres)"
-        if (primerNombre.isBlank())
-            return "El primer nombre es obligatorio"
-        return null
+    fun isValid(): Boolean {
+        return primerNombre.isNotBlank() &&
+                email.isNotBlank() &&
+                Patterns.EMAIL_ADDRESS.matcher(email).matches() &&
+                contrasena.isNotBlank() &&
+                contrasena.length >= 6 &&
+                idRol > 0
     }
-
-    /**
-     * Construye el nombre completo
-     */
-    val nombreCompleto: String
-        get() {
-            val nombres = listOfNotNull(primerNombre, segundoNombre)
-            val apellidos = listOfNotNull(apellidoPaterno, apellidoMaterno)
-            return (nombres + apellidos).joinToString(" ")
-        }
 }
 
+
 /**
- * DTO de respuesta del servidor con información de usuario
- * ⚠️ NO MODIFICAR - Debe coincidir exactamente con el backend
+ * DTO para respuesta de Usuario
+ * NO incluye la contraseña por seguridad
+ * Mapea exactamente con UsuarioResponseDTO.java del backend
  */
 data class UsuarioResponseDTO(
     @SerializedName("idUsuario")
-    var idUsuario: Int? = null,
+    val idUsuario: Int,
 
     @SerializedName("idRol")
-    var idRol: Int? = null,
+    val idRol: Int,
 
     @SerializedName("nombreRol")
-    var nombreRol: String? = null,
+    val nombreRol: String, // Viene convertido del backend (ej: "Administrador")
 
     @SerializedName("primerNombre")
-    var primerNombre: String? = null,
+    val primerNombre: String?,
 
     @SerializedName("segundoNombre")
-    var segundoNombre: String? = null,
+    val segundoNombre: String?,
 
     @SerializedName("apellidoPaterno")
-    var apellidoPaterno: String? = null,
+    val apellidoPaterno: String?,
 
     @SerializedName("apellidoMaterno")
-    var apellidoMaterno: String? = null,
+    val apellidoMaterno: String?,
 
     @SerializedName("nombreCompleto")
-    var nombreCompleto: String? = null,
+    val nombreCompleto: String,
 
     @SerializedName("email")
-    var email: String? = null,
+    val email: String,
 
     @SerializedName("username")
-    var username: String? = null,
+    val username: String?,
 
     @SerializedName("fotoPerfil")
-    var fotoPerfil: String? = null,
+    val fotoPerfil: String?, // Base64 string de la imagen (recibida del backend)
 
     @SerializedName("activo")
-    var activo: Boolean? = true,
+    val activo: Boolean,
 
     @SerializedName("fechaCreacion")
-    var fechaCreacion: LocalDateTime? = null,
+    val fechaCreacion: String?, // ISO 8601 format - ignorado por ahora
 
     @SerializedName("ultimoAcceso")
-    var ultimoAcceso: LocalDateTime? = null
-) {
-    /**
-     * Construye el nombre completo si no existe en la respuesta.
-     */
-    fun construirNombreCompleto(): String {
-        val partes = listOfNotNull(
-            primerNombre,
-            segundoNombre,
-            apellidoPaterno,
-            apellidoMaterno
-        )
-        return partes.joinToString(" ")
-    }
-}
+    val ultimoAcceso: String? // ISO 8601 format - ignorado por ahora
+)
 
 /**
- * DTO para actualizar usuario existente
+ * DTO para actualizar un Usuario existente
+ * La contraseña es opcional en actualizaciones
+ * Mapea exactamente con UsuarioUpdateDTO.java del backend
  */
 data class UsuarioUpdateDTO(
+    @SerializedName("idRol")
+    val idRol: Int? = null,
+
     @SerializedName("primerNombre")
     val primerNombre: String? = null,
 
@@ -176,12 +173,60 @@ data class UsuarioUpdateDTO(
     @SerializedName("email")
     val email: String? = null,
 
+    @SerializedName("username")
+    val username: String? = null,
+
+    @SerializedName("contrasena")
+    val contrasena: String? = null,
+
     @SerializedName("fotoPerfil")
-    val fotoPerfil: String? = null
-)
+    val fotoPerfil: String? = null, // Base64 string de la imagen
+
+    @SerializedName("activo")
+    val activo: Boolean? = null
+){
+    /**
+     * Valida que al menos un campo esté presente para actualizar
+     */
+    fun hasChanges(): Boolean {
+        return idRol != null ||
+                primerNombre != null ||
+                segundoNombre != null ||
+                apellidoPaterno != null ||
+                apellidoMaterno != null ||
+                email != null ||
+                username != null ||
+                contrasena != null ||
+                fotoPerfil != null ||
+                activo != null
+    }
+
+    /**
+     * Valida que los datos sean correctos si están presentes
+     */
+    fun isValid(): Boolean {
+        // Si el email está presente, debe ser válido
+        if (email != null && !Patterns.EMAIL_ADDRESS.matcher(email).matches()) {
+            return false
+        }
+
+        // Si la contraseña está presente, debe tener al menos 6 caracteres
+        if (contrasena != null && contrasena.length < 6) {
+            return false
+        }
+
+        // Si el primer nombre está presente, no debe estar vacío
+        if (primerNombre != null && primerNombre.isBlank()) {
+            return false
+        }
+
+        return true
+    }
+}
 
 /**
  * DTO para estadísticas de usuarios
+ * Mapea exactamente con UsuarioEstadisticasDTO.java del backend
  */
 data class UsuarioEstadisticasDTO(
     @SerializedName("totalUsuarios")
@@ -197,20 +242,36 @@ data class UsuarioEstadisticasDTO(
     val totalRoles: Long
 )
 
+
 /**
  * ===============================================
  * DTOs PARA GESTIÓN DE ROLES
  * ===============================================
  */
 
+/**
+ * DTO para crear o actualizar un Rol
+ * Mapea exactamente con RolRequestDTO.java del backend
+ */
 data class RolRequestDTO(
     @SerializedName("nombreRol")
     val nombreRol: String,
 
     @SerializedName("activo")
     val activo: Boolean = true
-)
+){
+    /**
+     * Valida que el nombre del rol no esté vacío
+     */
+    fun isValid(): Boolean {
+        return nombreRol.isNotBlank()
+    }
+}
 
+/**
+ * DTO para respuesta de Rol
+ * Mapea exactamente con RolResponseDTO.java del backend
+ */
 data class RolResponseDTO(
     @SerializedName("idRol")
     val idRol: Int,
@@ -219,9 +280,8 @@ data class RolResponseDTO(
     val nombreRol: String,
 
     @SerializedName("activo")
-    val activo: Boolean = true
+    val activo: Boolean
 )
-
 /**
  * ===============================================
  * MODELO LOCAL DE USUARIO (Para uso en app)
@@ -241,19 +301,60 @@ data class Usuario2(
     val email: String,
     val username: String = email.substringBefore("@"),
     val password: String = "",
+    val fotoPerfil: String? = null,
     val activo: Boolean = true
 ) {
-    val nombreCompleto: String
-        get() {
-            val partes = listOfNotNull(
-                primerNombre.takeIf { it.isNotBlank() },
-                segundoNombre.takeIf { it.isNotBlank() },
-                apellidoPaterno.takeIf { it.isNotBlank() },
-                apellidoMaterno.takeIf { it.isNotBlank() }
-            )
-            return partes.joinToString(" ")
+
+    init {
+        // ✅ Log mejorado para debugging
+        if (fotoPerfil != null) {
+            println("🔍 Usuario $idUsuario ($primerNombre) fotoPerfil presente:")
+            println("   Tipo: ${when {
+                fotoPerfil.startsWith("http") -> "URL HTTP/HTTPS"
+                fotoPerfil.startsWith("data:image") -> "Data URI Base64"
+                else -> "Formato desconocido"
+            }}")
+            println("   Primeros 100 chars: ${fotoPerfil.take(100)}...")
+        } else {
+            println("🔍 Usuario $idUsuario ($primerNombre) sin fotoPerfil")
         }
+    }
+
+    fun obtenerNombreCompleto(): String {
+        return buildString {
+            if (primerNombre.isNotBlank()) append(primerNombre).append(" ")
+            if (segundoNombre.isNotBlank()) append(segundoNombre).append(" ")
+            if (apellidoPaterno.isNotBlank()) append(apellidoPaterno).append(" ")
+            if (apellidoMaterno.isNotBlank()) append(apellidoMaterno)
+        }.trim()
+    }
+
+    companion object {
+
+        /**
+         * Convierte UN SOLO DTO en Usuario2
+         */
+        fun desdeDTO(dto: UsuarioResponseDTO): Usuario2? {
+            return dto.toUsuario2()
+        }
+
+        /**
+         * Convierte lista de DTOs
+         */
+        fun desdeDTOs(lista: List<UsuarioResponseDTO>): List<Usuario2> {
+            return lista.mapNotNull { it.toUsuario2() }
+        }
+    }
+
+    val nombreCompleto: String
+        get() = listOfNotNull(
+            primerNombre.takeIf { it.isNotBlank() },
+            segundoNombre.takeIf { it.isNotBlank() },
+            apellidoPaterno.takeIf { it.isNotBlank() },
+            apellidoMaterno.takeIf { it.isNotBlank() }
+        ).joinToString(" ")
 }
+
 
 /**
  * ===============================================
@@ -278,6 +379,16 @@ enum class Rol2(
     ENCARGADO_BODEGA(6, "Encargado de Bodega", "Control de inventario"),
     ASISTENTE_BODEGA(7, "Asistente de Bodega", "Bodega en tránsito");
 
+    /**
+     * Obtiene el ID del rol (para comunicación con backend)
+     */
+    fun obtenerIdRol(): Int = idRol
+
+    /**
+     * Obtiene el nombre legible del rol (para UI)
+     */
+    fun obtenerNombre(): String = nombreRol
+
     companion object {
         /**
          * Obtiene un Rol2 desde su ID
@@ -294,6 +405,8 @@ enum class Rol2(
          * Obtiene todos los roles disponibles
          */
         fun obtenerTodos(): List<Rol2> = values().toList()
+
+
     }
 }
 
@@ -319,21 +432,41 @@ fun UsuarioResponseDTO.construirNombreCompleto(): String {
 /**
  * Convierte UsuarioResponseDTO a Usuario2 (modelo local)
  */
+/**
+ * ✅ CONVERSIÓN CORREGIDA
+ * Ya no normaliza a DataURI - mantiene el Base64 puro del backend
+ */
 fun UsuarioResponseDTO.toUsuario2(): Usuario2? {
-    val rol = Rol2.desdeId(this.idRol ?: return null) ?: return null
+    val rolEnum = Rol2.desdeId(this.idRol)
+    if (rolEnum == null) {
+        println("⚠️ Rol desconocido: $idRol desde backend")
+        return null
+    }
+
+    // ✅ CRÍTICO: NO normalizar aquí
+    // Dejar el fotoPerfil tal cual viene del backend (Base64 puro)
+    val fotoLimpia = this.fotoPerfil?.trim()?.takeIf { it.isNotBlank() }
+
+    if (fotoLimpia != null) {
+        Log.d("Usuario2.toUsuario2", "📸 Foto para usuario $idUsuario:")
+        Log.d("Usuario2.toUsuario2", "   Preview: ${fotoLimpia.take(50)}")
+        Log.d("Usuario2.toUsuario2", "   Length: ${fotoLimpia.length}")
+    }
 
     return Usuario2(
-        idUsuario = this.idUsuario ?: 0,
-        rol = rol,
+        idUsuario = this.idUsuario,
+        rol = rolEnum,
         primerNombre = this.primerNombre ?: "",
         segundoNombre = this.segundoNombre ?: "",
         apellidoPaterno = this.apellidoPaterno ?: "",
         apellidoMaterno = this.apellidoMaterno ?: "",
-        email = this.email ?: "",
-        username = this.username ?: this.email?.substringBefore("@") ?: "",
-        activo = this.activo ?: true
+        email = this.email,
+        username = this.username ?: this.email.substringBefore("@"),
+        fotoPerfil = fotoLimpia, // ✅ Base64 puro, sin conversión
+        activo = this.activo
     )
 }
+
 
 /**
  * Convierte Usuario2 (modelo local) a UsuarioRequestDTO

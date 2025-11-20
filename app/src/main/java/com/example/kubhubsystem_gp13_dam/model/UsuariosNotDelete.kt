@@ -1,6 +1,5 @@
 package com.example.kubhubsystem_gp13_dam.model
 
-import com.example.kubhubsystem_gp13_dam.local.dto.UsuarioResponseDTO
 
 
 /**
@@ -10,9 +9,10 @@ import com.example.kubhubsystem_gp13_dam.local.dto.UsuarioResponseDTO
  * Este modelo se usa internamente en la app.
  * Los DTOs se usan para comunicación con el backend.
  */
+
 data class Usuario(
     val idUsuario: Int = 0,
-    val rol: Rol,
+    val rol: Rol2,
     val primerNombre: String,
     val segundoNombre: String? = null,
     val apellidoPaterno: String? = null,
@@ -43,7 +43,7 @@ data class Usuario(
         fun desdeDTO(dto: UsuarioResponseDTO): Usuario {
             return Usuario(
                 idUsuario = dto.idUsuario,
-                rol = Rol.desdeId(dto.idRol) ?: Rol.DOCENTE, // Fallback a DOCENTE si no encuentra
+                rol = Rol2.desdeId(dto.idRol) ?: Rol2.DOCENTE, // Fallback a DOCENTE si no encuentra
                 primerNombre = dto.primerNombre ?: "",
                 segundoNombre = dto.segundoNombre,
                 apellidoPaterno = dto.apellidoPaterno,

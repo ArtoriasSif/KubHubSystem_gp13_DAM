@@ -25,8 +25,8 @@ import com.example.kubhubsystem_gp13_dam.ui.viewmodel.SolicitudViewModel
 import com.example.kubhubsystem_gp13_dam.viewmodel.PedidoViewModel
 import com.example.kubhubsystem_gp13_dam.ui.screens.dashboard.DashboardScreen
 import com.example.kubhubsystem_gp13_dam.ui.screens.startAndHome.HomeInternalScreen
-import com.example.kubhubsystem_gp13_dam.ui.screens.perfil.PerfilUsuarioScreenSimple
 import com.example.kubhubsystem_gp13_dam.repository.LoginRepository2
+import com.example.kubhubsystem_gp13_dam.ui.components.PerfilUsuarioScreenSimple
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -270,7 +270,7 @@ fun MainMenuScreen(
                     title = {
                         Text(
                             when (currentRoute) {
-                                "perfil" -> "Perfil"
+                                "perfil" -> ""
                                 "dashboard" -> "Dashboard"
                                 "inventario" -> "Inventario"
                                 "solicitud" -> "Solicitudes"
@@ -289,7 +289,7 @@ fun MainMenuScreen(
                                 else drawerState.close()
                             }
                         }) {
-                            Icon(Icons.Default.Menu, contentDescription = "Menú")
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                         }
                     }
                 )

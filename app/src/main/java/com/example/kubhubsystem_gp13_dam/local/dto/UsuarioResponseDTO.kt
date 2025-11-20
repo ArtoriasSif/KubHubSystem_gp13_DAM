@@ -1,3 +1,5 @@
+/*
+
 package com.example.kubhubsystem_gp13_dam.local.dto
 
 import com.google.gson.annotations.SerializedName
@@ -34,7 +36,10 @@ data class UsuarioResponseDTO(
     
     @SerializedName("email")
     val email: String,
-    
+
+    @SerializedName("contrasena")
+    val contrasena: String,
+
     @SerializedName("username")
     val username: String?,
     
@@ -49,4 +54,4 @@ data class UsuarioResponseDTO(
     
     @SerializedName("ultimoAcceso")
     val ultimoAcceso: String? // ISO 8601 format - ignorado por ahora
-)
+)**/

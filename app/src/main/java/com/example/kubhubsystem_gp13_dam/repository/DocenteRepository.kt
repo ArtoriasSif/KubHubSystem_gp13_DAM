@@ -3,7 +3,7 @@ package com.example.kubhubsystem_gp13_dam.repository
 import com.example.kubhubsystem_gp13_dam.local.dao.DocenteDao
 import com.example.kubhubsystem_gp13_dam.local.entities.DocenteEntity
 import com.example.kubhubsystem_gp13_dam.local.entities.UsuarioEntity
-import com.example.kubhubsystem_gp13_dam.model.Rol
+import com.example.kubhubsystem_gp13_dam.model.Rol2
 
 class DocenteRepository(private val docenteDao: DocenteDao) {
 
@@ -30,7 +30,7 @@ class DocenteRepository(private val docenteDao: DocenteDao) {
         // Filtrar usuarios que tienen el rol PROFESOR del enum
         val usuariosDocentes = usuarios.filter { usuario ->
             // Buscar el rol en el enum usando el idRol del usuario
-            Rol.desdeId(usuario.idRol) == Rol.DOCENTE
+            Rol2.desdeId(usuario.idRol) == Rol2.DOCENTE
         }
 
         usuariosDocentes.forEach { usuario ->
@@ -52,7 +52,7 @@ class DocenteRepository(private val docenteDao: DocenteDao) {
     // Método para obtener solo los IDs de usuarios que son docentes según el enum
     suspend fun obtenerIdsUsuariosDocentes(usuarios: List<UsuarioEntity>): List<Int> {
         return usuarios.filter { usuario ->
-            Rol.desdeId(usuario.idRol) == Rol.DOCENTE
+            Rol2.desdeId(usuario.idRol) == Rol2.DOCENTE
         }.map { it.idUsuario }
     }
 

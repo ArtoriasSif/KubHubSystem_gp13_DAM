@@ -1,4 +1,3 @@
-
 package com.example.kubhubsystem_gp13_dam.ui.screens
 
 import androidx.compose.foundation.background
@@ -29,8 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.kubhubsystem_gp13_dam.manager.PerfilUsuarioManager
-import com.example.kubhubsystem_gp13_dam.model.Rol
-import com.example.kubhubsystem_gp13_dam.model.Usuario
+import com.example.kubhubsystem_gp13_dam.model.Rol2
+import com.example.kubhubsystem_gp13_dam.model.Usuario2
 import com.example.kubhubsystem_gp13_dam.ui.components.AvatarUsuario
 import com.example.kubhubsystem_gp13_dam.ui.theme.loginTextFieldColors
 import com.example.kubhubsystem_gp13_dam.viewmodel.GestionUsuariosEstado
@@ -41,10 +40,10 @@ import kotlinx.coroutines.launch
  * 🎨 GestionUsuarioScreen2 - Versión Mejorada Final
  * ✅ Apariencia visual mejorada con tema amarillo/dorado
  * ✅ TODAS las funcionalidades: activar/desactivar, editar, eliminar con confirmación
- * ✅ Scroll optimizado con LazyColumn y botón de regreso al inicio
+ * ✅ Scroll optimizado con LazyColumn
  * ✅ Filtros completos: rol + estado (activo/inactivo)
  * ✅ Integración completa con backend vía ViewModel
- * ✅ Diálogos completos y funcionales para nuevo usuario y editar usuario
+ * ✅ Usa Usuario2 y Rol2 correctamente
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,9 +58,9 @@ fun GestionUsuarioScreen2(
     val estado by viewModel.estado.collectAsState()
     val scope = rememberCoroutineScope()
 
-    var showDeleteDialog by remember { mutableStateOf<Usuario?>(null) }
+    var showDeleteDialog by remember { mutableStateOf<Usuario2?>(null) }
     var showNuevoUsuarioDialog by remember { mutableStateOf(false) }
-    var showEditarUsuarioDialog by remember { mutableStateOf<Usuario?>(null) }
+    var showEditarUsuarioDialog by remember { mutableStateOf<Usuario2?>(null) }
 
     // Sincronizar perfiles cuando cambien los usuarios
     LaunchedEffect(estado.usuarios) {
@@ -151,7 +150,7 @@ fun GestionUsuarioScreen2(
         }
     }
 
-    // 🔒 Diálogo de confirmación de eliminación con texto "ELIMINAR"
+    // 🔒 Diálogo de confirmación de eliminación
     showDeleteDialog?.let { usuario ->
         DialogoConfirmarEliminacion(
             usuario = usuario,
@@ -182,10 +181,9 @@ fun GestionUsuarioScreen2(
     }
 }
 
-// 🎨 Card de selección de rol mejorada
 @Composable
 private fun RolSelectionCard(
-    rol: Rol,
+    rol: Rol2,
     selected: Boolean,
     onClick: () -> Unit
 ) {
@@ -301,13 +299,12 @@ private fun ContenidoPrincipal(
     onFiltroEstadoChange: (String) -> Unit,
     onBuscarTextoChange: (String) -> Unit,
     onEditarUsuario: (Int) -> Unit,
-    onEliminarUsuario: (Usuario) -> Unit,
+    onEliminarUsuario: (Usuario2) -> Unit,
     onNuevoUsuario: () -> Unit,
-    onToggleEstadoUsuario: (Usuario) -> Unit,
+    onToggleEstadoUsuario: (Usuario2) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
 
     Box(modifier = modifier.fillMaxSize()) {
         LazyColumn(
@@ -337,7 +334,6 @@ private fun ContenidoPrincipal(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Campo de búsqueda
                         OutlinedTextField(
                             value = estado.buscarTexto,
                             onValueChange = { onBuscarTextoChange(it) },
@@ -360,7 +356,6 @@ private fun ContenidoPrincipal(
 
                         Spacer(modifier = Modifier.width(12.dp))
 
-                        // Botón Nuevo Usuario
                         Button(
                             onClick = { onNuevoUsuario() },
                             colors = ButtonDefaults.buttonColors(
@@ -386,7 +381,6 @@ private fun ContenidoPrincipal(
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Filtros (sin duplicar buscador)
                     SeccionFiltros(
                         filtroRol = estado.filtroRol,
                         filtroEstado = estado.filtroEstado,
@@ -419,7 +413,7 @@ private fun ContenidoPrincipal(
                     TarjetaUsuario(
                         usuario = usuario,
                         perfil = perfiles[usuario.idUsuario],
-                        esDocente = usuario.rol == Rol.DOCENTE,
+                        esDocente = usuario.rol == Rol2.DOCENTE,
                         onClick = { onEditarUsuario(usuario.idUsuario) },
                         onEliminar = { onEliminarUsuario(usuario) },
                         onToggleEstado = { onToggleEstadoUsuario(usuario) },
@@ -427,7 +421,6 @@ private fun ContenidoPrincipal(
                     )
                 }
 
-                // Espaciado final para el FAB
                 item {
                     Spacer(modifier = Modifier.height(80.dp))
                 }
@@ -533,7 +526,6 @@ private fun SeccionFiltros(
     onFiltroEstadoChange: (String) -> Unit
 ) {
     Column {
-        // Filtro por rol
         Text(
             text = "Filtrar por rol:",
             style = MaterialTheme.typography.labelLarge,
@@ -573,7 +565,6 @@ private fun SeccionFiltros(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Filtro por estado (Activo/Inactivo)
         Text(
             text = "Filtrar por estado:",
             style = MaterialTheme.typography.labelLarge,
@@ -614,7 +605,7 @@ private fun SeccionFiltros(
 
 @Composable
 private fun TarjetaUsuario(
-    usuario: Usuario,
+    usuario: Usuario2,
     perfil: com.example.kubhubsystem_gp13_dam.model.PerfilUsuario?,
     esDocente: Boolean,
     onClick: () -> Unit,
@@ -690,11 +681,9 @@ private fun TarjetaUsuario(
                 }
             }
 
-            // Botones de acción
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // Botón editar
                 IconButton(
                     onClick = onClick,
                     colors = IconButtonDefaults.iconButtonColors(
@@ -707,7 +696,6 @@ private fun TarjetaUsuario(
                     )
                 }
 
-                // Botón activar/desactivar
                 IconButton(
                     onClick = onToggleEstado,
                     colors = IconButtonDefaults.iconButtonColors(
@@ -720,7 +708,6 @@ private fun TarjetaUsuario(
                     )
                 }
 
-                // Botón eliminar
                 IconButton(onClick = onEliminar) {
                     Icon(
                         Icons.Default.Delete,
@@ -734,7 +721,7 @@ private fun TarjetaUsuario(
 }
 
 @Composable
-private fun BadgeRol(rol: Rol, esDocente: Boolean) {
+private fun BadgeRol(rol: Rol2, esDocente: Boolean) {
     val color = obtenerColorRol(rol)
 
     Surface(
@@ -793,9 +780,6 @@ private fun EmptyStateView(modifier: Modifier = Modifier) {
     }
 }
 
-
-
-// 📝 DIÁLOGO DE NUEVO USUARIO
 @Composable
 private fun DialogoNuevoUsuario(
     viewModel: GestionUsuariosViewModel,
@@ -808,7 +792,7 @@ private fun DialogoNuevoUsuario(
     var email by remember { mutableStateOf("") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var rolSeleccionado by remember { mutableStateOf(Rol.DOCENTE) }
+    var rolSeleccionado by remember { mutableStateOf(Rol2.DOCENTE) }
     var mostrarPassword by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -822,7 +806,6 @@ private fun DialogoNuevoUsuario(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Header con color amarillo
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -846,7 +829,6 @@ private fun DialogoNuevoUsuario(
                     }
                 }
 
-                // Contenido scrolleable
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -854,7 +836,6 @@ private fun DialogoNuevoUsuario(
                         .padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Mensaje de error
                     errorMessage?.let { error ->
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
@@ -977,9 +958,8 @@ private fun DialogoNuevoUsuario(
                         color = Color(0xFFFFC107)
                     )
 
-                    // Selector de rol con cards mejoradas
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Rol.obtenerTodos().forEach { rol ->
+                        Rol2.obtenerTodos().forEach { rol ->
                             RolSelectionCard(
                                 rol = rol,
                                 selected = rolSeleccionado == rol,
@@ -989,7 +969,6 @@ private fun DialogoNuevoUsuario(
                     }
                 }
 
-                // Botones de acción
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1042,32 +1021,30 @@ private fun DialogoNuevoUsuario(
     }
 }
 
-// ✏️ DIÁLOGO DE EDITAR USUARIO
 @Composable
 private fun DialogoEditarUsuario(
     viewModel: GestionUsuariosViewModel,
-    usuario: Usuario,
+    usuario: Usuario2,
     onDismiss: () -> Unit
 ) {
     var primerNombre by remember { mutableStateOf(usuario.primerNombre) }
-    var segundoNombre by remember { mutableStateOf(usuario.segundoNombre ?: "") }
-    var apellidoPaterno by remember { mutableStateOf(usuario.apellidoPaterno ?: "") }
-    var apellidoMaterno by remember { mutableStateOf(usuario.apellidoMaterno ?: "") }
+    var segundoNombre by remember { mutableStateOf(usuario.segundoNombre) }
+    var apellidoPaterno by remember { mutableStateOf(usuario.apellidoPaterno) }
+    var apellidoMaterno by remember { mutableStateOf(usuario.apellidoMaterno) }
     var email by remember { mutableStateOf(usuario.email) }
-    var username by remember { mutableStateOf(usuario.username ?: "") }
+    var username by remember { mutableStateOf(usuario.username) }
     var password by remember { mutableStateOf("") }
     var rolSeleccionado by remember { mutableStateOf(usuario.rol) }
     var mostrarPassword by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    // Detectar si hubo cambios
     val huboAlgunCambio = remember(primerNombre, segundoNombre, apellidoPaterno, apellidoMaterno, email, username, password, rolSeleccionado) {
         primerNombre != usuario.primerNombre ||
-                segundoNombre != (usuario.segundoNombre ?: "") ||
-                apellidoPaterno != (usuario.apellidoPaterno ?: "") ||
-                apellidoMaterno != (usuario.apellidoMaterno ?: "") ||
+                segundoNombre != usuario.segundoNombre ||
+                apellidoPaterno != usuario.apellidoPaterno ||
+                apellidoMaterno != usuario.apellidoMaterno ||
                 email != usuario.email ||
-                username != (usuario.username ?: "") ||
+                username != usuario.username ||
                 password.isNotBlank() ||
                 rolSeleccionado != usuario.rol
     }
@@ -1082,7 +1059,6 @@ private fun DialogoEditarUsuario(
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                // Header con color amarillo
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1106,7 +1082,6 @@ private fun DialogoEditarUsuario(
                     }
                 }
 
-                // Contenido scrolleable
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -1114,7 +1089,6 @@ private fun DialogoEditarUsuario(
                         .padding(24.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Mensaje de error
                     errorMessage?.let { error ->
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
@@ -1237,9 +1211,8 @@ private fun DialogoEditarUsuario(
                         color = Color(0xFFFFC107)
                     )
 
-                    // Selector de rol
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Rol.obtenerTodos().forEach { rol ->
+                        Rol2.obtenerTodos().forEach { rol ->
                             RolSelectionCard(
                                 rol = rol,
                                 selected = rolSeleccionado == rol,
@@ -1249,7 +1222,6 @@ private fun DialogoEditarUsuario(
                     }
                 }
 
-                // Botones de acción
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1273,11 +1245,11 @@ private fun DialogoEditarUsuario(
                                 else -> {
                                     val usuarioActualizado = usuario.copy(
                                         primerNombre = primerNombre.trim(),
-                                        segundoNombre = segundoNombre.trim().ifBlank { null },
-                                        apellidoPaterno = apellidoPaterno.trim().ifBlank { null },
-                                        apellidoMaterno = apellidoMaterno.trim().ifBlank { null },
+                                        segundoNombre = segundoNombre.trim(),
+                                        apellidoPaterno = apellidoPaterno.trim(),
+                                        apellidoMaterno = apellidoMaterno.trim(),
                                         email = email.trim().lowercase(),
-                                        username = username.trim().ifBlank { null },
+                                        username = username.trim(),
                                         password = if (password.isNotBlank()) password else usuario.password,
                                         rol = rolSeleccionado
                                     )
@@ -1303,11 +1275,9 @@ private fun DialogoEditarUsuario(
     }
 }
 
-
-// 🔒 DIÁLOGO DE CONFIRMACIÓN DE ELIMINACIÓN CON VALIDACIÓN "ELIMINAR"
 @Composable
 private fun DialogoConfirmarEliminacion(
-    usuario: Usuario,
+    usuario: Usuario2,
     onConfirmar: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -1383,26 +1353,26 @@ private fun DialogoConfirmarEliminacion(
     )
 }
 
-private fun obtenerColorRol(rol: Rol): Color {
+private fun obtenerColorRol(rol: Rol2): Color {
     return when (rol) {
-        Rol.ADMINISTRADOR -> Color(0xFFF44336)
-        Rol.CO_ADMINISTRADOR -> Color(0xFFFF9800)
-        Rol.GESTOR_PEDIDOS -> Color(0xFF4CAF50)
-        Rol.PROFESOR_A_CARGO -> Color(0xFF3F51B5)
-        Rol.DOCENTE -> Color(0xFF2196F3)
-        Rol.ENCARGADO_BODEGA -> Color(0xFF9C27B0)
-        Rol.ASISTENTE_BODEGA -> Color(0xFF00BCD4)
+        Rol2.ADMINISTRADOR -> Color(0xFFF44336)
+        Rol2.CO_ADMINISTRADOR -> Color(0xFFFF9800)
+        Rol2.GESTOR_PEDIDOS -> Color(0xFF4CAF50)
+        Rol2.PROFESOR_A_CARGO -> Color(0xFF3F51B5)
+        Rol2.DOCENTE -> Color(0xFF2196F3)
+        Rol2.ENCARGADO_BODEGA -> Color(0xFF9C27B0)
+        Rol2.ASISTENTE_BODEGA -> Color(0xFF00BCD4)
     }
 }
 
-private fun obtenerIconoRol(rol: Rol): ImageVector {
+private fun obtenerIconoRol(rol: Rol2): ImageVector {
     return when (rol) {
-        Rol.ADMINISTRADOR -> Icons.Default.Security
-        Rol.CO_ADMINISTRADOR -> Icons.Default.SupervisorAccount
-        Rol.GESTOR_PEDIDOS -> Icons.Default.Assignment
-        Rol.PROFESOR_A_CARGO -> Icons.Default.ManageAccounts
-        Rol.DOCENTE -> Icons.Default.School
-        Rol.ENCARGADO_BODEGA -> Icons.Default.Inventory
-        Rol.ASISTENTE_BODEGA -> Icons.Default.Person
+        Rol2.ADMINISTRADOR -> Icons.Default.Security
+        Rol2.CO_ADMINISTRADOR -> Icons.Default.SupervisorAccount
+        Rol2.GESTOR_PEDIDOS -> Icons.Default.Assignment
+        Rol2.PROFESOR_A_CARGO -> Icons.Default.ManageAccounts
+        Rol2.DOCENTE -> Icons.Default.School
+        Rol2.ENCARGADO_BODEGA -> Icons.Default.Inventory
+        Rol2.ASISTENTE_BODEGA -> Icons.Default.Person
     }
 }

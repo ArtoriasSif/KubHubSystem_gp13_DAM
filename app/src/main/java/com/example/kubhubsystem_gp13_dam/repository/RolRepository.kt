@@ -1,8 +1,8 @@
 package com.example.kubhubsystem_gp13_dam.repository
 
 import com.example.kubhubsystem_gp13_dam.local.remote.RetrofitClient
-import com.example.kubhubsystem_gp13_dam.local.dto.RolRequestDTO
-import com.example.kubhubsystem_gp13_dam.local.dto.RolResponseDTO
+import com.example.kubhubsystem_gp13_dam.model.RolRequestDTO
+import com.example.kubhubsystem_gp13_dam.model.RolResponseDTO
 
 /**
  * Repositorio de Roles

@@ -85,7 +85,7 @@ class LoginRepository2 private constructor(
     /**
      * Guarda la sesión del usuario en TokenManager
      */
-    private fun guardarSesion(loginResponse: com.example.kubhubsystem_gp13_dam.local.dto.LoginResponseDTO) {
+    private fun guardarSesion(loginResponse: LoginResponseDTO) {
         val usuarioResponse = loginResponse.usuario
 
         // Construir nombre completo
@@ -183,7 +183,7 @@ class LoginRepository2 private constructor(
     fun getDemoCredentials(rol: Rol2): Pair<String, String>? {
         return when (rol) {
             Rol2.ADMINISTRADOR -> "admin@kuhub.cl" to "admin123"
-            Rol2.CO_ADMINISTRADOR -> "coadmin@kuhub.cl" to "coadmin123"
+            Rol2.CO_ADMINISTRADOR -> "ma.delara@kuhub.cl" to "matheusmago123"
             Rol2.GESTOR_PEDIDOS -> "gestor@kuhub.cl" to "gestor123"
             Rol2.PROFESOR_A_CARGO -> "profesorCargo@kuhub.cl" to "profesor123"
             Rol2.DOCENTE -> "carmen.jimenez@kuhub.cl" to "docente123"
