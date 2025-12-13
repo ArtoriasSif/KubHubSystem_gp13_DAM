@@ -1,6 +1,8 @@
 package com.example.kubhubsystem_gp13_dam.local.remote
 
+import android.content.Context
 import com.example.kubhubsystem_gp13_dam.BuildConfig
+import com.example.kubhubsystem_gp13_dam.utils.TokenManager
 import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -17,12 +19,20 @@ object RetrofitClient {
     // ✅ Base URL leída desde build.gradle.kts (BuildConfig)
     // Ejemplo: "http://54.242.76.7/"
     private val BASE_URL: String = BuildConfig.BASE_URL
+    private lateinit var tokenManager: TokenManager
+
+    /**
+     * ⭐ NUEVO: Inicializar con contexto para TokenManager
+     */
+    fun init(context: Context) {
+        tokenManager = TokenManager.getInstance(context)
+        println("✅ RetrofitClient inicializado con TokenManager")
+    }
 
     private val gson = GsonBuilder()
         .setLenient()
         .serializeNulls()
         .create()
-
 
     // ✅ Interceptor para logging (útil en desarrollo)
     private val loggingInterceptor = HttpLoggingInterceptor().apply {
@@ -33,10 +43,13 @@ object RetrofitClient {
         }
     }
 
-    // ✅ Cliente HTTP configurado
+    /**
+     * ⭐ ACTUALIZADO: Cliente HTTP con AuthInterceptor
+     */
     private val client: OkHttpClient by lazy {
         OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
+            .addInterceptor(AuthInterceptor(tokenManager)) // ⭐ Agregar interceptor de auth
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
@@ -48,7 +61,7 @@ object RetrofitClient {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
             .client(client)
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(GsonConverterFactory.create(gson))
             .build()
     }
 

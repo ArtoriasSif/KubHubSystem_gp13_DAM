@@ -24,6 +24,7 @@ class LoginRepository private constructor(
      * @return null si es exitoso, o código de error como String
      */
     suspend fun login(email: String, password: String): String? {
+        println("🔥 PISTA 1: Entrando a la función login en Repository")
         return try {
             // Delay simulado para mejor UX
             delay(500)
@@ -41,10 +42,13 @@ class LoginRepository private constructor(
 
             // Llamada al backend
             val response = authService.login(loginRequest)
+            println("🔥 PISTA 2: Respuesta recibida: ${response.code()}")
 
             when {
                 response.isSuccessful && response.body() != null -> {
                     val loginResponse = response.body()!!
+
+                    println("🔥 PISTA 3: ¡Login exitoso! Intentando guardar sesión...")
                     val usuario = loginResponse.usuario
 
                     // Verificar si el usuario está activo
@@ -86,6 +90,7 @@ class LoginRepository private constructor(
      * Guarda la sesión del usuario en TokenManager
      */
     private fun guardarSesion(loginResponse: LoginResponseDTO) {
+        println("🔥 PISTA 4: DENTRO DE GUARDAR SESIÓN")
         val usuarioResponse = loginResponse.usuario
 
         // Construir nombre completo
@@ -113,7 +118,7 @@ class LoginRepository private constructor(
             userRol = rolNombre,
             userName = nombreCompleto
         )
-
+        println("✅ PISTA 5: TokenManager terminó de guardar")
         println("✅ Sesión guardada: ${usuarioResponse.email} - Rol: $rolNombre")
     }
 

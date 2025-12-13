@@ -22,7 +22,11 @@ interface AuthApiService {
      * @param loginRequest DTO con email y contraseña
      * @return LoginResponseDTO con usuario, token y mensaje
      */
-    @POST("api/v1/auth/login")
+    /**
+     * POST /login (SIN el prefijo /api/v1/auth)
+     * ⚠️ ACTUALIZADO: El backend usa /login directamente
+     */
+    @POST("login")
     suspend fun login(@Body loginRequest: LoginRequestDTO): Response<LoginResponseDTO>
 
     /**
@@ -31,6 +35,6 @@ interface AuthApiService {
      * 
      * En una implementación real con JWT, aquí se invalidaría el token
      */
-    @POST("api/v1/auth/logout")
+    @POST("logout")
     suspend fun logout(): Response<Unit>
 }
