@@ -1,5 +1,5 @@
 [readme.md.txt](https://github.com/user-attachments/files/22996377/readme.md.txt)
-Evaluación 3
+Examen Transversal
 
 Integrantes:	Matheus de Lara
 		Francisco Gómez
